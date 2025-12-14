@@ -12,6 +12,7 @@ set(TARGET_NAME cia)
 set(SOURCES
     src/main.cpp
     src/chunk.cpp
+    src/value.cpp
 )
 
 add_executable(${TARGET_NAME} ${SOURCES})

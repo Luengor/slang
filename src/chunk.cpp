@@ -2,18 +2,32 @@
 #include <cassert>
 #include <print>
 
-static int simpleInstruction(const char *name, int offset) {
+int Chunk::simpleInstruction(const char *name, int offset) {
     std::print("{}\n", name);
     return offset+1;
+}
+
+int Chunk::constantInstruction(const char *name, int offset) {
+    const auto constant_i = this->code[offset + 1];
+    std::print("{} {:4d} '{:g}'\n", name, constant_i, static_cast<Value>(this->constants[constant_i]));
+    return offset+2;
 }
 
 int Chunk::disassebleInstruction(int offset) {
     std::print("{:04d} ", offset);
 
+    if (offset > 0 && this->lines[offset - 1] == this->lines[offset])
+        std::print("   | ");
+    else
+        std::print("{:4d} ", this->lines[offset]);
+
     OpCode instruction = static_cast<OpCode>(this->code[offset]);
     switch (instruction) {
         case OpCode::Return:
             return simpleInstruction("OP_RETURN", offset);
+
+        case OpCode::Constant:
+            return constantInstruction("OP_CONSTANT", offset);
 
         default:
             std::print("Unknown opcode {}\n",
@@ -22,8 +36,14 @@ int Chunk::disassebleInstruction(int offset) {
     }
 }
 
-void Chunk::write(uint8_t byte) {
+void Chunk::write(uint8_t byte, int line) {
     this->code.push_back(byte);
+    this->lines.push_back(line);
+}
+
+int Chunk::addConstant(Value value) {
+    this->constants.push_back(value);
+    return this->constants.size() - 1;
 }
 
 void Chunk::disassemble(const std::string &header) {
