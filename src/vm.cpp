@@ -17,6 +17,16 @@ InterpretResult VM::run() {
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
 #define READ_CONSTANT() (this->chunk.constants[READ_BYTE()])
 
+#define BINARY_OP(op)            \
+    {                            \
+        const auto b = this->stack.back(); \
+        this->stack.pop_back();  \
+        const auto a = this->stack.back(); \
+        this->stack.pop_back();  \
+        this->stack.push_back(a op b); \
+        break;                   \
+    }
+
     for (ever) {
 #ifndef NDEBUG
         // Print the stack
@@ -46,6 +56,16 @@ InterpretResult VM::run() {
                 this->stack.push_back(constant);
                 break;
             }
+
+            case OpCode::Negate: {
+                this->stack.back() = -this->stack.back();
+                break;
+            }
+
+            case OpCode::Add: BINARY_OP(+)
+            case OpCode::Subtract: BINARY_OP(-)
+            case OpCode::Multiply: BINARY_OP(*)
+            case OpCode::Divide: BINARY_OP(/)
         }
 
     }
