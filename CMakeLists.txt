@@ -13,6 +13,7 @@ set(SOURCES
     src/main.cpp
     src/chunk.cpp
     src/value.cpp
+    src/vm.cpp
 )
 
 add_executable(${TARGET_NAME} ${SOURCES})

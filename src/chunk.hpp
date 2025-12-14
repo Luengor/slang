@@ -11,6 +11,8 @@ enum class OpCode : uint8_t {
 };
 
 class Chunk {
+    friend class VM;
+
     std::vector<uint8_t> code;
     std::vector<int> lines;
     ValueArray constants;

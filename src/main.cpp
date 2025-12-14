@@ -1,7 +1,9 @@
 #include "chunk.hpp"
+#include "vm.hpp"
 
 int main() {
     Chunk chunk;
+    VM vm;
 
     // Constant
     const auto constant = chunk.addConstant(3.1415);
@@ -12,7 +14,7 @@ int main() {
     chunk.write(OpCode::Return, 1);
 
     // dis
-    chunk.disassemble("test chunk");
+    vm.interpret(std::move(chunk));
 
     return 0;
 }
