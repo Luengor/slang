@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.28)
 project(ci-again)
 
 # things
@@ -9,7 +9,12 @@ option(DEBUG "Don't define NDEBUG and disable optimizations" ON)
 
 set(TARGET_NAME cia)
 
-add_executable(${TARGET_NAME} src/main.cpp)
+set(SOURCES
+    src/main.cpp
+    src/chunk.cpp
+)
+
+add_executable(${TARGET_NAME} ${SOURCES})
 
 # Global stuff
 if (${DEBUG})
