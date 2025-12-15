@@ -11,6 +11,7 @@ set(TARGET_NAME cia)
 
 set(SOURCES
     src/main.cpp
+    src/ast.cpp
     src/chunk.cpp
     src/compiler.cpp
     src/scanner.cpp
