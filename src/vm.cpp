@@ -1,10 +1,13 @@
 #include "vm.hpp"
 #include "chunk.hpp"
+#include "compiler.hpp"
 #include <print>
 
-InterpretResult VM::interpret(Chunk &&chunk) {
-    // Keep the chunk
-    this->chunk = std::move(chunk);
+InterpretResult VM::interpret(const std::string &source) {
+    // Compile the source code into a chunk
+    Compiler compiler(source);
+
+    this->chunk = compiler.compile();
     this->ip = this->chunk.code.data();
 
     // Run the chunk

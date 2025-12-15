@@ -1,32 +1,55 @@
 #include "chunk.hpp"
 #include "vm.hpp"
+#include <fstream>
+#include <iostream>
+#include <print>
 
-int main() {
-    Chunk chunk;
+void repl() {
+    std::string line;
     VM vm;
 
-    // Calculate circonference of the earth 
-    const auto pi = chunk.addConstant(3.1415);
-    const auto radius = chunk.addConstant(6371.0);
-    const auto two = chunk.addConstant(2.0);
+    for (;;) {
+        std::print("> ");
+        if (!std::getline(std::cin, line)) {
+            break;
+        }
 
-    // 2 * pi
-    chunk.write(OpCode::Constant, 1);
-    chunk.write(static_cast<uint8_t>(two), 1);
-    chunk.write(OpCode::Constant, 1);
-    chunk.write(static_cast<uint8_t>(pi), 1);
-    chunk.write(OpCode::Multiply, 1);
+        vm.interpret(line);
+    }
+}
 
-    // radius * (2 * pi)
-    chunk.write(OpCode::Constant, 2);
-    chunk.write(static_cast<uint8_t>(radius), 2);
-    chunk.write(OpCode::Multiply, 2);
+void runFile(const char *path) {
+    // Read the file
+    std::ifstream file(path, std::ios::in);
 
-    // Return
-    chunk.write(OpCode::Return, 1);
+    if (!file.is_open()) {
+        std::print("Could not open file \"{}\".\n", path);
+        exit(74);
+    }
 
-    // dis
-    vm.interpret(std::move(chunk));
+    std::string source((std::istreambuf_iterator<char>(file)),
+                       std::istreambuf_iterator<char>());
+    file.close();
+
+    // Run the file
+    VM vm;
+    const auto result = vm.interpret(source);
+    if (result == InterpretResult::CompileError) {
+        exit(65);
+    } else if (result == InterpretResult::RuntimeError) {
+        exit(70);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc == 1) {
+        repl();
+    } else if (argc == 2) {
+        runFile(argv[1]);
+    } else {
+        std::print("Usage: cia [path]\n");
+        return 64;
+    }
 
     return 0;
 }
