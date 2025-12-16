@@ -34,8 +34,7 @@ Chunk Compiler::compile() {
     BinaryExpressionNode *root =
         new BinaryExpressionNode(manual_token_list[1], left_node, right_unary);
 
-    Chunk chunk;
-    root->compile(chunk);
+    Chunk chunk = compileAST(root);
     chunk.write(OpCode::Return, 1);
     chunk.disassemble("Test Chunk");
     return chunk;

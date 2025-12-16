@@ -10,6 +10,10 @@ enum class ASTNodeType {
     BinaryExpression,
 };
 
+struct CompileContext {
+    Chunk &chunk;
+};
+
 struct ASTNode {
     const ASTNodeType type;
     const Token token;
@@ -18,7 +22,7 @@ struct ASTNode {
 
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode();
-    virtual void compile(Chunk &chunk) = 0;
+    virtual void compile(CompileContext &ctx) = 0;
 };
 
 struct LiteralNode : public ASTNode {
@@ -31,7 +35,7 @@ struct LiteralNode : public ASTNode {
     } value;
 
     LiteralNode(const Token &token);
-    void compile(Chunk &chunk) override;
+    void compile(CompileContext &ctx) override;
 };
 
 struct UnaryExpressionNode : public ASTNode {
@@ -40,10 +44,13 @@ struct UnaryExpressionNode : public ASTNode {
     } op;
 
     UnaryExpressionNode(const Token &token, ASTNode *operand);
-    void compile(Chunk &chunk) override;
+    void compile(CompileContext &ctx) override;
 };
 
 struct BinaryExpressionNode : public ASTNode {
     BinaryExpressionNode(const Token &token, ASTNode *left, ASTNode *right);
-    void compile(Chunk &chunk) override;
+    void compile(CompileContext &ctx) override;
 };
+
+Chunk compileAST(ASTNode *root);
+
