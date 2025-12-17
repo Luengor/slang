@@ -31,21 +31,13 @@ InterpretResult VM::run() {
         this->stack.pop_back();  \
         const auto a = this->stack.back(); \
         this->stack.pop_back();  \
-        this->stack.push_back(a op b); \
+        Value val {.floating = a.floating op b.floating}; \
+        this->stack.push_back(val); \
         break;                   \
     }
 
     for (ever) {
 #ifndef NDEBUG
-        // Print the stack
-        std::print("          ");
-        for (const auto &value : this->stack) {
-            std::print("[ ");
-            std::print("{:g} ", value);
-            std::print("] ");
-        }
-        std::print("\n");
-
         // Print the current instruction
         this->chunk.disassebleInstruction(static_cast<int>(this->ip - this->chunk.code.data()));
 #endif
@@ -55,7 +47,7 @@ InterpretResult VM::run() {
             case OpCode::Return: {
                 const Value value = this->stack.back();
                 this->stack.pop_back();
-                std::print("{:g}\n", value);
+                std::print("{:g}\n", value.floating);
                 return InterpretResult::Ok;
             }
 
@@ -66,7 +58,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Negate: {
-                this->stack.back() = -this->stack.back();
+                this->stack.back().floating = -this->stack.back().floating;
                 break;
             }
 

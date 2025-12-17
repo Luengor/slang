@@ -9,7 +9,7 @@ int Chunk::simpleInstruction(const char *name, int offset) {
 
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
-    std::print("{} {:4d} '{:g}'\n", name, constant_i, static_cast<Value>(this->constants[constant_i]));
+    std::print("{} {:4d} '{:g}'\n", name, constant_i, this->constants[constant_i].floating);
     return offset+2;
 }
 

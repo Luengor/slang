@@ -1,21 +1,26 @@
 #include "ast.hpp"
 #include "chunk.hpp"
+#include "value.hpp"
 #include <iostream>
+#include <print>
 
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
-    const double number = std::stod(token.lexeme);
-    this->literal_type = Type::Number;
-    this->value.number_value = number;
+    // Parse the value to check what it is
+    if (token.type == Token::Type::Number) {
+        double number = std::stod(token.lexeme);
+        Value val {number};
+        this->value = std::make_pair(ValueType::Floating, val);
+    }
 }
 
 void LiteralNode::compile(CompileContext &ctx) {
-    switch (this->literal_type) {
-        case Type::Number:
+    switch (this->value.first) {
+        case ValueType::Floating:
             {
                 const auto constant =
-                    ctx.chunk.addConstant(this->value.number_value);
+                    ctx.chunk.addConstant(this->value.second);
                 ctx.chunk.write(OpCode::Constant, this->token.line);
                 ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
             }
@@ -24,9 +29,9 @@ void LiteralNode::compile(CompileContext &ctx) {
 
 void LiteralNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    switch (this->literal_type) {
-        case Type::Number:
-            std::cout << "Literal(" << this->value.number_value << ")\n";
+    switch (this->value.first) {
+        case ValueType::Floating:
+            std::println("Literal({:g})", this->value.second.floating);
             break;
     }
 }

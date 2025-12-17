@@ -2,6 +2,7 @@
 
 #include "chunk.hpp"
 #include "scanner.hpp"
+#include "value.hpp"
 #include <memory>
 
 enum class ASTNodeType {
@@ -27,13 +28,7 @@ struct ASTNode {
 using ASTNodePtr = std::unique_ptr<ASTNode>;
 
 struct LiteralNode : public ASTNode {
-    enum Type {
-        Number,
-    } literal_type;
-
-    union {
-        double number_value;
-    } value;
+    TypedValue value;
 
     LiteralNode(const Token &token);
     void compile(CompileContext &ctx) override;
