@@ -1,5 +1,6 @@
 #include "ast.hpp"
 #include "chunk.hpp"
+#include <iostream>
 
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
@@ -21,6 +22,15 @@ void LiteralNode::compile(CompileContext &ctx) {
     }
 }
 
+void LiteralNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    switch (this->literal_type) {
+        case Type::Number:
+            std::cout << "Literal(" << this->value.number_value << ")\n";
+            break;
+    }
+}
+
 // UnaryExpressionNode Implementation
 UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
@@ -37,6 +47,12 @@ void UnaryExpressionNode::compile(CompileContext &ctx) {
             // Handle error: unsupported unary operator
             break;
     }
+}
+
+void UnaryExpressionNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "UnaryExpression(" << this->token.lexeme << ")\n";
+    this->operand->print(indent + 1);
 }
 
 // BinaryExpressionNode Implementation
@@ -69,6 +85,13 @@ void BinaryExpressionNode::compile(CompileContext &ctx) {
     }
 }
 
+void BinaryExpressionNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "BinaryExpression(" << this->token.lexeme << ")\n";
+    this->left->print(indent + 1);
+    this->right->print(indent + 1);
+}
+
 Chunk compileAST(ASTNode *root) {
     // Create compile context
     Chunk chunk;
@@ -76,6 +99,8 @@ Chunk compileAST(ASTNode *root) {
 
     // Compile the AST
     root->compile(ctx);
+
+    chunk.write(OpCode::Return, 0);
 
     return chunk;
 }

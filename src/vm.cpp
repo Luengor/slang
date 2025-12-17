@@ -7,7 +7,12 @@ InterpretResult VM::interpret(const std::string &source) {
     // Compile the source code into a chunk
     Compiler compiler(source);
 
-    this->chunk = compiler.compile();
+    try {
+        this->chunk = compiler.compile();
+    } catch (const std::runtime_error &error) {
+        std::print("Compilation error: {}\n", error.what());
+        return InterpretResult::CompileError;
+    }
     this->ip = this->chunk.code.data();
 
     // Run the chunk

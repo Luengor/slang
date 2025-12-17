@@ -3,7 +3,6 @@
 #include "chunk.hpp"
 #include "scanner.hpp"
 #include <memory>
-#include <vector>
 
 enum class ASTNodeType {
     Literal,
@@ -22,6 +21,7 @@ struct ASTNode {
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode() = default;
     virtual void compile(CompileContext &ctx) = 0;
+    virtual void print(int indent = 0) = 0;
 };
 
 using ASTNodePtr = std::unique_ptr<ASTNode>;
@@ -37,6 +37,7 @@ struct LiteralNode : public ASTNode {
 
     LiteralNode(const Token &token);
     void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
 };
 
 struct UnaryExpressionNode : public ASTNode {
@@ -44,6 +45,7 @@ struct UnaryExpressionNode : public ASTNode {
 
     UnaryExpressionNode(const Token &token, ASTNodePtr operand);
     void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
 };
 
 struct BinaryExpressionNode : public ASTNode {
@@ -51,6 +53,7 @@ struct BinaryExpressionNode : public ASTNode {
 
     BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
     void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
 };
 
 Chunk compileAST(ASTNode *root);

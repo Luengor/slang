@@ -1,0 +1,179 @@
+#include "parser.hpp"
+#include "ast.hpp"
+#include <array>
+#include <format>
+#include <iostream>
+#include <iterator>
+#include <memory>
+
+struct ParseRule {
+    // ParseFN is a pointer to a member function of Parser that returns
+    // a unique_ptr<ASTNode> and takes no parameters.
+    using ParseFn = std::unique_ptr<ASTNode> (Parser::*)();
+
+    ParseFn prefix;
+    ParseFn infix;
+    Precedence precedence;
+};
+
+#define P(x) &Parser::x
+
+constexpr std::array<ParseRule, 11> PARSE_RULES = {{
+    { P(grouping), nullptr,   Precedence::None },     // LeftParen
+    { nullptr,     nullptr,   Precedence::None },     // RightParen
+    { P(unary),    P(binary), Precedence::Term },     // Minus
+    { nullptr,     P(binary), Precedence::Term },     // Plus
+    { nullptr,     P(binary), Precedence::Factor },   // Slash
+    { nullptr,     P(binary), Precedence::Factor },   // Star
+    { nullptr,     nullptr,   Precedence::None },     // Identifier
+    { nullptr,     nullptr,   Precedence::None },     // String
+    { P(number),   nullptr,   Precedence::None },     // Number
+    { nullptr,     nullptr,   Precedence::None },     // Error
+    { nullptr,     nullptr,   Precedence::None }      // Eof
+}};
+
+#undef P
+
+constexpr const ParseRule &getRule(Token::Type type) {
+    return PARSE_RULES[static_cast<size_t>(type)];
+}
+
+class ParserError : public std::runtime_error {
+    static std::string makeError(const Token &token, const char *message) {
+        std::string errorMsg;
+        errorMsg += std::format("[line {}] Error", token.line);
+
+        if (token.type == Token::Type::Eof) {
+            errorMsg += " at end";
+        } else if (token.type != Token::Type::Error) {
+            errorMsg += std::format(" at '{}'", token.lexeme);
+        }
+
+        errorMsg += std::format(": {}\n", message);
+        return errorMsg;
+    }
+
+  public:
+    ParserError(const Token &token, const char *message)
+        : std::runtime_error(ParserError::makeError(token, message)) {}
+};
+
+void Parser::advance() {
+    if (this->current != this->previous) {
+        this->previous = this->current;
+        this->current = std::next(this->current);
+    } else
+        this->previous = this->current + 1;
+
+    if (this->current->type == Token::Type::Error)
+        throw ParserError(*this->current, this->current->lexeme.c_str());
+}
+
+void Parser::consume(Token::Type type, const std::string &message) {
+    if (current->type == type) {
+        advance();
+        return;
+    }
+
+    throw ParserError(*current, message.c_str());
+}
+
+std::unique_ptr<ASTNode> Parser::parsePrecedence(Precedence precedence) {
+    // Advance to get the next token
+    this->advance();
+
+    // Execute the prefix parse function
+    const ParseRule &prefixRule = getRule(this->previous->type);
+    if (prefixRule.prefix == nullptr)
+        throw ParserError(*this->previous, "Expected expression.");
+    this->current_prefix = (this->*prefixRule.prefix)();
+
+    // While the current token's precedence is >= the given precedence
+    while (precedence <= getRule(this->current->type).precedence) {
+        // Advance to get the next token
+        this->advance();
+
+        // Execute the infix parse function
+        const ParseRule &infixRule = getRule(this->previous->type);
+        if (infixRule.infix == nullptr)
+            throw ParserError(*this->previous, "Expected expression.");
+        this->current_prefix = (this->*infixRule.infix)();
+    }
+
+    return std::move(this->current_prefix);
+}
+
+std::unique_ptr<ASTNode> Parser::expression() {
+    return parsePrecedence(Precedence::Assignment);
+}
+
+std::unique_ptr<ASTNode> Parser::unary() {
+    // Get the operator token (already consumed)
+    Token operatorToken = *this->previous;
+
+    // Compile the operand
+    auto operand = parsePrecedence(Precedence::Unary);
+
+    // Make the unary expression node
+    return std::make_unique<UnaryExpressionNode>(operatorToken,
+                                                 std::move(operand));
+}
+
+std::unique_ptr<ASTNode> Parser::binary() {
+    // Get the operator token (already consumed)
+    Token operatorToken = *this->previous;
+
+    // Get the left operand from the current_prefix
+    auto left = std::move(this->current_prefix);
+
+    // Get the rule for this operator to determine its precedence
+    const ParseRule &rule = getRule(operatorToken.type);
+    Precedence precedence = rule.precedence;
+
+    // Compile the right operand
+    auto right = parsePrecedence(
+        static_cast<Precedence>(static_cast<int>(precedence) + 1));
+
+    // Make the binary expression node
+    return std::make_unique<BinaryExpressionNode>(
+        operatorToken, std::move(left), std::move(right));
+}
+
+std::unique_ptr<ASTNode> Parser::number() {
+    return std::make_unique<LiteralNode>(*this->previous);
+}
+
+std::unique_ptr<ASTNode> Parser::grouping() {
+    // Compile the expression inside the parentheses
+    auto expr = expression();
+
+    // Consume the closing parenthesis
+    consume(Token::Type::RightParen, "Expected ')' after expression.");
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::parse(const std::vector<Token> &tokens) {
+    // Prepare
+    this->current = tokens.begin();
+    this->previous = tokens.begin();
+
+    try {
+        // prime the parser
+        advance();
+
+        // for now, just parse a single expression
+        auto ast = expression();
+
+        // consume the EOF token
+        consume(Token::Type::Eof, "Expected end of input.");
+
+        return ast;
+
+    } catch (const ParserError &error) {
+        // return nullptr on error
+        std::cerr << error.what();
+        return nullptr;
+    }
+}
+
