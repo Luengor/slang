@@ -2,6 +2,7 @@
 
 #include "chunk.hpp"
 #include "scanner.hpp"
+#include <memory>
 #include <vector>
 
 enum class ASTNodeType {
@@ -18,12 +19,12 @@ struct ASTNode {
     const ASTNodeType type;
     const Token token;
 
-    std::vector<ASTNode *> children;
-
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
-    virtual ~ASTNode();
+    virtual ~ASTNode() = default;
     virtual void compile(CompileContext &ctx) = 0;
 };
+
+using ASTNodePtr = std::unique_ptr<ASTNode>;
 
 struct LiteralNode : public ASTNode {
     enum Type {
@@ -39,16 +40,16 @@ struct LiteralNode : public ASTNode {
 };
 
 struct UnaryExpressionNode : public ASTNode {
-    enum Operator {
-        Negation,
-    } op;
+    ASTNodePtr operand;
 
-    UnaryExpressionNode(const Token &token, ASTNode *operand);
+    UnaryExpressionNode(const Token &token, ASTNodePtr operand);
     void compile(CompileContext &ctx) override;
 };
 
 struct BinaryExpressionNode : public ASTNode {
-    BinaryExpressionNode(const Token &token, ASTNode *left, ASTNode *right);
+    ASTNodePtr left, right;
+
+    BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
     void compile(CompileContext &ctx) override;
 };
 

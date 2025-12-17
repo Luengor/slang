@@ -1,13 +1,6 @@
 #include "ast.hpp"
 #include "chunk.hpp"
 
-// ASTNode Implementation
-ASTNode::~ASTNode() {
-    for (ASTNode *child : this->children) {
-        delete child;
-    }
-}
-
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
@@ -29,35 +22,30 @@ void LiteralNode::compile(CompileContext &ctx) {
 }
 
 // UnaryExpressionNode Implementation
-UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNode *operand)
-    : ASTNode(ASTNodeType::UnaryExpression, token) {
-    this->children.push_back(operand);
-    this->op = Operator::Negation;
-}
+UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
+    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
 void UnaryExpressionNode::compile(CompileContext &ctx) {
-    ASTNode *operand = this->children[0];
     operand->compile(ctx);
 
-    switch (this->op) {
-        case Operator::Negation:
+    switch (this->token.type) {
+        case Token::Type::Minus:
             ctx.chunk.write(OpCode::Negate, this->token.line);
+            break;
+
+        default:
+            // Handle error: unsupported unary operator
             break;
     }
 }
 
 // BinaryExpressionNode Implementation
-BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNode *left,
-                                           ASTNode *right)
-    : ASTNode(ASTNodeType::BinaryExpression, token) {
-    this->children.push_back(left);
-    this->children.push_back(right);
-}
+BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
+                                           ASTNodePtr right)
+    : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
+      right(std::move(right)) {}
 
 void BinaryExpressionNode::compile(CompileContext &ctx) {
-    ASTNode *left = this->children[0];
-    ASTNode *right = this->children[1];
-
     left->compile(ctx);
     right->compile(ctx);
 
