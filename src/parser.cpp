@@ -22,7 +22,7 @@ constexpr std::array<ParseRule, 11> PARSE_RULES = {{
     { P(grouping), nullptr,   Precedence::None },     // LeftParen
     { nullptr,     nullptr,   Precedence::None },     // RightParen
     { P(unary),    P(binary), Precedence::Term },     // Minus
-    { nullptr,     P(binary), Precedence::Term },     // Plus
+    { P(unary),    P(binary), Precedence::Term },     // Plus
     { nullptr,     P(binary), Precedence::Factor },   // Slash
     { nullptr,     P(binary), Precedence::Factor },   // Star
     { nullptr,     nullptr,   Precedence::None },     // Identifier
@@ -114,9 +114,14 @@ std::unique_ptr<ASTNode> Parser::unary() {
     // Compile the operand
     auto operand = parsePrecedence(Precedence::Unary);
 
-    // Make the unary expression node
-    return std::make_unique<UnaryExpressionNode>(operatorToken,
-                                                 std::move(operand));
+    // If the operand is +, just return the operand (unary plus is a no-op)
+    if (operatorToken.type == Token::Type::Plus) {
+        return operand;
+    } else {
+        // Make the unary expression node
+        return std::make_unique<UnaryExpressionNode>(operatorToken,
+                                                     std::move(operand));
+    }
 }
 
 std::unique_ptr<ASTNode> Parser::binary() {
