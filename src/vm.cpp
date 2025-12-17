@@ -29,10 +29,7 @@ InterpretResult VM::run() {
     {                            \
         const auto b = this->stack.back(); \
         this->stack.pop_back();  \
-        const auto a = this->stack.back(); \
-        this->stack.pop_back();  \
-        Value val {.mode = a.mode op b.mode}; \
-        this->stack.push_back(val); \
+        this->stack.back().mode = this->stack.back().mode op b.mode; \
         break;                   \
     }
 
