@@ -1,6 +1,5 @@
 #pragma once
 
-#include <variant>
 #include <vector>
 
 enum class ValueType {
