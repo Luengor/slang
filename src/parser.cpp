@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
+#include "error.hpp"
 
 struct ParseRule {
     // ParseFN is a pointer to a member function of Parser that returns
@@ -37,26 +38,6 @@ constexpr std::array<ParseRule, 11> PARSE_RULES = {{
 constexpr const ParseRule &getRule(Token::Type type) {
     return PARSE_RULES[static_cast<size_t>(type)];
 }
-
-class ParserError : public std::runtime_error {
-    static std::string makeError(const Token &token, const char *message) {
-        std::string errorMsg;
-        errorMsg += std::format("[line {}] Error", token.line);
-
-        if (token.type == Token::Type::Eof) {
-            errorMsg += " at end";
-        } else if (token.type != Token::Type::Error) {
-            errorMsg += std::format(" at '{}'", token.lexeme);
-        }
-
-        errorMsg += std::format(": {}\n", message);
-        return errorMsg;
-    }
-
-  public:
-    ParserError(const Token &token, const char *message)
-        : std::runtime_error(ParserError::makeError(token, message)) {}
-};
 
 void Parser::advance() {
     if (this->current != this->previous) {

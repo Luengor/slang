@@ -1,5 +1,6 @@
 #include "ast.hpp"
 #include "chunk.hpp"
+#include "error.hpp"
 #include "value.hpp"
 #include <iostream>
 #include <print>
@@ -9,22 +10,26 @@ LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
     // Parse the value to check what it is
     if (token.type == Token::Type::Number) {
-        double number = std::stod(token.lexeme);
-        Value val {number};
-        this->value = std::make_pair(ValueType::Floating, val);
+        if (token.lexeme.find('.') == std::string::npos) {
+            // It's an integer (fixed)
+            long long number = std::stoll(token.lexeme);
+            Value val {.fixed = number};
+            this->value = std::make_pair(ValueType::Fixed, val);
+        } else {
+            // It's a floating-point number
+            double number = std::stod(token.lexeme);
+            Value val {.floating = number};
+            this->value = std::make_pair(ValueType::Floating, val);
+        }
     }
+
+    this->resultType = this->value.first;
 }
 
 void LiteralNode::compile(CompileContext &ctx) {
-    switch (this->value.first) {
-        case ValueType::Floating:
-            {
-                const auto constant =
-                    ctx.chunk.addConstant(this->value.second);
-                ctx.chunk.write(OpCode::Constant, this->token.line);
-                ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
-            }
-    }
+    const auto constant = ctx.chunk.addConstant(this->value.second);
+    ctx.chunk.write(OpCode::Constant, this->token.line);
+    ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
 }
 
 void LiteralNode::print(int indent) {
@@ -33,19 +38,33 @@ void LiteralNode::print(int indent) {
         case ValueType::Floating:
             std::println("Literal({:g})", this->value.second.floating);
             break;
+
+        case ValueType::Fixed:
+            std::println("Literal({})", this->value.second.fixed);
+            break;
+
+        default:
+            std::println("Literal(Unknown Type)");
+            break;
     }
 }
 
 // UnaryExpressionNode Implementation
 UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
-    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
+    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {
+    this->resultType = this->operand->resultType;
+}
 
 void UnaryExpressionNode::compile(CompileContext &ctx) {
     operand->compile(ctx);
 
     switch (this->token.type) {
         case Token::Type::Minus:
-            ctx.chunk.write(OpCode::Negate, this->token.line);
+            if (this->resultType == ValueType::Floating) {
+                ctx.chunk.write(OpCode::NegateF, this->token.line);
+            } else if (this->resultType == ValueType::Fixed) {
+                ctx.chunk.write(OpCode::NegateI, this->token.line);
+            }
             break;
 
         default:
@@ -64,30 +83,42 @@ void UnaryExpressionNode::print(int indent) {
 BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
     : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
-      right(std::move(right)) {}
+      right(std::move(right)) {
+    // Both operands should have the same type for now
+    this->resultType = this->left->resultType;
+    if (this->right->resultType != this->left->resultType) {
+        throw ParserError(
+            this->token,
+            "Type mismatch between left and right operands in binary expression.");
+    }
+}
 
 void BinaryExpressionNode::compile(CompileContext &ctx) {
     left->compile(ctx);
     right->compile(ctx);
 
+#define IorF(op) this->resultType == ValueType::Floating ? OpCode::op##F : OpCode::op##I
+
     switch (this->token.type) {
         case Token::Type::Plus:
-            ctx.chunk.write(OpCode::Add, this->token.line);
+            ctx.chunk.write(IorF(Add), this->token.line);
             break;
         case Token::Type::Minus: 
-            ctx.chunk.write(OpCode::Subtract, this->token.line);
+            ctx.chunk.write(IorF(Subtract), this->token.line);
             break;
         case Token::Type::Star: 
-            ctx.chunk.write(OpCode::Multiply, this->token.line);
+            ctx.chunk.write(IorF(Multiply), this->token.line);
             break;
         case Token::Type::Slash: 
-            ctx.chunk.write(OpCode::Divide, this->token.line);
+            ctx.chunk.write(IorF(Divide), this->token.line);
             break;
 
         default:
             // Handle error: unsupported binary operator
             break;
     }
+
+#undef IorF
 }
 
 void BinaryExpressionNode::print(int indent) {

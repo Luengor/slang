@@ -25,13 +25,13 @@ InterpretResult VM::run() {
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
 #define READ_CONSTANT() (this->chunk.constants[READ_BYTE()])
 
-#define BINARY_OP(op)            \
+#define BINARY_OP(op, mode)            \
     {                            \
         const auto b = this->stack.back(); \
         this->stack.pop_back();  \
         const auto a = this->stack.back(); \
         this->stack.pop_back();  \
-        Value val {.floating = a.floating op b.floating}; \
+        Value val {.mode = a.mode op b.mode}; \
         this->stack.push_back(val); \
         break;                   \
     }
@@ -47,7 +47,7 @@ InterpretResult VM::run() {
             case OpCode::Return: {
                 const Value value = this->stack.back();
                 this->stack.pop_back();
-                std::print("{:g}\n", value.floating);
+                std::print("{:g} {:d}\n", value.floating, value.fixed);
                 return InterpretResult::Ok;
             }
 
@@ -57,15 +57,24 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::Negate: {
+            case OpCode::NegateF: {
                 this->stack.back().floating = -this->stack.back().floating;
                 break;
             }
 
-            case OpCode::Add: BINARY_OP(+)
-            case OpCode::Subtract: BINARY_OP(-)
-            case OpCode::Multiply: BINARY_OP(*)
-            case OpCode::Divide: BINARY_OP(/)
+            case OpCode::NegateI: {
+                this->stack.back().fixed = -this->stack.back().fixed;
+                break;
+            }
+
+            case OpCode::AddF: BINARY_OP(+, floating)
+            case OpCode::AddI: BINARY_OP(+, fixed)
+            case OpCode::SubtractF: BINARY_OP(-, floating)
+            case OpCode::SubtractI: BINARY_OP(-, fixed)
+            case OpCode::MultiplyF: BINARY_OP(*, floating)
+            case OpCode::MultiplyI: BINARY_OP(*, fixed)
+            case OpCode::DivideF: BINARY_OP(/, floating)
+            case OpCode::DivideI: BINARY_OP(/, fixed)
         }
 
     }

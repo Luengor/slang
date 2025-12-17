@@ -9,7 +9,8 @@ int Chunk::simpleInstruction(const char *name, int offset) {
 
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
-    std::print("{} {:4d} '{:g}'\n", name, constant_i, this->constants[constant_i].floating);
+    const auto constant = this->constants[constant_i];
+    std::print("{} {:4d} '{:g}'/'{:d}'\n", name, constant_i, constant.floating, constant.fixed);
     return offset+2;
 }
 
@@ -26,19 +27,24 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::Return:
             return simpleInstruction("OP_RETURN", offset);
 
-        case OpCode::Negate:
+        case OpCode::NegateF:
+        case OpCode::NegateI:
             return simpleInstruction("OP_NEGATE", offset);
 
-        case OpCode::Add:
+        case OpCode::AddF:
+        case OpCode::AddI:
             return simpleInstruction("OP_ADD", offset);
 
-        case OpCode::Subtract:
+        case OpCode::SubtractF:
+        case OpCode::SubtractI:
             return simpleInstruction("OP_SUBTRACT", offset);
 
-        case OpCode::Multiply:
+        case OpCode::MultiplyF:
+        case OpCode::MultiplyI:
             return simpleInstruction("OP_MULTIPLY", offset);
 
-        case OpCode::Divide:
+        case OpCode::DivideF:
+        case OpCode::DivideI:
             return simpleInstruction("OP_DIVIDE", offset);
 
         case OpCode::Constant:

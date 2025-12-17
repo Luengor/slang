@@ -14,6 +14,7 @@ set(SOURCES
     src/ast.cpp
     src/chunk.cpp
     src/compiler.cpp
+    src/error.cpp
     src/parser.cpp
     src/scanner.cpp
     src/value.cpp

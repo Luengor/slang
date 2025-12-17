@@ -4,18 +4,18 @@
 #include <vector>
 
 enum class ValueType {
+    None,
     // Boolean,
-    // Fixed,
+    Fixed,
     Floating,
 };
 
 using FloatingType = double;
-// using FixedType = int64_t;
+using FixedType = long long;
 
-// using Value = std::variant<bool, FixedType, double>;
 union Value {
     FloatingType floating;
-    // FixedType fixed;
+    FixedType fixed;
     // bool boolean;
 }; 
 

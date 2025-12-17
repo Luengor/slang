@@ -8,11 +8,11 @@
 enum class OpCode : uint8_t {
     Return,
     Constant,
-    Negate,
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
+    NegateF, NegateI,
+    AddF, AddI,
+    SubtractF, SubtractI,
+    MultiplyF, MultiplyI,
+    DivideF, DivideI,
 };
 
 class Chunk {

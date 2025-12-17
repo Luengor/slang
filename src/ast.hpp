@@ -18,6 +18,7 @@ struct CompileContext {
 struct ASTNode {
     const ASTNodeType type;
     const Token token;
+    ValueType resultType;
 
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode() = default;
