@@ -27,7 +27,7 @@ constexpr std::array<ParseRule, 11> PARSE_RULES = {{
     { nullptr,     P(binary), Precedence::Factor },   // Slash
     { nullptr,     P(binary), Precedence::Factor },   // Star
     { nullptr,     nullptr,   Precedence::None },     // Identifier
-    { nullptr,     nullptr,   Precedence::None },     // String
+    { P(string),   nullptr,   Precedence::None },     // String
     { P(number),   nullptr,   Precedence::None },     // Number
     { nullptr,     nullptr,   Precedence::None },     // Error
     { nullptr,     nullptr,   Precedence::None }      // Eof
@@ -126,6 +126,10 @@ std::unique_ptr<ASTNode> Parser::binary() {
 }
 
 std::unique_ptr<ASTNode> Parser::number() {
+    return std::make_unique<LiteralNode>(*this->previous);
+}
+
+std::unique_ptr<ASTNode> Parser::string() {
     return std::make_unique<LiteralNode>(*this->previous);
 }
 

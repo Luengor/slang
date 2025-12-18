@@ -34,6 +34,9 @@ struct LiteralNode : public ASTNode {
     LiteralNode(const Token &token);
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
+
+  private:
+    void print_object();
 };
 
 struct UnaryExpressionNode : public ASTNode {

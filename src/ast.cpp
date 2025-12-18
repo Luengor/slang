@@ -21,6 +21,20 @@ LiteralNode::LiteralNode(const Token &token)
             Value val {.floating = number};
             this->value = std::make_pair(ValueType::Floating, val);
         }
+    } else if (token.type == Token::Type::String) {
+        // It's a string literal
+        // Remove the surrounding quotes
+        std::string strValue = token.lexeme.substr(1, token.lexeme.length() - 2);
+
+        // Create a StringObj
+        StringObj *strObj = new StringObj();
+        strObj->type = Object::Type::String;
+        strObj->value = strValue;
+
+        Value val {.object = strObj};
+        this->value = std::make_pair(ValueType::Object, val);
+    } else {
+        throw ParserError(token, "Unsupported literal type.");
     }
 
     this->resultType = this->value.first;
@@ -43,9 +57,23 @@ void LiteralNode::print(int indent) {
             std::println("Literal({})", this->value.second.fixed);
             break;
 
+        case ValueType::Object: 
+            print_object();
+            break;
+
         default:
             std::println("Literal(Unknown Type)");
             break;
+    }
+}
+
+void LiteralNode::print_object() {
+    switch (this->value.second.object->type) {
+        case Object::Type::String: {
+            StringObj *strObj = static_cast<StringObj *>(this->value.second.object);
+            std::println("Literal(\"{}\")", strObj->value);
+            break;
+        }
     }
 }
 
@@ -84,8 +112,13 @@ BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
     : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
       right(std::move(right)) {
-    // Both operands should have the same type for now
+    // Both operands should have the same type for now and neither can be an Object
     this->resultType = this->left->resultType;
+    if (this->resultType == ValueType::Object)
+        throw ParserError(
+            this->token,
+            "Binary expressions with object types are not supported.");
+
     if (this->right->resultType != this->left->resultType) {
         throw ParserError(
             this->token,

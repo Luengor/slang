@@ -30,6 +30,7 @@ struct Parser {
     std::unique_ptr<ASTNode> unary();
     std::unique_ptr<ASTNode> binary();
     std::unique_ptr<ASTNode> number();
+    std::unique_ptr<ASTNode> string();
     std::unique_ptr<ASTNode> grouping();
 
     std::unique_ptr<ASTNode> parse(const std::vector<Token>& tokens);
