@@ -33,6 +33,10 @@ InterpretResult VM::run() {
         break;                   \
     }
 
+#ifndef NDEBUG
+    std::print("\n=== VM Execution Start ===\n");
+#endif
+
     for (ever) {
 #ifndef NDEBUG
         // Print the current instruction
