@@ -10,7 +10,6 @@ option(DEBUG "Don't define NDEBUG and disable optimizations" ON)
 set(TARGET_NAME cia)
 
 set(SOURCES
-    src/main.cpp
     src/ast.cpp
     src/chunk.cpp
     src/compiler.cpp
@@ -22,7 +21,7 @@ set(SOURCES
     src/vm.cpp
 )
 
-add_executable(${TARGET_NAME} ${SOURCES})
+add_executable(${TARGET_NAME} ${SOURCES} src/main.cpp)
 
 # Global stuff
 if (${DEBUG})
