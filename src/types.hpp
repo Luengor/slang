@@ -3,10 +3,12 @@
 #include <cstdint>
 #include <variant>
 #include <vector>
+#include "value.hpp"
 
 using TypeID = uint32_t;
 
 enum class PrimitiveKind {
+    None,
     Fixed,
     Floating,
     String,
@@ -29,4 +31,8 @@ class TypeRegistry {
 
   public:
     TypeID getPrimitive(PrimitiveKind kind);
+    TypeID getFromValue(const TypedValue &value);
+    inline TypeID noneType() {
+        return getPrimitive(PrimitiveKind::None);
+    }
 };

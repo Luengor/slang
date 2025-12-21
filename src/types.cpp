@@ -1,4 +1,5 @@
 #include "types.hpp"
+#include <stdexcept>
 
 TypeID TypeRegistry::getOrAdd(const TypeData &typeData) {
     // Check if the type already exists
@@ -15,5 +16,30 @@ TypeID TypeRegistry::getOrAdd(const TypeData &typeData) {
 
 TypeID TypeRegistry::getPrimitive(PrimitiveKind kind) {
     return getOrAdd(PrimitiveType{kind});
+}
+
+TypeID TypeRegistry::getFromValue(const TypedValue &value) {
+    switch (value.first) {
+        case ValueType::Fixed:
+            return getPrimitive(PrimitiveKind::Fixed);
+        case ValueType::Floating:
+            return getPrimitive(PrimitiveKind::Floating);
+        case ValueType::Object:
+            break; // Handle objects below
+        default:
+            return getPrimitive(PrimitiveKind::None);
+    }
+
+    // Handle objects
+    if (value.second.object == nullptr) {
+        throw std::runtime_error("Null object in getFromValue.");
+    }
+
+    switch (value.second.object->type) {
+        case Object::Type::String:
+            return getPrimitive(PrimitiveKind::String);
+        default:
+            return getPrimitive(PrimitiveKind::None);
+    }
 }
 

@@ -45,23 +45,10 @@ CompileResult LiteralNode::compile(CompileContext &ctx) {
     ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
 
     // Get result type
-    TypeID result_type;
-    switch (this->value.first) {
-        case ValueType::Floating:
-            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
-            break;
-
-        case ValueType::Fixed:
-            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
-            break;
-
-        case ValueType::Object:
-            // For now, we only have String objects
-            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
-            break;
-
-        default:
-            throw ParserError(this->token, "Unknown literal type during compilation.");
+    TypeID result_type = ctx.typeRegistry.getFromValue(this->value);
+    if (result_type == ctx.typeRegistry.noneType()) {
+        throw ParserError(this->token,
+                          "Unknown literal type during compilation.");
     }
 
     return {result_type};
@@ -106,11 +93,14 @@ CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
     const auto operand_result = operand->compile(ctx);
 
     // Type check
+    const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
+    const auto floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+
     switch (this->token.type) {
         case Token::Type::Minus:
-            if (operand_result.result_type == ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating)) {
+            if (operand_result.result_type == floatingType) {
                 ctx.chunk.write(OpCode::NegateF, this->token.line);
-            } else if (operand_result.result_type == ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
+            } else if (operand_result.result_type == fixedType) {
                 ctx.chunk.write(OpCode::NegateI, this->token.line);
             } else {
                 throw ParserError(
