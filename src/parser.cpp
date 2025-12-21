@@ -19,16 +19,22 @@ struct ParseRule {
 
 #define P(x) &Parser::x
 
-constexpr std::array<ParseRule, 11> PARSE_RULES = {{
+constexpr std::array<ParseRule, 22> PARSE_RULES = {{
     { P(grouping), nullptr,   Precedence::None },     // LeftParen
     { nullptr,     nullptr,   Precedence::None },     // RightParen
     { P(unary),    P(binary), Precedence::Term },     // Minus
     { P(unary),    P(binary), Precedence::Term },     // Plus
     { nullptr,     P(binary), Precedence::Factor },   // Slash
     { nullptr,     P(binary), Precedence::Factor },   // Star
+    { P(unary),    nullptr,   Precedence::Unary },    // Bang
     { nullptr,     nullptr,   Precedence::None },     // Identifier
-    { P(string),   nullptr,   Precedence::None },     // String
-    { P(number),   nullptr,   Precedence::None },     // Number
+    { P(literal),  nullptr,   Precedence::None },     // String
+    { P(literal),  nullptr,   Precedence::None },     // Number
+    { nullptr,     P(binary), Precedence::And },      // And 
+    { nullptr,     P(binary), Precedence::Or },       // Or 
+    { P(unary),    nullptr,   Precedence::Unary },    // Not 
+    { P(literal),  nullptr,   Precedence::None },     // True
+    { P(literal),  nullptr,   Precedence::None },     // False
     { nullptr,     nullptr,   Precedence::None },     // Error
     { nullptr,     nullptr,   Precedence::None }      // Eof
 }};
@@ -125,11 +131,7 @@ std::unique_ptr<ASTNode> Parser::binary() {
         operatorToken, std::move(left), std::move(right));
 }
 
-std::unique_ptr<ASTNode> Parser::number() {
-    return std::make_unique<LiteralNode>(*this->previous);
-}
-
-std::unique_ptr<ASTNode> Parser::string() {
+std::unique_ptr<ASTNode> Parser::literal() {
     return std::make_unique<LiteralNode>(*this->previous);
 }
 

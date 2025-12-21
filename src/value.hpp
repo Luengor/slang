@@ -7,7 +7,7 @@
 
 enum class ValueType {
     None,
-    // Boolean,
+    Boolean,
     Fixed,
     Floating,
     Object,
@@ -21,7 +21,7 @@ union Value {
     FloatingType floating;
     FixedType fixed;
     PtrType object;
-    // bool boolean;
+    bool boolean;
 }; 
 
 using TypedValue = std::pair<ValueType, Value>;

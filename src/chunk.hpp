@@ -13,6 +13,7 @@ enum class OpCode : uint8_t {
     SubtractF, SubtractI,
     MultiplyF, MultiplyI,
     DivideF, DivideI,
+    Not, And, Or,
 };
 
 class Chunk {

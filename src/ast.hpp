@@ -58,6 +58,14 @@ struct BinaryExpressionNode : public ASTNode {
     BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
     CompileResult compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
+
+  private:
+    CompileResult compileArithmetic(CompileContext &ctx,
+                                    const CompileResult &lresult,
+                                    const CompileResult &rresult);
+    CompileResult compileLogical(CompileContext &ctx,
+                                  const CompileResult &lresult,
+                                  const CompileResult &rresult);
 };
 
 Chunk compileAST(ASTNode *root);

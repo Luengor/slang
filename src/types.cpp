@@ -24,6 +24,8 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
             return getPrimitive(PrimitiveKind::Fixed);
         case ValueType::Floating:
             return getPrimitive(PrimitiveKind::Floating);
+        case ValueType::Boolean:
+            return getPrimitive(PrimitiveKind::Boolean);
         case ValueType::Object:
             break; // Handle objects below
         default:

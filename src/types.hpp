@@ -12,6 +12,7 @@ enum class PrimitiveKind {
     Fixed,
     Floating,
     String,
+    Boolean,
 };
 
 struct PrimitiveType {

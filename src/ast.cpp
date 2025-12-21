@@ -10,32 +10,51 @@
 LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
     // Parse the value to check what it is
-    if (token.type == Token::Type::Number) {
-        if (token.lexeme.find('.') == std::string::npos) {
-            // It's an integer (fixed)
-            long long number = std::stoll(token.lexeme);
-            Value val {.fixed = number};
-            this->value = std::make_pair(ValueType::Fixed, val);
-        } else {
-            // It's a floating-point number
-            double number = std::stod(token.lexeme);
-            Value val {.floating = number};
-            this->value = std::make_pair(ValueType::Floating, val);
+    switch (token.type) {
+        case Token::Type::Number: {
+            if (token.lexeme.find('.') == std::string::npos) {
+                // It's an integer (fixed)
+                long long number = std::stoll(token.lexeme);
+                Value val {.fixed = number};
+                this->value = std::make_pair(ValueType::Fixed, val);
+            } else {
+                // It's a floating-point number
+                double number = std::stod(token.lexeme);
+                Value val {.floating = number};
+                this->value = std::make_pair(ValueType::Floating, val);
+            }
+            break;
         }
-    } else if (token.type == Token::Type::String) {
-        // It's a string literal
-        // Remove the surrounding quotes
-        std::string strValue = token.lexeme.substr(1, token.lexeme.length() - 2);
 
-        // Create a StringObj
-        StringObj *strObj = new StringObj();
-        strObj->type = Object::Type::String;
-        strObj->value = strValue;
+        case Token::Type::True: {
+            Value val {.boolean = true};
+            this->value = std::make_pair(ValueType::Boolean, val);
+            break;
+        }
 
-        Value val {.object = strObj};
-        this->value = std::make_pair(ValueType::Object, val);
-    } else {
-        throw ParserError(token, "Unsupported literal type.");
+        case Token::Type::False: {
+            Value val {.boolean = false};
+            this->value = std::make_pair(ValueType::Boolean, val);
+            break;
+        }
+
+        case Token::Type::String: {
+            // It's a string literal
+            // Remove the surrounding quotes
+            std::string strValue = token.lexeme.substr(1, token.lexeme.length() - 2);
+
+            // Create a StringObj
+            StringObj *strObj = new StringObj();
+            strObj->type = Object::Type::String;
+            strObj->value = strValue;
+
+            Value val {.object = strObj};
+            this->value = std::make_pair(ValueType::Object, val);
+            break;
+        }
+
+        default:
+            throw ParserError(token, "Unsupported literal type.");
     }
 }
 
@@ -63,6 +82,10 @@ void LiteralNode::print(int indent) {
 
         case ValueType::Fixed:
             std::println("Literal({:d})", this->value.second.fixed);
+            break;
+
+        case ValueType::Boolean:
+            std::println("Literal({})", this->value.second.boolean);
             break;
 
         case ValueType::Object: 
@@ -95,6 +118,7 @@ CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
     // Type check
     const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
     const auto floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
 
     switch (this->token.type) {
         case Token::Type::Minus:
@@ -107,6 +131,16 @@ CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
                     this->token,
                     "Unary minus operator requires a numeric operand.");
             }
+            break;
+
+        case Token::Type::Not:
+        case Token::Type::Bang:
+            if (operand_result.result_type != booleanType) {
+                throw ParserError(
+                    this->token,
+                    "Unary not operator requires a boolean operand.");
+            }
+            ctx.chunk.write(OpCode::Not, this->token.line);
             break;
 
         default:
@@ -142,6 +176,25 @@ CompileResult BinaryExpressionNode::compile(CompileContext &ctx) {
             "Type mismatch between left and right operands in binary expression.");
     }
 
+    switch (this->token.type) {
+        case Token::Type::Plus:
+        case Token::Type::Minus:
+        case Token::Type::Star:
+        case Token::Type::Slash:
+            return compileArithmetic(ctx, lresult, rresult);
+
+        case Token::Type::And:
+        case Token::Type::Or:
+            return compileLogical(ctx, lresult, rresult);
+
+        default:
+            throw ParserError(
+                this->token,
+                "Unsupported binary operator during compilation.");
+            break;
+    }
+
+
     // Also check that the type is either Fixed or Floating
     const TypeID fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
     const TypeID floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
@@ -151,31 +204,57 @@ CompileResult BinaryExpressionNode::compile(CompileContext &ctx) {
             "Binary expressions only support Fixed and Floating point types.");
     }
 
-    // Compile
-#define IorF(op) lresult.result_type == floatingType ? OpCode::op##F : OpCode::op##I
+}
+
+CompileResult BinaryExpressionNode::compileArithmetic(CompileContext &ctx,
+                                                        const CompileResult &lresult,
+                                                        const CompileResult &rresult) {
+    const TypeID floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+
+#define IorF(op)                                                               \
+    lresult.result_type == floatingType ? OpCode::op##F : OpCode::op##I
 
     switch (this->token.type) {
         case Token::Type::Plus:
             ctx.chunk.write(IorF(Add), this->token.line);
             break;
-        case Token::Type::Minus: 
+        case Token::Type::Minus:
             ctx.chunk.write(IorF(Subtract), this->token.line);
             break;
-        case Token::Type::Star: 
+        case Token::Type::Star:
             ctx.chunk.write(IorF(Multiply), this->token.line);
             break;
-        case Token::Type::Slash: 
+        case Token::Type::Slash:
             ctx.chunk.write(IorF(Divide), this->token.line);
             break;
 
         default:
             throw ParserError(
-                this->token,
-                "Unsupported binary operator during compilation.");
+                this->token, "Unsupported binary operator during compilation.");
             break;
     }
 
 #undef IorF
+
+    return {lresult.result_type};
+}
+
+CompileResult BinaryExpressionNode::compileLogical(CompileContext &ctx,
+                                                      const CompileResult &lresult,
+                                                      const CompileResult &rresult) {
+    switch (this->token.type) {
+        case Token::Type::And:
+            ctx.chunk.write(OpCode::And, this->token.line);
+            break;
+        case Token::Type::Or:
+            ctx.chunk.write(OpCode::Or, this->token.line);
+            break;
+
+        default:
+            throw ParserError(
+                this->token, "Unsupported logical operator during compilation.");
+            break;
+    }
 
     return {lresult.result_type};
 }

@@ -10,7 +10,7 @@ int Chunk::simpleInstruction(const char *name, int offset) {
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
     const auto constant = this->constants[constant_i];
-    std::print("{} {:4d} '{:g}'/'{:d}'\n", name, constant_i, constant.floating, constant.fixed);
+    std::print("{} {:4d} '{:g}'/'{:d}' {}\n", name, constant_i, constant.floating, constant.fixed, constant.boolean);
     return offset+2;
 }
 
@@ -49,6 +49,15 @@ int Chunk::disassebleInstruction(int offset) {
 
         case OpCode::Constant:
             return constantInstruction("OP_CONSTANT", offset);
+
+        case OpCode::Not:
+            return simpleInstruction("OP_NOT", offset);
+
+        case OpCode::And:
+            return simpleInstruction("OP_AND", offset);
+
+        case OpCode::Or:
+            return simpleInstruction("OP_OR", offset);
 
         default:
             std::print("Unknown opcode {}\n",

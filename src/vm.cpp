@@ -48,7 +48,7 @@ InterpretResult VM::run() {
             case OpCode::Return: {
                 const Value value = this->stack.back();
                 this->stack.pop_back();
-                std::print("{:g} {:d}\n", value.floating, value.fixed);
+                std::print("{:g} {:d} {}\n", value.floating, value.fixed, value.boolean);
                 return InterpretResult::Ok;
             }
 
@@ -76,6 +76,13 @@ InterpretResult VM::run() {
             case OpCode::MultiplyI: BINARY_OP(*, fixed)
             case OpCode::DivideF: BINARY_OP(/, floating)
             case OpCode::DivideI: BINARY_OP(/, fixed)
+            case OpCode::And: BINARY_OP(&&, boolean)
+            case OpCode::Or: BINARY_OP(||, boolean)
+
+            case OpCode::Not: {
+                this->stack.back().boolean = !this->stack.back().boolean;
+                break;
+            }
         }
 
     }
