@@ -1,6 +1,7 @@
 #include "ast.hpp"
 #include "chunk.hpp"
 #include "error.hpp"
+#include "types.hpp"
 #include "value.hpp"
 #include <iostream>
 #include <print>
@@ -36,14 +37,34 @@ LiteralNode::LiteralNode(const Token &token)
     } else {
         throw ParserError(token, "Unsupported literal type.");
     }
-
-    this->resultType = this->value.first;
 }
 
-void LiteralNode::compile(CompileContext &ctx) {
+CompileResult LiteralNode::compile(CompileContext &ctx) {
     const auto constant = ctx.chunk.addConstant(this->value.second);
     ctx.chunk.write(OpCode::Constant, this->token.line);
     ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
+
+    // Get result type
+    TypeID result_type;
+    switch (this->value.first) {
+        case ValueType::Floating:
+            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+            break;
+
+        case ValueType::Fixed:
+            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
+            break;
+
+        case ValueType::Object:
+            // For now, we only have String objects
+            result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
+            break;
+
+        default:
+            throw ParserError(this->token, "Unknown literal type during compilation.");
+    }
+
+    return {result_type};
 }
 
 void LiteralNode::print(int indent) {
@@ -54,7 +75,7 @@ void LiteralNode::print(int indent) {
             break;
 
         case ValueType::Fixed:
-            std::println("Literal({})", this->value.second.fixed);
+            std::println("Literal({:d})", this->value.second.fixed);
             break;
 
         case ValueType::Object: 
@@ -79,26 +100,33 @@ void LiteralNode::print_object() {
 
 // UnaryExpressionNode Implementation
 UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
-    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {
-    this->resultType = this->operand->resultType;
-}
+    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
-void UnaryExpressionNode::compile(CompileContext &ctx) {
-    operand->compile(ctx);
+CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
+    const auto operand_result = operand->compile(ctx);
 
+    // Type check
     switch (this->token.type) {
         case Token::Type::Minus:
-            if (this->resultType == ValueType::Floating) {
+            if (operand_result.result_type == ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating)) {
                 ctx.chunk.write(OpCode::NegateF, this->token.line);
-            } else if (this->resultType == ValueType::Fixed) {
+            } else if (operand_result.result_type == ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
                 ctx.chunk.write(OpCode::NegateI, this->token.line);
+            } else {
+                throw ParserError(
+                    this->token,
+                    "Unary minus operator requires a numeric operand.");
             }
             break;
 
         default:
-            // Handle error: unsupported unary operator
+            throw ParserError(
+                this->token,
+                "Unsupported unary operator during compilation.");
             break;
     }
+
+    return {operand_result.result_type};
 }
 
 void UnaryExpressionNode::print(int indent) {
@@ -111,26 +139,30 @@ void UnaryExpressionNode::print(int indent) {
 BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
     : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
-      right(std::move(right)) {
-    // Both operands should have the same type for now and neither can be an Object
-    this->resultType = this->left->resultType;
-    if (this->resultType == ValueType::Object)
-        throw ParserError(
-            this->token,
-            "Binary expressions with object types are not supported.");
+      right(std::move(right)) { }
 
-    if (this->right->resultType != this->left->resultType) {
+CompileResult BinaryExpressionNode::compile(CompileContext &ctx) {
+    const auto lresult = left->compile(ctx);
+    const auto rresult = right->compile(ctx);
+
+    // For now, check that both operands have the same type
+    if (lresult.result_type != rresult.result_type) {
         throw ParserError(
             this->token,
             "Type mismatch between left and right operands in binary expression.");
     }
-}
 
-void BinaryExpressionNode::compile(CompileContext &ctx) {
-    left->compile(ctx);
-    right->compile(ctx);
+    // Also check that the type is either Fixed or Floating
+    const TypeID fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
+    const TypeID floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+    if (lresult.result_type != fixedType && lresult.result_type != floatingType) {
+        throw ParserError(
+            this->token,
+            "Binary expressions only support Fixed and Floating point types.");
+    }
 
-#define IorF(op) this->resultType == ValueType::Floating ? OpCode::op##F : OpCode::op##I
+    // Compile
+#define IorF(op) lresult.result_type == floatingType ? OpCode::op##F : OpCode::op##I
 
     switch (this->token.type) {
         case Token::Type::Plus:
@@ -147,11 +179,15 @@ void BinaryExpressionNode::compile(CompileContext &ctx) {
             break;
 
         default:
-            // Handle error: unsupported binary operator
+            throw ParserError(
+                this->token,
+                "Unsupported binary operator during compilation.");
             break;
     }
 
 #undef IorF
+
+    return {lresult.result_type};
 }
 
 void BinaryExpressionNode::print(int indent) {
@@ -164,7 +200,8 @@ void BinaryExpressionNode::print(int indent) {
 Chunk compileAST(ASTNode *root) {
     // Create compile context
     Chunk chunk;
-    CompileContext ctx{chunk};
+    TypeRegistry typeRegistry;
+    CompileContext ctx{chunk, typeRegistry};
 
     // Compile the AST
     root->compile(ctx);

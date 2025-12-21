@@ -2,6 +2,7 @@
 
 #include "chunk.hpp"
 #include "scanner.hpp"
+#include "types.hpp"
 #include "value.hpp"
 #include <memory>
 
@@ -13,16 +14,20 @@ enum class ASTNodeType {
 
 struct CompileContext {
     Chunk &chunk;
+    TypeRegistry &typeRegistry;
+};
+
+struct CompileResult {
+    TypeID result_type;
 };
 
 struct ASTNode {
     const ASTNodeType type;
     const Token token;
-    ValueType resultType;
 
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode() = default;
-    virtual void compile(CompileContext &ctx) = 0;
+    virtual CompileResult compile(CompileContext &ctx) = 0;
     virtual void print(int indent = 0) = 0;
 };
 
@@ -32,7 +37,7 @@ struct LiteralNode : public ASTNode {
     TypedValue value;
 
     LiteralNode(const Token &token);
-    void compile(CompileContext &ctx) override;
+    CompileResult compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 
   private:
@@ -43,7 +48,7 @@ struct UnaryExpressionNode : public ASTNode {
     ASTNodePtr operand;
 
     UnaryExpressionNode(const Token &token, ASTNodePtr operand);
-    void compile(CompileContext &ctx) override;
+    CompileResult compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 };
 
@@ -51,7 +56,7 @@ struct BinaryExpressionNode : public ASTNode {
     ASTNodePtr left, right;
 
     BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
-    void compile(CompileContext &ctx) override;
+    CompileResult compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 };
 

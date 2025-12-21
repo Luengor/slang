@@ -17,6 +17,7 @@ set(SOURCES
     src/error.cpp
     src/parser.cpp
     src/scanner.cpp
+    src/types.cpp
     src/value.cpp
     src/vm.cpp
 )

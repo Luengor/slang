@@ -1,0 +1,32 @@
+#pragma once
+
+#include <cstdint>
+#include <variant>
+#include <vector>
+
+using TypeID = uint32_t;
+
+enum class PrimitiveKind {
+    Fixed,
+    Floating,
+    String,
+};
+
+struct PrimitiveType {
+    PrimitiveKind kind;
+
+    bool operator==(const PrimitiveType &other) const noexcept {
+        return this->kind == other.kind;
+    }
+};
+
+using TypeData = std::variant<PrimitiveType>;
+
+class TypeRegistry {
+    std::vector<TypeData> types;
+
+    TypeID getOrAdd(const TypeData &typeData);
+
+  public:
+    TypeID getPrimitive(PrimitiveKind kind);
+};
