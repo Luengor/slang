@@ -27,25 +27,20 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::Return:
             return simpleInstruction("OP_RETURN", offset);
 
-        case OpCode::NegateF:
-        case OpCode::NegateI:
-            return simpleInstruction("OP_NEGATE", offset);
+        case OpCode::NegateF: return simpleInstruction("OP_NEGATEF", offset);
+        case OpCode::NegateI: return simpleInstruction("OP_NEGATEI", offset);
 
-        case OpCode::AddF:
-        case OpCode::AddI:
-            return simpleInstruction("OP_ADD", offset);
+        case OpCode::AddF: return simpleInstruction("OP_ADDF", offset);
+        case OpCode::AddI: return simpleInstruction("OP_ADDI", offset);
 
-        case OpCode::SubtractF:
-        case OpCode::SubtractI:
-            return simpleInstruction("OP_SUBTRACT", offset);
+        case OpCode::SubtractF: return simpleInstruction("OP_SUBTRACTF", offset);
+        case OpCode::SubtractI: return simpleInstruction("OP_SUBTRACTI", offset);
 
-        case OpCode::MultiplyF:
-        case OpCode::MultiplyI:
-            return simpleInstruction("OP_MULTIPLY", offset);
+        case OpCode::MultiplyF: return simpleInstruction("OP_MULTIPLYF", offset);
+        case OpCode::MultiplyI: return simpleInstruction("OP_MULTIPLYI", offset);
 
-        case OpCode::DivideF:
-        case OpCode::DivideI:
-            return simpleInstruction("OP_DIVIDE", offset);
+        case OpCode::DivideF: return simpleInstruction("OP_DIVIDEF", offset);
+        case OpCode::DivideI: return simpleInstruction("OP_DIVIDEI", offset);
 
         case OpCode::Constant:
             return constantInstruction("OP_CONSTANT", offset);
