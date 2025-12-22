@@ -161,9 +161,9 @@ void UnaryExpressionNode::compile(CompileContext &ctx) {
         case Token::Type::Minus:
             if (this->result_type ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
-                ctx.chunk.write(OpCode::NegateF, this->token.line);
-            } else {
                 ctx.chunk.write(OpCode::NegateI, this->token.line);
+            } else {
+                ctx.chunk.write(OpCode::NegateF, this->token.line);
             }
             break;
 
