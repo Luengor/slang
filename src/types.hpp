@@ -33,7 +33,9 @@ class TypeRegistry {
   public:
     TypeID getPrimitive(PrimitiveKind kind);
     TypeID getFromValue(const TypedValue &value);
+
     inline TypeID noneType() {
         return getPrimitive(PrimitiveKind::None);
     }
+    bool isNumeric(TypeID typeID);
 };

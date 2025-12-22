@@ -45,3 +45,8 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     }
 }
 
+bool TypeRegistry::isNumeric(TypeID typeID) {
+    return typeID == this->getPrimitive(PrimitiveKind::Fixed) ||
+           typeID == this->getPrimitive(PrimitiveKind::Floating);
+}
+

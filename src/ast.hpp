@@ -17,17 +17,15 @@ struct CompileContext {
     TypeRegistry &typeRegistry;
 };
 
-struct CompileResult {
-    TypeID result_type;
-};
-
 struct ASTNode {
     const ASTNodeType type;
     const Token token;
+    TypeID result_type;
 
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode() = default;
-    virtual CompileResult compile(CompileContext &ctx) = 0;
+    virtual void resolveType(CompileContext &ctx) = 0;
+    virtual void compile(CompileContext &ctx) = 0;
     virtual void print(int indent = 0) = 0;
 };
 
@@ -37,7 +35,8 @@ struct LiteralNode : public ASTNode {
     TypedValue value;
 
     LiteralNode(const Token &token);
-    CompileResult compile(CompileContext &ctx) override;
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 
   private:
@@ -48,7 +47,8 @@ struct UnaryExpressionNode : public ASTNode {
     ASTNodePtr operand;
 
     UnaryExpressionNode(const Token &token, ASTNodePtr operand);
-    CompileResult compile(CompileContext &ctx) override;
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 };
 
@@ -56,16 +56,13 @@ struct BinaryExpressionNode : public ASTNode {
     ASTNodePtr left, right;
 
     BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
-    CompileResult compile(CompileContext &ctx) override;
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 
   private:
-    CompileResult compileArithmetic(CompileContext &ctx,
-                                    const CompileResult &lresult,
-                                    const CompileResult &rresult);
-    CompileResult compileLogical(CompileContext &ctx,
-                                  const CompileResult &lresult,
-                                  const CompileResult &rresult);
+    void compileArithmetic(CompileContext &ctx);
+    void compileLogical(CompileContext &ctx);
 };
 
 Chunk compileAST(ASTNode *root);

@@ -58,19 +58,19 @@ LiteralNode::LiteralNode(const Token &token)
     }
 }
 
-CompileResult LiteralNode::compile(CompileContext &ctx) {
+void LiteralNode::resolveType(CompileContext &ctx) {
+    // Get result type of the literal
+    this->result_type = ctx.typeRegistry.getFromValue(this->value);
+    if (result_type == ctx.typeRegistry.noneType()) {
+        throw ParserError(this->token,
+                          "Unknown literal type during type resolution.");
+    }
+}
+
+void LiteralNode::compile(CompileContext &ctx) {
     const auto constant = ctx.chunk.addConstant(this->value.second);
     ctx.chunk.write(OpCode::Constant, this->token.line);
     ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
-
-    // Get result type
-    TypeID result_type = ctx.typeRegistry.getFromValue(this->value);
-    if (result_type == ctx.typeRegistry.noneType()) {
-        throw ParserError(this->token,
-                          "Unknown literal type during compilation.");
-    }
-
-    return {result_type};
 }
 
 void LiteralNode::print(int indent) {
@@ -112,20 +112,20 @@ void LiteralNode::print_object() {
 UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
-CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
-    const auto operand_result = operand->compile(ctx);
+void UnaryExpressionNode::resolveType(CompileContext &ctx) {
+    // Resolve the operand type first
+    this->operand->resolveType(ctx);
+    const auto operand_type = this->operand->result_type;
 
-    // Type check
+    // Determine the result type based on the type and operator 
     const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
     const auto floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
 
     switch (this->token.type) {
         case Token::Type::Minus:
-            if (operand_result.result_type == floatingType) {
-                ctx.chunk.write(OpCode::NegateF, this->token.line);
-            } else if (operand_result.result_type == fixedType) {
-                ctx.chunk.write(OpCode::NegateI, this->token.line);
+            if (operand_type == fixedType || operand_type == floatingType) {
+                this->result_type = operand_type;
             } else {
                 throw ParserError(
                     this->token,
@@ -135,11 +135,40 @@ CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
 
         case Token::Type::Not:
         case Token::Type::Bang:
-            if (operand_result.result_type != booleanType) {
+            if (operand_type == booleanType) {
+                this->result_type = booleanType;
+            } else {
                 throw ParserError(
                     this->token,
                     "Unary not operator requires a boolean operand.");
             }
+            break;
+
+        default:
+            throw ParserError(
+                this->token,
+                "Unsupported unary operator during type resolution.");
+            break;
+    }
+}
+
+void UnaryExpressionNode::compile(CompileContext &ctx) {
+    // Compile the operand first
+    this->operand->compile(ctx);
+
+    // Compile the appropriate unary operation
+    switch (this->token.type) {
+        case Token::Type::Minus:
+            if (this->result_type ==
+                ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
+                ctx.chunk.write(OpCode::NegateF, this->token.line);
+            } else {
+                ctx.chunk.write(OpCode::NegateI, this->token.line);
+            }
+            break;
+
+        case Token::Type::Not:
+        case Token::Type::Bang:
             ctx.chunk.write(OpCode::Not, this->token.line);
             break;
 
@@ -149,8 +178,6 @@ CompileResult UnaryExpressionNode::compile(CompileContext &ctx) {
                 "Unsupported unary operator during compilation.");
             break;
     }
-
-    return {operand_result.result_type};
 }
 
 void UnaryExpressionNode::print(int indent) {
@@ -165,27 +192,42 @@ BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
     : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
       right(std::move(right)) { }
 
-CompileResult BinaryExpressionNode::compile(CompileContext &ctx) {
-    const auto lresult = left->compile(ctx);
-    const auto rresult = right->compile(ctx);
+void BinaryExpressionNode::resolveType(CompileContext &ctx) {
+    // Resolve left and right operand types first
+    this->left->resolveType(ctx);
+    this->right->resolveType(ctx);
 
-    // For now, check that both operands have the same type
-    if (lresult.result_type != rresult.result_type) {
+    // Check that both operands have the same type
+    if (this->left->result_type != this->right->result_type) {
         throw ParserError(
             this->token,
             "Type mismatch between left and right operands in binary expression.");
+    } else if (this->left->result_type == ctx.typeRegistry.noneType()) {
+        throw ParserError(
+            this->token,
+            "Binary expressions do not support 'none' type.");
     }
 
+    // Set the result type to the operand type
+    this->result_type = this->left->result_type;
+}
+
+void BinaryExpressionNode::compile(CompileContext &ctx) {
+    // Compile left and right operands first
+    this->left->compile(ctx);
+    this->right->compile(ctx);
+
+    // Compile the appropriate binary operation
     switch (this->token.type) {
         case Token::Type::Plus:
         case Token::Type::Minus:
         case Token::Type::Star:
         case Token::Type::Slash:
-            return compileArithmetic(ctx, lresult, rresult);
+            return compileArithmetic(ctx);
 
         case Token::Type::And:
         case Token::Type::Or:
-            return compileLogical(ctx, lresult, rresult);
+            return compileLogical(ctx);
 
         default:
             throw ParserError(
@@ -193,26 +235,22 @@ CompileResult BinaryExpressionNode::compile(CompileContext &ctx) {
                 "Unsupported binary operator during compilation.");
             break;
     }
-
-
-    // Also check that the type is either Fixed or Floating
-    const TypeID fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
-    const TypeID floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
-    if (lresult.result_type != fixedType && lresult.result_type != floatingType) {
-        throw ParserError(
-            this->token,
-            "Binary expressions only support Fixed and Floating point types.");
-    }
-
 }
 
-CompileResult BinaryExpressionNode::compileArithmetic(CompileContext &ctx,
-                                                        const CompileResult &lresult,
-                                                        const CompileResult &rresult) {
-    const TypeID floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+void BinaryExpressionNode::compileArithmetic(CompileContext &ctx) {
+    const TypeID floatingType =
+        ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
 
+    // Check that the type is numeric
+    if (!ctx.typeRegistry.isNumeric(this->result_type)) {
+        throw ParserError(
+            this->token,
+            "Arithmetic operators require numeric operand types.");
+    }
+
+    // Compile the appropriate arithmetic operation
 #define IorF(op)                                                               \
-    lresult.result_type == floatingType ? OpCode::op##F : OpCode::op##I
+    this->result_type == floatingType ? OpCode::op##F : OpCode::op##I
 
     switch (this->token.type) {
         case Token::Type::Plus:
@@ -235,13 +273,19 @@ CompileResult BinaryExpressionNode::compileArithmetic(CompileContext &ctx,
     }
 
 #undef IorF
-
-    return {lresult.result_type};
 }
 
-CompileResult BinaryExpressionNode::compileLogical(CompileContext &ctx,
-                                                      const CompileResult &lresult,
-                                                      const CompileResult &rresult) {
+void BinaryExpressionNode::compileLogical(CompileContext &ctx) {
+    // Check that the type is boolean
+    const TypeID booleanType =
+        ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    if (this->result_type != booleanType) {
+        throw ParserError(
+            this->token,
+            "Logical operators require boolean operand types.");
+    }
+
+    // Compile the appropriate logical operation
     switch (this->token.type) {
         case Token::Type::And:
             ctx.chunk.write(OpCode::And, this->token.line);
@@ -255,8 +299,6 @@ CompileResult BinaryExpressionNode::compileLogical(CompileContext &ctx,
                 this->token, "Unsupported logical operator during compilation.");
             break;
     }
-
-    return {lresult.result_type};
 }
 
 void BinaryExpressionNode::print(int indent) {
@@ -271,6 +313,9 @@ Chunk compileAST(ASTNode *root) {
     Chunk chunk;
     TypeRegistry typeRegistry;
     CompileContext ctx{chunk, typeRegistry};
+
+    // Perform type resolution
+    root->resolveType(ctx);
 
     // Compile the AST
     root->compile(ctx);
