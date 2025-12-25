@@ -28,8 +28,15 @@ Chunk Compiler::compile() {
     Parser parser;
     std::unique_ptr<ASTNode> root = parser.parse(tokens); 
 
+    // Compile AST to Chunk
+    if (root == nullptr)
+        throw std::runtime_error("Parsing failed.");
+
+    Chunk chunk = compileAST(root.get());
+
 #ifndef NDEBUG
-    // Print AST for debugging
+    // Print AST for debugging _after_ compilation
+    // (because compilation may modify the AST, e.g., inserting casts)
     std::cout << "\nAST:\n";
     if (root)
         root->print();
@@ -37,11 +44,6 @@ Chunk Compiler::compile() {
         std::cout << "No AST generated.\n";
 #endif
 
-    // Compile AST to Chunk
-    if (root == nullptr)
-        throw std::runtime_error("Parsing failed.");
-
-    Chunk chunk = compileAST(root.get());
 
 #ifndef NDEBUG
     // Print Chunk for debugging

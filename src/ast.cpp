@@ -5,6 +5,11 @@
 #include "value.hpp"
 #include <iostream>
 #include <print>
+#include <variant>
+
+// overload boilerplate
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
@@ -115,7 +120,7 @@ UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
 void UnaryExpressionNode::resolveType(CompileContext &ctx) {
     // Resolve the operand type first
     this->operand->resolveType(ctx);
-    const auto operand_type = this->operand->result_type;
+    auto operand_type = this->operand->result_type;
 
     // Determine the result type based on the type and operator 
     const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
@@ -186,6 +191,45 @@ void UnaryExpressionNode::print(int indent) {
     this->operand->print(indent + 1);
 }
 
+// CastNode Implementation
+CastNode::CastNode(const Token &token, ASTNodePtr operand, TypeID target_type)
+    : ASTNode(ASTNodeType::BinaryExpression, token),
+      operand(std::move(operand)) {
+    // Copy result type
+    this->result_type = target_type;
+}
+
+void CastNode::resolveType(CompileContext &ctx) {
+    // The operand should already be resolved, just ensure it's done
+    this->operand->resolveType(ctx);
+
+    // Check if the cast is valid
+    auto castOp = ctx.typeRegistry.getCastOp(
+        this->operand->result_type, this->result_type);
+
+    if (!castOp.has_value()) {
+        throw ParserError(
+            this->token,
+            "Invalid cast from source type to target type.");
+    }
+
+    this->cast_op = castOp.value();
+}
+
+void CastNode::compile(CompileContext &ctx) {
+    // Compile the operand first
+    this->operand->compile(ctx);
+
+    // Write the cast operation
+    ctx.chunk.write(this->cast_op, this->token.line);
+}
+
+void CastNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "Cast(to type " << this->result_type << ")\n";
+    this->operand->print(indent + 1);
+}
+
 // BinaryExpressionNode Implementation
 BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
@@ -197,19 +241,52 @@ void BinaryExpressionNode::resolveType(CompileContext &ctx) {
     this->left->resolveType(ctx);
     this->right->resolveType(ctx);
 
-    // Check that both operands have the same type
-    if (this->left->result_type != this->right->result_type) {
+    const auto ltype = ctx.typeRegistry.getTypeData(this->left->result_type);
+    const auto rtype = ctx.typeRegistry.getTypeData(this->right->result_type);
+
+    // Visit
+    auto result_type = std::visit(overloaded{
+            [&](PrimitiveType l, PrimitiveType r) -> std::optional<TypeID> {
+                // Both are primitive types, find common type
+                auto common = ctx.typeRegistry.getCommonPrimitive(l.kind, r.kind);
+                if (common.has_value()) {
+                    return ctx.typeRegistry.getPrimitive(common.value());
+                } 
+
+                return std::nullopt;
+            },
+
+            [&](auto &, auto &) -> std::optional<TypeID> {
+                // At least one is not a primitive type, for now we don't support this
+                return std::nullopt;
+            }
+    }, ltype, rtype);
+
+    // Throw if no common type found
+    if (!result_type.has_value()) {
         throw ParserError(
             this->token,
-            "Type mismatch between left and right operands in binary expression.");
-    } else if (this->left->result_type == ctx.typeRegistry.noneType()) {
-        throw ParserError(
-            this->token,
-            "Binary expressions do not support 'none' type.");
+            "Incompatible types in binary expression.");
     }
 
-    // Set the result type to the operand type
-    this->result_type = this->left->result_type;
+    // Cast operands to the common type if necessary
+    if (this->left->result_type != result_type.value()) {
+        this->left = std::make_unique<CastNode>(
+            this->token,
+            std::move(this->left),
+            result_type.value());
+        this->left->resolveType(ctx);
+    }
+
+    if (this->right->result_type != result_type.value()) {
+        this->right = std::make_unique<CastNode>(
+            this->token,
+            std::move(this->right),
+            result_type.value());
+        this->right->resolveType(ctx);
+    }
+
+    this->result_type = result_type.value();
 }
 
 void BinaryExpressionNode::compile(CompileContext &ctx) {

@@ -1,6 +1,7 @@
 #include "vm.hpp"
 #include "chunk.hpp"
 #include "compiler.hpp"
+#include "value.hpp"
 #include <print>
 
 InterpretResult VM::interpret(const std::string &source) {
@@ -31,6 +32,12 @@ InterpretResult VM::run() {
         this->stack.pop_back();  \
         this->stack.back().mode = this->stack.back().mode op b.mode; \
         break;                   \
+    }
+
+#define CAST(from, to, real_type) \
+    {                             \
+        this->stack.back().to = static_cast<real_type>(this->stack.back().from); \
+        break;                    \
     }
 
 #ifndef NDEBUG
@@ -83,6 +90,20 @@ InterpretResult VM::run() {
                 this->stack.back().boolean = !this->stack.back().boolean;
                 break;
             }
+
+            case OpCode::I2F: CAST(fixed, floating, FloatingType);
+            case OpCode::F2I: CAST(floating, fixed, FixedType);
+            case OpCode::I2B: CAST(fixed, boolean, bool);
+            case OpCode::B2I: CAST(boolean, fixed, FixedType);
+            case OpCode::F2B: CAST(floating, boolean, bool);
+            case OpCode::B2F: CAST(boolean, floating, FloatingType);
+
+            default:
+                {
+                    std::print("Runtime error: Unknown opcode {}\n",
+                               static_cast<int>(instruction));
+                    return InterpretResult::RuntimeError;
+                }
         }
 
     }

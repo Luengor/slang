@@ -42,17 +42,18 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::DivideF: return simpleInstruction("OP_DIVIDEF", offset);
         case OpCode::DivideI: return simpleInstruction("OP_DIVIDEI", offset);
 
-        case OpCode::Constant:
-            return constantInstruction("OP_CONSTANT", offset);
+        case OpCode::Constant: return constantInstruction("OP_CONSTANT", offset);
 
-        case OpCode::Not:
-            return simpleInstruction("OP_NOT", offset);
+        case OpCode::Not: return simpleInstruction("OP_NOT", offset);
+        case OpCode::And: return simpleInstruction("OP_AND", offset);
+        case OpCode::Or: return simpleInstruction("OP_OR", offset);
 
-        case OpCode::And:
-            return simpleInstruction("OP_AND", offset);
-
-        case OpCode::Or:
-            return simpleInstruction("OP_OR", offset);
+        case OpCode::I2F: return simpleInstruction("OP_I2F", offset);
+        case OpCode::F2I: return simpleInstruction("OP_F2I", offset);
+        case OpCode::I2B: return simpleInstruction("OP_I2B", offset);
+        case OpCode::B2I: return simpleInstruction("OP_B2I", offset);
+        case OpCode::F2B: return simpleInstruction("OP_F2B", offset);
+        case OpCode::B2F: return simpleInstruction("OP_B2F", offset);
 
         default:
             std::print("Unknown opcode {}\n",

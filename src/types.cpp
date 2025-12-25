@@ -1,5 +1,34 @@
 #include "types.hpp"
 #include <stdexcept>
+#include <unordered_map>
+#include <variant>
+
+// overload boilerplate
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
+// Cast table
+using CastKey = std::pair<PrimitiveKind, PrimitiveKind>;
+struct CastKeyHash {
+    std::size_t operator()(const CastKey &k) const {
+        return std::hash<int>()(static_cast<int>(k.first)) ^
+               (std::hash<int>()(static_cast<int>(k.second)) << 1);
+    }
+};
+
+#define Cast(from, to, op) \
+    {{PrimitiveKind::from, PrimitiveKind::to}, OpCode::op}
+
+std::unordered_map<CastKey, OpCode, CastKeyHash> CAST_TABLE = {
+    Cast(Fixed, Floating, I2F),
+    Cast(Floating, Fixed, F2I),
+    Cast(Fixed, Boolean, I2B),
+    Cast(Boolean, Fixed, B2I),
+    Cast(Floating, Boolean, F2B),
+    Cast(Boolean, Floating, B2F),
+};
+
+#undef Cast
 
 TypeID TypeRegistry::getOrAdd(const TypeData &typeData) {
     // Check if the type already exists
@@ -50,3 +79,54 @@ bool TypeRegistry::isNumeric(TypeID typeID) {
            typeID == this->getPrimitive(PrimitiveKind::Floating);
 }
 
+std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {
+    if (from == to) return std::nullopt; // No cast needed
+
+    // Get data
+    const auto &from_data = this->getTypeData(from);
+    const auto &to_data = this->getTypeData(to);
+
+    // Visit
+    auto op = std::visit(overloaded{
+        [&](PrimitiveType from, PrimitiveType to) -> std::optional<OpCode> {
+            // Both are primitive types, check cast table
+            CastKey key{from.kind, to.kind};
+            auto it = CAST_TABLE.find(key);
+            if (it != CAST_TABLE.end()) {
+                return it->second;
+            }
+            return std::nullopt; // No valid cast found
+        },
+        [&](auto &, auto &) -> std::optional<OpCode> {
+            // For now, any other types are not castable
+            return std::nullopt;
+        }
+    }, from_data, to_data);
+
+    return op;
+}
+
+std::optional<PrimitiveKind> TypeRegistry::getCommonPrimitive(PrimitiveKind a,
+                                                              PrimitiveKind b) {
+    // If they are the same type, return that type
+    if (a == b)
+        return a;
+
+    // If any of them is None, return None
+    if (a == PrimitiveKind::None || b == PrimitiveKind::None) {
+        return PrimitiveKind::None;
+    }
+
+    // If one of them is a boolean, promote to boolean
+    if (a == PrimitiveKind::Boolean || b == PrimitiveKind::Boolean) {
+        return PrimitiveKind::Boolean;
+    }
+
+    // If using numbers, promote to floating
+    if ((a == PrimitiveKind::Fixed || a == PrimitiveKind::Floating) &&
+        (b == PrimitiveKind::Fixed || b == PrimitiveKind::Floating)) {
+        return PrimitiveKind::Floating;
+    }
+
+    return std::nullopt; // No common type found
+}

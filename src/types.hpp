@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <variant>
 #include <vector>
+#include "chunk.hpp"
 #include "value.hpp"
 
 using TypeID = uint32_t;
@@ -38,4 +40,12 @@ class TypeRegistry {
         return getPrimitive(PrimitiveKind::None);
     }
     bool isNumeric(TypeID typeID);
+
+    inline TypeData getTypeData(TypeID typeID) const {
+        return this->types[typeID];
+    }
+
+    std::optional<OpCode> getCastOp(TypeID from, TypeID to);
+    std::optional<PrimitiveKind> getCommonPrimitive(PrimitiveKind a,
+                                                    PrimitiveKind b);
 };

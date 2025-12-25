@@ -52,6 +52,16 @@ struct UnaryExpressionNode : public ASTNode {
     void print(int indent = 0) override;
 };
 
+struct CastNode : public ASTNode {
+    ASTNodePtr operand;
+    OpCode cast_op;
+
+    CastNode(const Token &token, ASTNodePtr operand, TypeID target_type);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct BinaryExpressionNode : public ASTNode {
     ASTNodePtr left, right;
 
