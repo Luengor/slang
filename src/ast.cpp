@@ -64,6 +64,11 @@ LiteralNode::LiteralNode(const Token &token)
 }
 
 void LiteralNode::resolveType(CompileContext &ctx) {
+    if (this->result_type.has_value()) {
+        // Type already resolved
+        return;
+    }
+
     // Get result type of the literal
     this->result_type = ctx.typeRegistry.getFromValue(this->value);
     if (result_type == ctx.typeRegistry.noneType()) {
@@ -118,6 +123,11 @@ UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
 void UnaryExpressionNode::resolveType(CompileContext &ctx) {
+    // Check if already resolved
+    if (this->result_type.has_value()) {
+        return;
+    }
+
     // Resolve the operand type first
     this->operand->resolveType(ctx);
     auto operand_type = this->operand->result_type;
@@ -205,7 +215,7 @@ void CastNode::resolveType(CompileContext &ctx) {
 
     // Check if the cast is valid
     auto castOp = ctx.typeRegistry.getCastOp(
-        this->operand->result_type, this->result_type);
+        this->operand->result_type.value(), this->result_type.value());
 
     if (!castOp.has_value()) {
         throw ParserError(
@@ -226,7 +236,7 @@ void CastNode::compile(CompileContext &ctx) {
 
 void CastNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "Cast(to type " << this->result_type << ")\n";
+    std::cout << "Cast(to type " << this->result_type.value() << ")\n";
     this->operand->print(indent + 1);
 }
 
@@ -237,12 +247,17 @@ BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
       right(std::move(right)) { }
 
 void BinaryExpressionNode::resolveType(CompileContext &ctx) {
+    // Check if already resolved
+    if (this->result_type.has_value()) {
+        return;
+    }
+
     // Resolve left and right operand types first
     this->left->resolveType(ctx);
     this->right->resolveType(ctx);
 
-    const auto ltype = ctx.typeRegistry.getTypeData(this->left->result_type);
-    const auto rtype = ctx.typeRegistry.getTypeData(this->right->result_type);
+    const auto ltype = ctx.typeRegistry.getTypeData(this->left->result_type.value());
+    const auto rtype = ctx.typeRegistry.getTypeData(this->right->result_type.value());
 
     // Visit
     auto result_type = std::visit(overloaded{
@@ -319,7 +334,7 @@ void BinaryExpressionNode::compileArithmetic(CompileContext &ctx) {
         ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
 
     // Check that the type is numeric
-    if (!ctx.typeRegistry.isNumeric(this->result_type)) {
+    if (!ctx.typeRegistry.isNumeric(this->result_type.value())) {
         throw ParserError(
             this->token,
             "Arithmetic operators require numeric operand types.");

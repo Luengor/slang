@@ -5,6 +5,7 @@
 #include "types.hpp"
 #include "value.hpp"
 #include <memory>
+#include <optional>
 
 enum class ASTNodeType {
     Literal,
@@ -20,7 +21,7 @@ struct CompileContext {
 struct ASTNode {
     const ASTNodeType type;
     const Token token;
-    TypeID result_type;
+    std::optional<TypeID> result_type = std::nullopt;
 
     ASTNode(ASTNodeType type, const Token &token) : type(type), token(token) {};
     virtual ~ASTNode() = default;
