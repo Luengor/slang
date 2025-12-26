@@ -98,6 +98,22 @@ InterpretResult VM::run() {
             case OpCode::F2B: CAST(floating, boolean, bool);
             case OpCode::B2F: CAST(boolean, floating, FloatingType);
 
+            case OpCode::EqI: BINARY_OP(==, fixed)
+            case OpCode::NeI: BINARY_OP(!=, fixed)
+            case OpCode::EqF: BINARY_OP(==, floating)
+            case OpCode::NeF: BINARY_OP(!=, floating)
+            case OpCode::EqB: BINARY_OP(==, boolean)
+            case OpCode::NeB: BINARY_OP(!=, boolean)
+
+            case OpCode::GtI: BINARY_OP(>, fixed)
+            case OpCode::LtI: BINARY_OP(<, fixed)
+            case OpCode::GeI: BINARY_OP(>=, fixed)
+            case OpCode::LeI: BINARY_OP(<=, fixed)
+            case OpCode::GtF: BINARY_OP(>, floating)
+            case OpCode::LtF: BINARY_OP(<, floating)
+            case OpCode::GeF: BINARY_OP(>=, floating)
+            case OpCode::LeF: BINARY_OP(<=, floating)
+
             default:
                 {
                     std::print("Runtime error: Unknown opcode {}\n",

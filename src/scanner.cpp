@@ -64,6 +64,30 @@ Token Scanner::scanToken() {
         case '+': return this->makeToken(Token::Plus);
         case '*': return this->makeToken(Token::Star);
         case '/': return this->makeToken(Token::Slash);
+        case '>':
+            if (this->peek() == '=') {
+                this->current++;
+                return this->makeToken(Token::GreaterEqual);
+            }
+            return this->makeToken(Token::Greater);
+        case '<':
+            if (this->peek() == '=') {
+                this->current++;
+                return this->makeToken(Token::LessEqual);
+            }
+            return this->makeToken(Token::Less);
+        case '=':
+            if (this->peek() == '=') {
+                this->current++;
+                return this->makeToken(Token::EqualEqual);
+            }
+            break;
+        case '!':
+            if (this->peek() == '=') {
+                this->current++;
+                return this->makeToken(Token::BangEqual);
+            }
+            break;
         // Literal
         case '"': return this->makeString();
     }

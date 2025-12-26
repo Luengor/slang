@@ -74,6 +74,8 @@ struct BinaryExpressionNode : public ASTNode {
   private:
     void compileArithmetic(CompileContext &ctx);
     void compileLogical(CompileContext &ctx);
+    void compileEquality(CompileContext &ctx);
+    void compileComparison(CompileContext &ctx);
 };
 
 Chunk compileAST(ASTNode *root);

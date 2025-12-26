@@ -299,7 +299,39 @@ void BinaryExpressionNode::resolveType(CompileContext &ctx) {
         this->right->resolveType(ctx);
     }
 
-    this->result_type = result_type.value();
+    // Get final result type
+    switch (this->token.type) {
+        case Token::Type::Plus:
+        case Token::Type::Minus:
+        case Token::Type::Star:
+        case Token::Type::Slash:
+            // Arithmetic operations yield the common numeric type
+            this->result_type = result_type.value();
+            break;
+
+        case Token::Type::And:
+        case Token::Type::Or:
+            // Logical operations yield boolean type
+            // (the common type must be boolean here)
+            this->result_type = result_type.value();
+            break;
+
+        case Token::Type::EqualEqual:
+        case Token::Type::BangEqual:
+        case Token::Type::Greater:
+        case Token::Type::GreaterEqual:
+        case Token::Type::Less:
+        case Token::Type::LessEqual:
+            // Comparison operations yield boolean type
+            this->result_type = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+            break;
+
+        default:
+            throw ParserError(
+                this->token,
+                "Unsupported binary operator during type resolution.");
+            break;
+    }
 }
 
 void BinaryExpressionNode::compile(CompileContext &ctx) {
@@ -318,6 +350,16 @@ void BinaryExpressionNode::compile(CompileContext &ctx) {
         case Token::Type::And:
         case Token::Type::Or:
             return compileLogical(ctx);
+
+        case Token::Type::EqualEqual:
+        case Token::Type::BangEqual:
+            return compileEquality(ctx);
+
+        case Token::Type::Greater:
+        case Token::Type::GreaterEqual:
+        case Token::Type::Less:
+        case Token::Type::LessEqual:
+            return compileComparison(ctx);
 
         default:
             throw ParserError(
@@ -389,6 +431,89 @@ void BinaryExpressionNode::compileLogical(CompileContext &ctx) {
                 this->token, "Unsupported logical operator during compilation.");
             break;
     }
+}
+
+void BinaryExpressionNode::compileEquality(CompileContext &ctx) {
+    const auto type_data =
+        ctx.typeRegistry.getTypeData(this->result_type.value());
+
+    if (!std::holds_alternative<PrimitiveType>(type_data)) {
+        throw ParserError(
+            this->token,
+            "Comparison operators require primitive operand types.");
+    }
+
+    const PrimitiveType prim_type =
+        std::get<PrimitiveType>(type_data);
+
+#define EqOrNe(op)                                                             \
+    this->token.type == Token::Type::EqualEqual ? OpCode::Eq##op               \
+                                                : OpCode::Ne##op
+
+    switch (prim_type.kind) {
+        case PrimitiveKind::Fixed:
+            ctx.chunk.write(EqOrNe(I), this->token.line);
+            break;
+
+        case PrimitiveKind::Floating:
+            ctx.chunk.write(EqOrNe(F), this->token.line);
+            break;
+
+        case PrimitiveKind::Boolean:
+            ctx.chunk.write(EqOrNe(B), this->token.line);
+            break;
+
+        default:
+            throw ParserError(
+                this->token,
+                "Unsupported primitive type for comparison operators.");
+            break;
+    }
+#undef EqOrNe
+}
+
+void BinaryExpressionNode::compileComparison(CompileContext &ctx) {
+    const auto type_data =
+        ctx.typeRegistry.getTypeData(this->left->result_type.value());
+
+    if (!std::holds_alternative<PrimitiveType>(type_data)) {
+        throw ParserError(
+            this->token,
+            "Comparison operators require primitive operand types.");
+    }
+
+    const PrimitiveType prim_type =
+        std::get<PrimitiveType>(type_data);
+
+    if (prim_type.kind == PrimitiveKind::Boolean)
+        throw ParserError(
+            this->token,
+            "Comparison operators do not support boolean operand types.");
+
+
+#define IorF(op)                                                               \
+    prim_type.kind == PrimitiveKind::Floating ? OpCode::op##F : OpCode::op##I
+
+    switch (this->token.type) {
+        case Token::Type::Greater: 
+            ctx.chunk.write(IorF(Gt), this->token.line);
+            break;
+        case Token::Type::GreaterEqual:
+            ctx.chunk.write(IorF(Ge), this->token.line);
+            break;
+        case Token::Type::Less:
+            ctx.chunk.write(IorF(Lt), this->token.line);
+            break;
+        case Token::Type::LessEqual:
+            ctx.chunk.write(IorF(Le), this->token.line);;
+            break;
+        default:
+            throw ParserError(
+                this->token,
+                "Unsupported comparison operator during compilation.");
+            break;
+    }
+#undef IorF
 }
 
 void BinaryExpressionNode::print(int indent) {

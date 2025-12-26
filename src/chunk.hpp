@@ -15,6 +15,13 @@ enum class OpCode : uint8_t {
     DivideF, DivideI,
     Not, And, Or,
 
+    EqI, NeI,
+    EqF, NeF,
+    EqB, NeB,
+
+    GtI, LtI, GeI, LeI,
+    GtF, LtF, GeF, LeF,
+
     I2F, F2I,
     I2B, B2I,
     F2B, B2F,

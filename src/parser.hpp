@@ -45,8 +45,14 @@ class Parser {
     // error with the provided message
     const Token &consume(Token::Type type, const char *message);
 
-    // expression -> term
+    // expression -> equality 
     std::unique_ptr<ASTNode> expression();
+
+    // equality -> comparison ( ( "==" | "!=" ) comparison )*
+    std::unique_ptr<ASTNode> equality();
+
+    // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+    std::unique_ptr<ASTNode> comparison();
 
     // term -> factor ( ( "+" | "-" | "or" ) factor )*
     std::unique_ptr<ASTNode> term();

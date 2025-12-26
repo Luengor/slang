@@ -55,6 +55,22 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::F2B: return simpleInstruction("OP_F2B", offset);
         case OpCode::B2F: return simpleInstruction("OP_B2F", offset);
 
+        case OpCode::EqI: return simpleInstruction("OP_EQI", offset);
+        case OpCode::NeI: return simpleInstruction("OP_NEI", offset);
+        case OpCode::EqF: return simpleInstruction("OP_EQF", offset);
+        case OpCode::NeF: return simpleInstruction("OP_NEF", offset);
+        case OpCode::EqB: return simpleInstruction("OP_EQB", offset);
+        case OpCode::NeB: return simpleInstruction("OP_NEB", offset);
+
+        case OpCode::GtI: return simpleInstruction("OP_GTI", offset);
+        case OpCode::LtI: return simpleInstruction("OP_LTI", offset);
+        case OpCode::GeI: return simpleInstruction("OP_GEI", offset);
+        case OpCode::LeI: return simpleInstruction("OP_LEI", offset);
+        case OpCode::GtF: return simpleInstruction("OP_GTF", offset);
+        case OpCode::LtF: return simpleInstruction("OP_LTF", offset);
+        case OpCode::GeF: return simpleInstruction("OP_GEF", offset);
+        case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
+
         default:
             std::print("Unknown opcode {}\n",
                        static_cast<uint8_t>(instruction));

@@ -51,7 +51,42 @@ const Token &Parser::consume(Token::Type type, const char *message) {
 /// Recursive descent parsing methods
 
 std::unique_ptr<ASTNode> Parser::expression() {
-    return this->term();
+    return this->equality();
+}
+
+std::unique_ptr<ASTNode> Parser::equality() {
+    // Get the left operand
+    std::unique_ptr<ASTNode> expr = this->comparison();
+
+    // While the current token is a '==' or '!=', parse the right operand
+    while (this->match({Token::Type::EqualEqual, Token::Type::BangEqual})) {
+        Token operatorToken = this->previous();
+        std::unique_ptr<ASTNode> right = this->comparison();
+
+        // Create a binary expression node
+        expr = std::make_unique<BinaryExpressionNode>(
+            operatorToken, std::move(expr), std::move(right));
+    }
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::comparison() {
+    // Get the left operand
+    std::unique_ptr<ASTNode> expr = this->term();
+
+    // While the current token is a comparison operator, parse the right operand
+    while (this->match({Token::Type::Greater, Token::Type::GreaterEqual,
+                       Token::Type::Less, Token::Type::LessEqual})) {
+        Token operatorToken = this->previous();
+        std::unique_ptr<ASTNode> right = this->term();
+
+        // Create a binary expression node
+        expr = std::make_unique<BinaryExpressionNode>(
+            operatorToken, std::move(expr), std::move(right));
+    }
+
+    return expr;
 }
 
 std::unique_ptr<ASTNode> Parser::term() {
