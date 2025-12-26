@@ -60,13 +60,8 @@ Token Scanner::scanToken() {
     switch (c) {
         case '(': return this->makeToken(Token::LeftParen);
         case ')': return this->makeToken(Token::RightParen);
-        // case '{': return this->makeToken(Token::LeftBrace);
-        // case '}': return this->makeToken(Token::RightBrace);
-        // case ',': return this->makeToken(Token::Comma);
-        // case '.': return this->makeToken(Token::Dot);
         case '-': return this->makeToken(Token::Minus);
         case '+': return this->makeToken(Token::Plus);
-        // case ';': return this->makeToken(Token::Semicolon);
         case '*': return this->makeToken(Token::Star);
         case '/': return this->makeToken(Token::Slash);
         // Literal
@@ -125,38 +120,18 @@ Token Scanner::makeIdentifier() {
         case 'a':
             if (token.lexeme == "and") token.type = Token::And;
             break;
-        // case 'e':
-        //     if (token.lexeme == "else") token.type = Token::Else;
-        //     break;
         case 'f':
             if (token.lexeme == "false") token.type = Token::False;
-        //     else if (token.lexeme == "for") token.type = Token::For;
-        //     else if (token.lexeme == "fn") token.type = Token::Fn;
             break;
-        // case 'i':
-        //     if (token.lexeme == "if") token.type = Token::If;
-        //     break;
         case 'n':
             if (token.lexeme == "not") token.type = Token::Not;
             break;
         case 'o':
             if (token.lexeme == "or") token.type = Token::Or;
             break;
-        // case 'p':
-        //     if (token.lexeme == "print") token.type = Token::Print;
-        //     break;
-        // case 'r':
-        //     if (token.lexeme == "return") token.type = Token::Return;
-        //     break;
         case 't':
             if (token.lexeme == "true") token.type = Token::True;
             break;
-        // case 'v':
-        //     if (token.lexeme == "var") token.type = Token::Var;
-        //     break;
-        // case 'w':
-        //     if (token.lexeme == "while") token.type = Token::While;
-        //     break;
     }
 
     return token;
