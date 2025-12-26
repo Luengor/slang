@@ -435,7 +435,7 @@ void BinaryExpr::compileLogical(CompileContext &ctx) {
 
 void BinaryExpr::compileEquality(CompileContext &ctx) {
     const auto type_data =
-        ctx.typeRegistry.getTypeData(this->result_type.value());
+        ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
     if (!std::holds_alternative<PrimitiveType>(type_data)) {
         throw ParserError(
