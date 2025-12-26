@@ -8,7 +8,6 @@ struct Token {
         // Single-character tokens.
         LeftParen, RightParen,
         Minus, Plus, Slash, Star,
-        Bang,
 
         // Literals.
         Identifier, String, Number,

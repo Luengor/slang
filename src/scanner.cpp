@@ -69,7 +69,6 @@ Token Scanner::scanToken() {
         // case ';': return this->makeToken(Token::Semicolon);
         case '*': return this->makeToken(Token::Star);
         case '/': return this->makeToken(Token::Slash);
-        case '!': return this->makeToken(Token::Bang);
         // Literal
         case '"': return this->makeString();
     }

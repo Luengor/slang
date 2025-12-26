@@ -149,7 +149,6 @@ void UnaryExpressionNode::resolveType(CompileContext &ctx) {
             break;
 
         case Token::Type::Not:
-        case Token::Type::Bang:
             if (operand_type == booleanType) {
                 this->result_type = booleanType;
             } else {
@@ -183,7 +182,6 @@ void UnaryExpressionNode::compile(CompileContext &ctx) {
             break;
 
         case Token::Type::Not:
-        case Token::Type::Bang:
             ctx.chunk.write(OpCode::Not, this->token.line);
             break;
 

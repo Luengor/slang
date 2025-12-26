@@ -18,20 +18,50 @@ enum class Precedence {
     Primary
 };
 
-struct Parser {
-    std::vector<Token>::const_iterator current, previous;
-    std::unique_ptr<ASTNode> current_prefix = nullptr;
+class Parser {
+    unsigned int current;
+    const std::vector<Token> &tokens;
 
+    // Increment current to point to the next token if not at the end
     void advance();
-    void consume(Token::Type type, const std::string& message);
 
-    std::unique_ptr<ASTNode> parsePrecedence(Precedence precedence);
+    // Return the current token without consuming it
+    const Token &peek();
+
+    // Return the previous token
+    const Token &previous();
+
+    // Check if we've reached the end of the token stream
+    bool isAtEnd();
+
+    // Check if the current token matches the given type
+    bool check(Token::Type type);
+
+    // If the current token matches any of the given types, consume it and
+    // return true
+    bool match(const std::initializer_list<Token::Type> &types);
+
+    // Consume the current token if it matches the given type, else throw an
+    // error with the provided message
+    const Token &consume(Token::Type type, const char *message);
+
+    // expression -> term
     std::unique_ptr<ASTNode> expression();
-    std::unique_ptr<ASTNode> unary();
-    std::unique_ptr<ASTNode> binary();
-    std::unique_ptr<ASTNode> literal();
-    std::unique_ptr<ASTNode> grouping();
 
-    std::unique_ptr<ASTNode> parse(const std::vector<Token>& tokens);
+    // term -> factor ( ( "+" | "-" | "or" ) factor )*
+    std::unique_ptr<ASTNode> term();
+
+    // factor -> unary ( ( "*" | "/" | "and" ) unary )*
+    std::unique_ptr<ASTNode> factor();
+
+    // unary -> ( "-" | "not" ) unary | primary
+    std::unique_ptr<ASTNode> unary();
+
+    // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")"
+    std::unique_ptr<ASTNode> primary();
+
+public:
+    Parser(const std::vector<Token> &tokens);
+    std::unique_ptr<ASTNode> parse();
 };
 

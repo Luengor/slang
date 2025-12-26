@@ -25,8 +25,8 @@ Chunk Compiler::compile() {
 #endif
 
     // Create AST
-    Parser parser;
-    std::unique_ptr<ASTNode> root = parser.parse(tokens); 
+    Parser parser(tokens);
+    std::unique_ptr<ASTNode> root = parser.parse(); 
 
     // Compile AST to Chunk
     if (root == nullptr)
