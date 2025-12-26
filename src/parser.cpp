@@ -64,7 +64,7 @@ std::unique_ptr<ASTNode> Parser::equality() {
         std::unique_ptr<ASTNode> right = this->comparison();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpressionNode>(
+        expr = std::make_unique<BinaryExpr>(
             operatorToken, std::move(expr), std::move(right));
     }
 
@@ -82,7 +82,7 @@ std::unique_ptr<ASTNode> Parser::comparison() {
         std::unique_ptr<ASTNode> right = this->term();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpressionNode>(
+        expr = std::make_unique<BinaryExpr>(
             operatorToken, std::move(expr), std::move(right));
     }
 
@@ -99,7 +99,7 @@ std::unique_ptr<ASTNode> Parser::term() {
         std::unique_ptr<ASTNode> right = this->factor();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpressionNode>(
+        expr = std::make_unique<BinaryExpr>(
             operatorToken, std::move(expr), std::move(right));
     }
 
@@ -116,7 +116,7 @@ std::unique_ptr<ASTNode> Parser::factor() {
         std::unique_ptr<ASTNode> right = this->unary();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpressionNode>(
+        expr = std::make_unique<BinaryExpr>(
             operatorToken, std::move(expr), std::move(right));
     }
 
@@ -128,7 +128,7 @@ std::unique_ptr<ASTNode> Parser::unary() {
     if (this->match({Token::Type::Minus, Token::Type::Not})) {
         Token operatorToken = this->previous();
         std::unique_ptr<ASTNode> right = this->unary();
-        return std::make_unique<UnaryExpressionNode>(
+        return std::make_unique<UnaryExpr>(
             operatorToken, std::move(right));
     }
 

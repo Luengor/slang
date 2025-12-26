@@ -44,29 +44,29 @@ struct LiteralNode : public ASTNode {
     void print_object();
 };
 
-struct UnaryExpressionNode : public ASTNode {
+struct UnaryExpr : public ASTNode {
     ASTNodePtr operand;
 
-    UnaryExpressionNode(const Token &token, ASTNodePtr operand);
+    UnaryExpr(const Token &token, ASTNodePtr operand);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 };
 
-struct CastNode : public ASTNode {
+struct CastExpr : public ASTNode {
     ASTNodePtr operand;
     OpCode cast_op;
 
-    CastNode(const Token &token, ASTNodePtr operand, TypeID target_type);
+    CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
 };
 
-struct BinaryExpressionNode : public ASTNode {
+struct BinaryExpr : public ASTNode {
     ASTNodePtr left, right;
 
-    BinaryExpressionNode(const Token &token, ASTNodePtr left, ASTNodePtr right);
+    BinaryExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;

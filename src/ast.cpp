@@ -118,11 +118,11 @@ void LiteralNode::print_object() {
     }
 }
 
-// UnaryExpressionNode Implementation
-UnaryExpressionNode::UnaryExpressionNode(const Token &token, ASTNodePtr operand)
+// UnaryExpr Implementation
+UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
-void UnaryExpressionNode::resolveType(CompileContext &ctx) {
+void UnaryExpr::resolveType(CompileContext &ctx) {
     // Check if already resolved
     if (this->result_type.has_value()) {
         return;
@@ -166,7 +166,7 @@ void UnaryExpressionNode::resolveType(CompileContext &ctx) {
     }
 }
 
-void UnaryExpressionNode::compile(CompileContext &ctx) {
+void UnaryExpr::compile(CompileContext &ctx) {
     // Compile the operand first
     this->operand->compile(ctx);
 
@@ -193,21 +193,21 @@ void UnaryExpressionNode::compile(CompileContext &ctx) {
     }
 }
 
-void UnaryExpressionNode::print(int indent) {
+void UnaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "UnaryExpression(" << this->token.lexeme << ")\n";
     this->operand->print(indent + 1);
 }
 
-// CastNode Implementation
-CastNode::CastNode(const Token &token, ASTNodePtr operand, TypeID target_type)
+// CastExpr Implementation
+CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
     : ASTNode(ASTNodeType::BinaryExpression, token),
       operand(std::move(operand)) {
     // Copy result type
     this->result_type = target_type;
 }
 
-void CastNode::resolveType(CompileContext &ctx) {
+void CastExpr::resolveType(CompileContext &ctx) {
     // The operand should already be resolved, just ensure it's done
     this->operand->resolveType(ctx);
 
@@ -224,7 +224,7 @@ void CastNode::resolveType(CompileContext &ctx) {
     this->cast_op = castOp.value();
 }
 
-void CastNode::compile(CompileContext &ctx) {
+void CastExpr::compile(CompileContext &ctx) {
     // Compile the operand first
     this->operand->compile(ctx);
 
@@ -232,19 +232,19 @@ void CastNode::compile(CompileContext &ctx) {
     ctx.chunk.write(this->cast_op, this->token.line);
 }
 
-void CastNode::print(int indent) {
+void CastExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "Cast(to type " << this->result_type.value() << ")\n";
     this->operand->print(indent + 1);
 }
 
-// BinaryExpressionNode Implementation
-BinaryExpressionNode::BinaryExpressionNode(const Token &token, ASTNodePtr left,
+// BinaryExpr Implementation
+BinaryExpr::BinaryExpr(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
     : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
       right(std::move(right)) { }
 
-void BinaryExpressionNode::resolveType(CompileContext &ctx) {
+void BinaryExpr::resolveType(CompileContext &ctx) {
     // Check if already resolved
     if (this->result_type.has_value()) {
         return;
@@ -284,7 +284,7 @@ void BinaryExpressionNode::resolveType(CompileContext &ctx) {
 
     // Cast operands to the common type if necessary
     if (this->left->result_type != result_type.value()) {
-        this->left = std::make_unique<CastNode>(
+        this->left = std::make_unique<CastExpr>(
             this->token,
             std::move(this->left),
             result_type.value());
@@ -292,7 +292,7 @@ void BinaryExpressionNode::resolveType(CompileContext &ctx) {
     }
 
     if (this->right->result_type != result_type.value()) {
-        this->right = std::make_unique<CastNode>(
+        this->right = std::make_unique<CastExpr>(
             this->token,
             std::move(this->right),
             result_type.value());
@@ -334,7 +334,7 @@ void BinaryExpressionNode::resolveType(CompileContext &ctx) {
     }
 }
 
-void BinaryExpressionNode::compile(CompileContext &ctx) {
+void BinaryExpr::compile(CompileContext &ctx) {
     // Compile left and right operands first
     this->left->compile(ctx);
     this->right->compile(ctx);
@@ -369,7 +369,7 @@ void BinaryExpressionNode::compile(CompileContext &ctx) {
     }
 }
 
-void BinaryExpressionNode::compileArithmetic(CompileContext &ctx) {
+void BinaryExpr::compileArithmetic(CompileContext &ctx) {
     const TypeID floatingType =
         ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
 
@@ -407,7 +407,7 @@ void BinaryExpressionNode::compileArithmetic(CompileContext &ctx) {
 #undef IorF
 }
 
-void BinaryExpressionNode::compileLogical(CompileContext &ctx) {
+void BinaryExpr::compileLogical(CompileContext &ctx) {
     // Check that the type is boolean
     const TypeID booleanType =
         ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -433,7 +433,7 @@ void BinaryExpressionNode::compileLogical(CompileContext &ctx) {
     }
 }
 
-void BinaryExpressionNode::compileEquality(CompileContext &ctx) {
+void BinaryExpr::compileEquality(CompileContext &ctx) {
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->result_type.value());
 
@@ -472,7 +472,7 @@ void BinaryExpressionNode::compileEquality(CompileContext &ctx) {
 #undef EqOrNe
 }
 
-void BinaryExpressionNode::compileComparison(CompileContext &ctx) {
+void BinaryExpr::compileComparison(CompileContext &ctx) {
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
@@ -516,7 +516,7 @@ void BinaryExpressionNode::compileComparison(CompileContext &ctx) {
 #undef IorF
 }
 
-void BinaryExpressionNode::print(int indent) {
+void BinaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "BinaryExpression(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
