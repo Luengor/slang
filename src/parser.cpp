@@ -99,8 +99,12 @@ std::unique_ptr<ASTNode> Parser::term() {
         std::unique_ptr<ASTNode> right = this->factor();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpr>(
-            operatorToken, std::move(expr), std::move(right));
+        if (operatorToken.type == Token::Type::Or) 
+            expr = std::make_unique<LogicExpr>(
+                operatorToken, std::move(expr), std::move(right));
+        else
+            expr = std::make_unique<BinaryExpr>(
+                operatorToken, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -116,8 +120,12 @@ std::unique_ptr<ASTNode> Parser::factor() {
         std::unique_ptr<ASTNode> right = this->unary();
 
         // Create a binary expression node
-        expr = std::make_unique<BinaryExpr>(
-            operatorToken, std::move(expr), std::move(right));
+        if (operatorToken.type == Token::Type::And) 
+            expr = std::make_unique<LogicExpr>(
+                operatorToken, std::move(expr), std::move(right));
+        else
+            expr = std::make_unique<BinaryExpr>(
+                operatorToken, std::move(expr), std::move(right));
     }
 
     return expr;

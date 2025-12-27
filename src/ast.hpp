@@ -11,6 +11,7 @@ enum class ASTNodeType {
     Literal,
     UnaryExpression,
     BinaryExpression,
+    LogicExpression
 };
 
 struct CompileContext {
@@ -73,9 +74,17 @@ struct BinaryExpr : public ASTNode {
 
   private:
     void compileArithmetic(CompileContext &ctx);
-    void compileLogical(CompileContext &ctx);
     void compileEquality(CompileContext &ctx);
     void compileComparison(CompileContext &ctx);
+};
+
+struct LogicExpr : public ASTNode {
+    ASTNodePtr left, right;
+
+    LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
 };
 
 Chunk compileAST(ASTNode *root);

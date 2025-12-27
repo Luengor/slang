@@ -309,13 +309,6 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
             this->result_type = result_type.value();
             break;
 
-        case Token::Type::And:
-        case Token::Type::Or:
-            // Logical operations yield boolean type
-            // (the common type must be boolean here)
-            this->result_type = result_type.value();
-            break;
-
         case Token::Type::EqualEqual:
         case Token::Type::BangEqual:
         case Token::Type::Greater:
@@ -346,10 +339,6 @@ void BinaryExpr::compile(CompileContext &ctx) {
         case Token::Type::Star:
         case Token::Type::Slash:
             return compileArithmetic(ctx);
-
-        case Token::Type::And:
-        case Token::Type::Or:
-            return compileLogical(ctx);
 
         case Token::Type::EqualEqual:
         case Token::Type::BangEqual:
@@ -405,32 +394,6 @@ void BinaryExpr::compileArithmetic(CompileContext &ctx) {
     }
 
 #undef IorF
-}
-
-void BinaryExpr::compileLogical(CompileContext &ctx) {
-    // Check that the type is boolean
-    const TypeID booleanType =
-        ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    if (this->result_type != booleanType) {
-        throw ParserError(
-            this->token,
-            "Logical operators require boolean operand types.");
-    }
-
-    // Compile the appropriate logical operation
-    switch (this->token.type) {
-        case Token::Type::And:
-            ctx.chunk.write(OpCode::And, this->token.line);
-            break;
-        case Token::Type::Or:
-            ctx.chunk.write(OpCode::Or, this->token.line);
-            break;
-
-        default:
-            throw ParserError(
-                this->token, "Unsupported logical operator during compilation.");
-            break;
-    }
 }
 
 void BinaryExpr::compileEquality(CompileContext &ctx) {
@@ -519,6 +482,62 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {
 void BinaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "BinaryExpression(" << this->token.lexeme << ")\n";
+    this->left->print(indent + 1);
+    this->right->print(indent + 1);
+}
+
+// LogicExpr
+LogicExpr::LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right)
+    : ASTNode(ASTNodeType::LogicExpression, token), left(std::move(left)),
+      right(std::move(right)) {}
+
+void LogicExpr::resolveType(CompileContext &ctx) {
+    // Check if already resolved
+    if (this->result_type.has_value()) {
+        return;
+    }
+
+    // Resolve left and right operand types first
+    this->left->resolveType(ctx);
+    this->right->resolveType(ctx);
+
+    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+
+    // Both operands must be boolean
+    if (this->left->result_type != booleanType ||
+        this->right->result_type != booleanType) {
+        throw ParserError(
+            this->token,
+            "Logical expressions require boolean operand types.");
+    }
+
+    this->result_type = booleanType;
+}
+
+void LogicExpr::compile(CompileContext &ctx) {
+    // Compile left and right operands first
+    this->left->compile(ctx);
+    this->right->compile(ctx);
+
+    // Compile the appropriate logical operation
+    switch (this->token.type) {
+        case Token::Type::And:
+            ctx.chunk.write(OpCode::And, this->token.line);
+            break;
+        case Token::Type::Or:
+            ctx.chunk.write(OpCode::Or, this->token.line);
+            break;
+
+        default:
+            throw ParserError(
+                this->token, "Unsupported logical operator during compilation.");
+            break;
+    }
+}
+
+void LogicExpr::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "LogicExpression(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
     this->right->print(indent + 1);
 }
