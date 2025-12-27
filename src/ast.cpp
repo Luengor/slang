@@ -11,6 +11,11 @@
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+#define ResolveGuard \
+    if (this->result_type.has_value()) { \
+        return; \
+    }
+
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
@@ -64,10 +69,7 @@ LiteralNode::LiteralNode(const Token &token)
 }
 
 void LiteralNode::resolveType(CompileContext &ctx) {
-    if (this->result_type.has_value()) {
-        // Type already resolved
-        return;
-    }
+    ResolveGuard;
 
     // Get result type of the literal
     this->result_type = ctx.typeRegistry.getFromValue(this->value);
@@ -123,10 +125,7 @@ UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
 
 void UnaryExpr::resolveType(CompileContext &ctx) {
-    // Check if already resolved
-    if (this->result_type.has_value()) {
-        return;
-    }
+    ResolveGuard;
 
     // Resolve the operand type first
     this->operand->resolveType(ctx);
@@ -208,6 +207,8 @@ CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
 }
 
 void CastExpr::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
     // The operand should already be resolved, just ensure it's done
     this->operand->resolveType(ctx);
 
@@ -245,10 +246,7 @@ BinaryExpr::BinaryExpr(const Token &token, ASTNodePtr left,
       right(std::move(right)) { }
 
 void BinaryExpr::resolveType(CompileContext &ctx) {
-    // Check if already resolved
-    if (this->result_type.has_value()) {
-        return;
-    }
+    ResolveGuard;
 
     // Resolve left and right operand types first
     this->left->resolveType(ctx);
@@ -492,10 +490,7 @@ LogicExpr::LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right)
       right(std::move(right)) {}
 
 void LogicExpr::resolveType(CompileContext &ctx) {
-    // Check if already resolved
-    if (this->result_type.has_value()) {
-        return;
-    }
+    ResolveGuard;
 
     // Resolve left and right operand types first
     this->left->resolveType(ctx);
@@ -540,6 +535,67 @@ void LogicExpr::print(int indent) {
     std::cout << "LogicExpression(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
     this->right->print(indent + 1);
+}
+
+// ExprStmt Implementation
+ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
+    : ASTNode(ASTNodeType::ExprStatement, token),
+      expression(std::move(expression)) {}
+
+void ExprStmt::resolveType(CompileContext &ctx) {
+    // Resolve the expression type
+    this->expression->resolveType(ctx);
+
+    // Expression statements have no result type
+    this->result_type = ctx.typeRegistry.noneType();
+}
+
+void ExprStmt::compile(CompileContext &ctx) {
+    // Compile the expression
+    this->expression->compile(ctx);
+
+    // Pop the result off the stack since it's not used
+    ctx.chunk.write(OpCode::Pop, this->token.line);
+}
+
+void ExprStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "ExprStatement\n";
+    this->expression->print(indent + 1);
+}
+
+// BlockStmt Implementation
+
+BlockStmt::BlockStmt(const Token &token, std::vector<ASTNodePtr> statements)
+    : ASTNode(ASTNodeType::BlockStatement, token),
+      statements(std::move(statements)) {}
+
+void BlockStmt::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve types for all statements
+    for (auto &stmt : this->statements) {
+        stmt->resolveType(ctx);
+    }
+
+    // For now, block statements have no result type
+    // Maybe in the future we can have the last statement's type?
+    this->result_type = ctx.typeRegistry.noneType();
+}
+
+void BlockStmt::compile(CompileContext &ctx) {
+    // Compile all statements in the block
+    for (auto &stmt : this->statements) {
+        stmt->compile(ctx);
+    }
+}
+
+void BlockStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "BlockStatement\n";
+    for (auto &stmt : this->statements) {
+        stmt->print(indent + 1);
+    }
 }
 
 Chunk compileAST(ASTNode *root) {

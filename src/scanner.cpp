@@ -64,6 +64,7 @@ Token Scanner::scanToken() {
         case '+': return this->makeToken(Token::Plus);
         case '*': return this->makeToken(Token::Star);
         case '/': return this->makeToken(Token::Slash);
+        case ';': return this->makeToken(Token::Semicolon);
         case '>':
             if (this->peek() == '=') {
                 this->current++;

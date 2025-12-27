@@ -3,6 +3,7 @@
 #include "error.hpp"
 #include <cassert>
 #include <iostream>
+#include <vector>
 
 /// Parser helper methods
 
@@ -49,6 +50,16 @@ const Token &Parser::consume(Token::Type type, const char *message) {
 }
 
 /// Recursive descent parsing methods
+
+std::unique_ptr<ASTNode> Parser::statement() {
+    return this->exprStmt();
+}
+
+std::unique_ptr<ASTNode> Parser::exprStmt() {
+    std::unique_ptr<ASTNode> expr = this->expression();
+    this->consume(Token::Type::Semicolon, "Expected ';' after expression.");
+    return std::make_unique<ExprStmt>(expr->token, std::move(expr));
+}
 
 std::unique_ptr<ASTNode> Parser::expression() {
     return this->equality();
@@ -167,10 +178,11 @@ std::unique_ptr<ASTNode> Parser::primary() {
 Parser::Parser(const std::vector<Token> &tokens) : current(0), tokens(tokens) {}
 
 std::unique_ptr<ASTNode> Parser::parse() {
-    try {
-        return this->expression();
-    } catch (const ParserError &error) {
-        std::cerr << error.what() << std::endl;
-        return nullptr;
+    std::vector<ASTNodePtr> statements;
+
+    while (!this->isAtEnd()) {
+        statements.push_back(this->statement());
     }
+
+    return std::make_unique<BlockStmt>(Token{}, std::move(statements));
 }

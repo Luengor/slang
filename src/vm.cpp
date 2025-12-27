@@ -52,12 +52,7 @@ InterpretResult VM::run() {
 
         const OpCode instruction = READ_INS();
         switch (instruction) {
-            case OpCode::Return: {
-                const Value value = this->stack.back();
-                this->stack.pop_back();
-                std::print("{:g} {:d} {}\n", value.floating, value.fixed, value.boolean);
-                return InterpretResult::Ok;
-            }
+            case OpCode::Return: return InterpretResult::Ok;
 
             case OpCode::Constant: {
                 const auto constant = READ_CONSTANT();
@@ -113,6 +108,11 @@ InterpretResult VM::run() {
             case OpCode::LtF: BINARY_OP(<, floating)
             case OpCode::GeF: BINARY_OP(>=, floating)
             case OpCode::LeF: BINARY_OP(<=, floating)
+
+            case OpCode::Pop: {
+                this->stack.pop_back();
+                break;
+            }
 
             default:
                 {

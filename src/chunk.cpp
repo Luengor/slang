@@ -71,6 +71,8 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::GeF: return simpleInstruction("OP_GEF", offset);
         case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
 
+        case OpCode::Pop: return simpleInstruction("OP_POP", offset);
+
         default:
             std::print("Unknown opcode {}\n",
                        static_cast<uint8_t>(instruction));

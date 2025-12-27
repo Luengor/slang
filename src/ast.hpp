@@ -6,6 +6,7 @@
 #include "value.hpp"
 #include <memory>
 #include <optional>
+#include <vector>
 
 enum class ASTNodeType {
     Literal,
@@ -13,6 +14,8 @@ enum class ASTNodeType {
     CastExpression,
     BinaryExpression,
     LogicExpression,
+    ExprStatement,
+    BlockStatement,
 };
 
 struct CompileContext {
@@ -83,6 +86,24 @@ struct LogicExpr : public ASTNode {
     ASTNodePtr left, right;
 
     LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct ExprStmt : public ASTNode {
+    ASTNodePtr expression;
+
+    ExprStmt(const Token &token, ASTNodePtr expression);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct BlockStmt : public ASTNode {
+    std::vector<ASTNodePtr> statements;
+
+    BlockStmt(const Token &token, std::vector<ASTNodePtr> statements);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;

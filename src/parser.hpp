@@ -45,6 +45,12 @@ class Parser {
     // error with the provided message
     const Token &consume(Token::Type type, const char *message);
 
+    // statement -> exprStmt 
+    std::unique_ptr<ASTNode> statement();
+
+    // exprStmt -> expression ";"
+    std::unique_ptr<ASTNode> exprStmt();
+
     // expression -> equality 
     std::unique_ptr<ASTNode> expression();
 
@@ -68,6 +74,9 @@ class Parser {
 
 public:
     Parser(const std::vector<Token> &tokens);
+
+    // Parse the tokens and return the root of the AST
+    // program -> statement* EOF
     std::unique_ptr<ASTNode> parse();
 };
 

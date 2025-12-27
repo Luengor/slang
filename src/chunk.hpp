@@ -25,6 +25,8 @@ enum class OpCode : uint8_t {
     I2F, F2I,
     I2B, B2I,
     F2B, B2F,
+
+    Pop,
 };
 
 class Chunk {
