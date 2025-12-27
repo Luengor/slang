@@ -201,7 +201,7 @@ void UnaryExpr::print(int indent) {
 
 // CastExpr Implementation
 CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
-    : ASTNode(ASTNodeType::BinaryExpression, token),
+    : ASTNode(ASTNodeType::CastExpression, token),
       operand(std::move(operand)) {
     // Copy result type
     this->result_type = target_type;

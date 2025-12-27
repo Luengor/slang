@@ -10,8 +10,9 @@
 enum class ASTNodeType {
     Literal,
     UnaryExpression,
+    CastExpression,
     BinaryExpression,
-    LogicExpression
+    LogicExpression,
 };
 
 struct CompileContext {
