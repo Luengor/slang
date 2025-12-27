@@ -10,12 +10,12 @@
 
 enum class ASTNodeType {
     Literal,
-    UnaryExpression,
-    CastExpression,
-    BinaryExpression,
-    LogicExpression,
-    ExprStatement,
-    BlockStatement,
+    UnaryExpr,
+    CastExpr,
+    BinaryExpr,
+    LogicExpr,
+    ExprStmt,
+    BlockStmt,
 };
 
 struct CompileContext {

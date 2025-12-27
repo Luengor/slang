@@ -122,7 +122,7 @@ void LiteralNode::print_object() {
 
 // UnaryExpr Implementation
 UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
-    : ASTNode(ASTNodeType::UnaryExpression, token), operand(std::move(operand)) {}
+    : ASTNode(ASTNodeType::UnaryExpr, token), operand(std::move(operand)) {}
 
 void UnaryExpr::resolveType(CompileContext &ctx) {
     ResolveGuard;
@@ -194,13 +194,13 @@ void UnaryExpr::compile(CompileContext &ctx) {
 
 void UnaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "UnaryExpression(" << this->token.lexeme << ")\n";
+    std::cout << "UnaryExpr(" << this->token.lexeme << ")\n";
     this->operand->print(indent + 1);
 }
 
 // CastExpr Implementation
 CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
-    : ASTNode(ASTNodeType::CastExpression, token),
+    : ASTNode(ASTNodeType::CastExpr, token),
       operand(std::move(operand)) {
     // Copy result type
     this->result_type = target_type;
@@ -242,7 +242,7 @@ void CastExpr::print(int indent) {
 // BinaryExpr Implementation
 BinaryExpr::BinaryExpr(const Token &token, ASTNodePtr left,
                                            ASTNodePtr right)
-    : ASTNode(ASTNodeType::BinaryExpression, token), left(std::move(left)),
+    : ASTNode(ASTNodeType::BinaryExpr, token), left(std::move(left)),
       right(std::move(right)) { }
 
 void BinaryExpr::resolveType(CompileContext &ctx) {
@@ -479,14 +479,14 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {
 
 void BinaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "BinaryExpression(" << this->token.lexeme << ")\n";
+    std::cout << "BinaryExpr(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
     this->right->print(indent + 1);
 }
 
 // LogicExpr
 LogicExpr::LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right)
-    : ASTNode(ASTNodeType::LogicExpression, token), left(std::move(left)),
+    : ASTNode(ASTNodeType::LogicExpr, token), left(std::move(left)),
       right(std::move(right)) {}
 
 void LogicExpr::resolveType(CompileContext &ctx) {
@@ -532,14 +532,14 @@ void LogicExpr::compile(CompileContext &ctx) {
 
 void LogicExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "LogicExpression(" << this->token.lexeme << ")\n";
+    std::cout << "LogicExpr(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
     this->right->print(indent + 1);
 }
 
 // ExprStmt Implementation
 ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
-    : ASTNode(ASTNodeType::ExprStatement, token),
+    : ASTNode(ASTNodeType::ExprStmt, token),
       expression(std::move(expression)) {}
 
 void ExprStmt::resolveType(CompileContext &ctx) {
@@ -560,14 +560,14 @@ void ExprStmt::compile(CompileContext &ctx) {
 
 void ExprStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "ExprStatement\n";
+    std::cout << "ExprStmt\n";
     this->expression->print(indent + 1);
 }
 
 // BlockStmt Implementation
 
 BlockStmt::BlockStmt(const Token &token, std::vector<ASTNodePtr> statements)
-    : ASTNode(ASTNodeType::BlockStatement, token),
+    : ASTNode(ASTNodeType::BlockStmt, token),
       statements(std::move(statements)) {}
 
 void BlockStmt::resolveType(CompileContext &ctx) {
@@ -592,7 +592,7 @@ void BlockStmt::compile(CompileContext &ctx) {
 
 void BlockStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "BlockStatement\n";
+    std::cout << "BlockStmt\n";
     for (auto &stmt : this->statements) {
         stmt->print(indent + 1);
     }
