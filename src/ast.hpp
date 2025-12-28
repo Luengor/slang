@@ -20,6 +20,7 @@ enum class ASTNodeType {
     VarDeclStmt,
     AssignExpr,
     IfStmt,
+    WhileStmt,
 };
 
 struct Local {
@@ -166,6 +167,16 @@ struct IfStmt : public ASTNode {
 
     IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
            ASTNodePtr else_branch);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct WhileStmt : public ASTNode {
+    ASTNodePtr condition;
+    ASTNodePtr body;
+
+    WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;

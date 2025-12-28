@@ -21,7 +21,7 @@ int Chunk::constantInstruction(const char *name, int offset) {
 }
 
 int Chunk::jumpInstruction(const char *name, int offset) {
-    const uint16_t jump = static_cast<uint16_t>((this->code[offset + 1] << 8) |
+    const int16_t jump = static_cast<uint16_t>((this->code[offset + 1] << 8) |
                                                 this->code[offset + 2]);
     std::print("{:13s} {:4d} -> {:04d}\n", name, offset, offset + 3 + jump);
     return offset + 3;

@@ -62,6 +62,7 @@ void Parser::syncronize() {
             case Token::Type::Bool:
             case Token::Type::Auto:
             case Token::Type::If:
+            case Token::Type::While:
                 return;
             default:
                 break;
@@ -107,6 +108,8 @@ std::unique_ptr<ASTNode> Parser::statement() {
         return this->block();
     } else if (this->match({Token::Type::If})) {
         return this->ifStmt();
+    } else if (this->match({Token::Type::While})) {
+        return this->whileStmt();
     }
 
     return this->exprStmt();
@@ -133,6 +136,18 @@ std::unique_ptr<ASTNode> Parser::ifStmt() {
 
     return std::make_unique<IfStmt>(
         ifToken, std::move(condition), std::move(thenBranch), std::move(elseBranch));
+}
+
+std::unique_ptr<ASTNode> Parser::whileStmt() {
+    Token while_token = this->previous();
+    this->consume(Token::Type::LeftParen, "Expected '(' after 'while'.");
+    std::unique_ptr<ASTNode> condition = this->expression();
+    this->consume(Token::Type::RightParen, "Expected ')' after while condition.");
+
+    std::unique_ptr<ASTNode> body = this->statement();
+
+    return std::make_unique<WhileStmt>(
+        while_token, std::move(condition), std::move(body));
 }
 
 std::unique_ptr<ASTNode> Parser::block() {

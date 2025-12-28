@@ -55,7 +55,7 @@ class Parser {
     //  )? ";"
     std::unique_ptr<ASTNode> varDecl();
 
-    // statement -> exprStmt | ifStmt | block
+    // statement -> exprStmt | ifStmt | whileStmt | block
     std::unique_ptr<ASTNode> statement();
 
     // exprStmt -> expression ";"
@@ -63,6 +63,9 @@ class Parser {
 
     // ifStmt -> "if" "(" expression ")" statement ( "else" statement )?
     std::unique_ptr<ASTNode> ifStmt();
+
+    // whileStmt -> "while" "(" expression ")" statement
+    std::unique_ptr<ASTNode> whileStmt();
 
     // block -> "{" declaration* "}"
     std::unique_ptr<ASTNode> block();

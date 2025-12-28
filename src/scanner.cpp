@@ -171,6 +171,9 @@ Token Scanner::makeIdentifier() {
         case 't':
             if (token.lexeme == "true") token.type = Token::True;
             break;
+        case 'w':
+            if (token.lexeme == "while") token.type = Token::While;
+            break;
     }
 
     return token;

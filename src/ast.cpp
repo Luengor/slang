@@ -939,6 +939,78 @@ void IfStmt::print(int indent) {
     }
 }
 
+// WhileStmt Implementation
+WhileStmt::WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body)
+    : ASTNode(ASTNodeType::WhileStmt, token),
+      condition(std::move(condition)),
+      body(std::move(body)) {}
+
+void WhileStmt::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve condition and body
+    this->condition->resolveType(ctx);
+    this->body->resolveType(ctx);
+
+    // While statements have no result type
+    this->result_type = ctx.typeRegistry.noneType();
+
+    // Condition must be boolean
+    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    if (this->condition->result_type == booleanType)
+        return;
+
+    // If not, find a cast
+    auto castOp = ctx.typeRegistry.getCastOp(
+        this->condition->result_type.value(), booleanType);
+    if (!castOp.has_value()) {
+        throw ParserError(
+            this->token,
+            "While statement condition should coerce to boolean type.");
+    }
+
+    this->condition = std::make_unique<CastExpr>(
+        this->token,
+        std::move(this->condition),
+        booleanType);
+    this->condition->resolveType(ctx);
+}
+
+void WhileStmt::compile(CompileContext &ctx) {
+    // Mark the beggining of the condition
+    const auto before_condition = ctx.chunk.currentOffset();
+
+    // Compile the condition
+    this->condition->compile(ctx);
+
+    // Insert jump to end of loop if condition is false
+    ctx.chunk.write(OpCode::JmpIfFalsePop, this->token.line);
+    const auto jump_to_patch = ctx.chunk.writeWord(0xFFFF, this->token.line);
+
+    // Compile body
+    this->body->compile(ctx);
+
+    // Insert jump to condition
+    ctx.chunk.write(OpCode::Jmp, this->token.line);
+    const int16_t before_offset =
+        static_cast<int16_t>(before_condition) -
+        static_cast<int16_t>(ctx.chunk.currentOffset() + 2);
+    ctx.chunk.writeWord(before_offset, this->token.line);
+
+    // Patch first jump
+    const unsigned final_addr = ctx.chunk.currentOffset();
+    const int16_t offset_to_end =
+        static_cast<int16_t>(final_addr - (jump_to_patch + 2));
+    ctx.chunk.patchWord(jump_to_patch, offset_to_end);
+}
+
+void WhileStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "WhileStmt\n";
+    this->condition->print(indent + 1);
+    this->body->print(indent + 1);
+}
+
 Chunk compileAST(ASTNode *root) {
     // Create compile context
     Chunk chunk;
