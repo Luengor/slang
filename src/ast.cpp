@@ -16,6 +16,50 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
         return; \
     }
 
+// CompileContext
+int CompileContext::addLocal(const std::string &name, TypeID type) {
+    // Check if there are any existing locals with the same name
+    // defined in the same scope
+    for (auto it = this->locals.rbegin(); it != this->locals.rend(); ++it) {
+        if (it->name == name && it->depth == this->scope_depth) {
+            return -1; // Indicate error: duplicate local
+        }
+    }
+
+    this->locals.push_back(
+        Local{.name = name, .type = type, .depth = this->scope_depth});
+    return static_cast<int>(this->locals.size() - 1);
+}
+
+int CompileContext::findLocal(const std::string &name) {
+    // Search for the local variable in reverse order (most recent first)
+    for (auto it = this->locals.rbegin(); it != this->locals.rend(); ++it) {
+        if (it->name == name) {
+            return std::distance(it, this->locals.rend()) - 1;
+        }
+    }
+
+    return -1; // Not found
+}
+
+void CompileContext::enterScope() {
+    this->scope_depth++;
+}
+
+int CompileContext::exitScope() {
+    this->scope_depth--;
+
+    int pop_count = 0;
+    for (auto it = this->locals.rbegin();
+         it != this->locals.rend() && it->depth > this->scope_depth; ++it) {
+        // Remove local variables from this scope and count how many to pop
+        this->locals.pop_back();
+        pop_count++;
+    }
+
+    return pop_count;
+}
+
 // LiteralNode Implementation
 LiteralNode::LiteralNode(const Token &token)
     : ASTNode(ASTNodeType::Literal, token) {
@@ -119,6 +163,42 @@ void LiteralNode::print_object() {
         }
     }
 }
+
+// Variable Node Implementation
+VariableNode::VariableNode(const Token &token, const std::string &name)
+    : ASTNode(ASTNodeType::Variable, token), name(name) {}
+
+// Resolve type is only called on variable use
+void VariableNode::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Find the variable in the local scope
+    const int local_index = ctx.findLocal(this->name);
+    if (local_index == -1) {
+        throw ParserError(this->token,
+                          "Undefined variable during type resolution.");
+    }
+
+    this->local_index = local_index;
+    this->result_type = ctx.locals[local_index].type;
+}
+
+void VariableNode::compile(CompileContext &ctx) {
+    if (this->local_index == -1) {
+        throw ParserError(this->token,
+                          "Variable not resolved before compilation.");
+    }
+
+    // Load the variable from the local slot
+    ctx.chunk.write(OpCode::GetLocal, this->token.line);
+    ctx.chunk.write(static_cast<uint8_t>(this->local_index), this->token.line);
+}
+
+void VariableNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "Variable(" << this->name << ")\n";
+}
+
 
 // UnaryExpr Implementation
 UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
@@ -573,10 +653,16 @@ BlockStmt::BlockStmt(const Token &token, std::vector<ASTNodePtr> statements)
 void BlockStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
+    // Enter a new scope
+    ctx.enterScope();
+
     // Resolve types for all statements
     for (auto &stmt : this->statements) {
         stmt->resolveType(ctx);
     }
+
+    // Exit the scope
+    this->pop = ctx.exitScope();
 
     // For now, block statements have no result type
     // Maybe in the future we can have the last statement's type?
@@ -588,6 +674,11 @@ void BlockStmt::compile(CompileContext &ctx) {
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
     }
+
+    // Pop local variables declared in this block
+    for (int i = 0; i < this->pop; i++) {
+        ctx.chunk.write(OpCode::Pop, this->token.line);
+    }
 }
 
 void BlockStmt::print(int indent) {
@@ -598,11 +689,161 @@ void BlockStmt::print(int indent) {
     }
 }
 
+// VarDeclStmt Implementation
+VarDeclStmt::VarDeclStmt(const Token &type_token, const Token &name_token,
+                         ASTNodePtr initializer)
+    : ASTNode(ASTNodeType::VarDeclStmt, name_token),
+      initializer(std::move(initializer)), type_token(type_token) {}
+
+void VarDeclStmt::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // If there's an initializer, resolve its type
+    if (this->initializer) {
+        this->initializer->resolveType(ctx);
+    }
+
+    // If the variable type is auto, infer from initializer
+    if (this->type_token.type == Token::Type::Auto) {
+        if (!this->initializer) {
+            throw ParserError(
+                this->token,
+                "Auto variable declaration requires an initializer.");
+        }
+
+        this->result_type = this->initializer->result_type;
+    }
+
+    // If no initializer, just use the declared type
+    else {
+        switch (this->type_token.type) {
+            case Token::Type::Fixed:
+                this->result_type =
+                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
+                break;
+
+            case Token::Type::Float:
+                this->result_type =
+                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
+                break;
+
+            case Token::Type::Bool:
+                this->result_type =
+                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+                break;
+
+            default:
+                throw ParserError(this->token,
+                                  "Unsupported variable type in declaration.");
+        }
+    }
+
+    // Push the variable to the locals
+    int local = ctx.addLocal(this->token.lexeme, this->result_type.value());
+    if (local == -1) {
+        throw ParserError(
+            this->token,
+            "Variable with the same name already declared in this scope.");
+    }
+}
+
+void VarDeclStmt::compile(CompileContext &ctx) {
+    // Compile the initializer if present
+    if (this->initializer) {
+        this->initializer->compile(ctx);
+    } else {
+        // Default initializer
+        // for now, push false and good luck if it's not a boolean :)
+        Value defaultValue {.boolean = false};
+        const auto constant = ctx.chunk.addConstant(defaultValue);
+        ctx.chunk.write(OpCode::Constant, this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
+    }
+
+    // Nothing more to do, we pray now
+}
+
+void VarDeclStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "VarDeclStmt(" << this->token.lexeme << " : "
+              << this->result_type.value() << ")\n";
+    if (this->initializer) {
+        this->initializer->print(indent + 1);
+    }
+}
+
+// AssignExpr Implementation
+AssignExpr::AssignExpr(const Token &token, ASTNodePtr target,
+                         ASTNodePtr value)
+    : ASTNode(ASTNodeType::AssignExpr, token),
+      target(std::move(target)), value(std::move(value)) {}
+
+void AssignExpr::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve target and value types first
+    this->target->resolveType(ctx);
+    this->value->resolveType(ctx);
+
+    // Ensure the value can be assigned to the target
+    if (this->target->result_type != this->value->result_type) {
+        // Try to insert a cast if possible
+        auto castOp = ctx.typeRegistry.getCastOp(
+            this->value->result_type.value(), this->target->result_type.value());
+
+        if (!castOp.has_value()) {
+            throw ParserError(
+                this->token,
+                "Incompatible types in assignment expression.");
+        }
+
+        this->value = std::make_unique<CastExpr>(
+            this->token,
+            std::move(this->value),
+            this->target->result_type.value());
+        this->value->resolveType(ctx);
+    }
+
+    // The result type of an assignment expression is the target's type
+    this->result_type = this->target->result_type;
+}
+
+void AssignExpr::compile(CompileContext &ctx) {
+    // Compile the value
+    this->value->compile(ctx);
+
+    // The variable is only compiled on read, so we don't do it now
+    // We get the local index from the target variable node
+    VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
+    if (varNode == nullptr || varNode->local_index == -1) {
+        throw ParserError(
+            this->token,
+            "Invalid assignment target during compilation.");
+    }
+
+    // Store the value into the local variable
+    ctx.chunk.write(OpCode::SetLocal, this->token.line);
+    ctx.chunk.write(static_cast<uint8_t>(varNode->local_index), this->token.line);
+}
+
+void AssignExpr::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "AssignExpr\n";
+    this->target->print(indent + 1);
+    this->value->print(indent + 1);
+}
+
 Chunk compileAST(ASTNode *root) {
     // Create compile context
     Chunk chunk;
     TypeRegistry typeRegistry;
-    CompileContext ctx{chunk, typeRegistry};
+    CompileContext ctx{
+        .chunk = chunk,
+        .typeRegistry = typeRegistry,
+
+        .scope_depth = 0,
+        .locals = {},
+    };
 
     // Perform type resolution
     root->resolveType(ctx);

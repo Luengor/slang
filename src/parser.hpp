@@ -45,14 +45,30 @@ class Parser {
     // error with the provided message
     const Token &consume(Token::Type type, const char *message);
 
-    // statement -> exprStmt 
+    // Error recovery: synchronize the parser state after an error
+    void syncronize();
+
+    // declaration -> varDecl | statement
+    std::unique_ptr<ASTNode> declaration();
+
+    //  varDecl     -> ("fixed" | "float" | "bool") IDENTIFIER ( "=" expression
+    //  )? ";"
+    std::unique_ptr<ASTNode> varDecl();
+
+    // statement -> exprStmt | block
     std::unique_ptr<ASTNode> statement();
+
+    // block -> "{" declaration* "}"
+    std::unique_ptr<ASTNode> block();
 
     // exprStmt -> expression ";"
     std::unique_ptr<ASTNode> exprStmt();
 
-    // expression -> equality 
+    // expression -> assignment 
     std::unique_ptr<ASTNode> expression();
+
+    // assignment  -> IDENTIFIER "=" assignment | equality
+    std::unique_ptr<ASTNode> assignment();
 
     // equality -> comparison ( ( "==" | "!=" ) comparison )*
     std::unique_ptr<ASTNode> equality();
@@ -76,7 +92,7 @@ public:
     Parser(const std::vector<Token> &tokens);
 
     // Parse the tokens and return the root of the AST
-    // program -> statement* EOF
+    // program -> declaration* EOF
     std::unique_ptr<ASTNode> parse();
 };
 

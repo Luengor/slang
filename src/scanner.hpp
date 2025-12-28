@@ -7,8 +7,10 @@ struct Token {
     enum Type : unsigned {
         // Single-character tokens.
         LeftParen, RightParen,
+        LeftBrace, RightBrace,
         Minus, Plus, Slash, Star,
         Greater, Less, Semicolon,
+        Equal,
 
         // Two-character tokens.
         EqualEqual, BangEqual,
@@ -19,6 +21,7 @@ struct Token {
 
         // Keywords.
         And, Or, Not, True, False,
+        Fixed, Float, Bool, Auto,
         
         Error, Eof
     } type;

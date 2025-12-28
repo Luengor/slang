@@ -49,10 +49,76 @@ const Token &Parser::consume(Token::Type type, const char *message) {
     throw ParserError(this->peek(), message);
 }
 
+void Parser::syncronize() {
+    this->advance();
+
+    while (!this->isAtEnd()) {
+        if (this->previous().type == Token::Type::Semicolon)
+            return;
+
+        switch (this->peek().type) {
+            case Token::Type::Fixed:
+            case Token::Type::Float:
+            case Token::Type::Bool:
+                return;
+            default:
+                break;
+        }
+
+        this->advance();
+    }
+}
+
 /// Recursive descent parsing methods
 
+std::unique_ptr<ASTNode> Parser::declaration() {
+    try {
+        if (this->match({Token::Type::Fixed, Token::Type::Float,
+                         Token::Type::Bool, Token::Type::Auto})) {
+            return this->varDecl();
+        }
+
+        return this->statement();
+    } catch (const ParserError &error) {
+        std::cerr << error.what() << std::endl;
+        this->syncronize();
+        return nullptr;
+    }
+}
+
+std::unique_ptr<ASTNode> Parser::varDecl() {
+    Token type_token = this->previous();
+    Token name = this->consume(Token::Type::Identifier, "Expected variable name.");
+
+    std::unique_ptr<ASTNode> initializer = nullptr;
+    if (match({Token::Type::Equal})) {
+        initializer = this->expression();
+    }
+
+    this->consume(Token::Type::Semicolon, "Expected ';' after variable declaration.");
+    return std::make_unique<VarDeclStmt>(type_token, name,
+                                         std::move(initializer));
+}
+
 std::unique_ptr<ASTNode> Parser::statement() {
+    if (this->match({Token::Type::LeftBrace})) {
+        return this->block();
+    }
+
     return this->exprStmt();
+}
+
+std::unique_ptr<ASTNode> Parser::block() {
+    std::vector<ASTNodePtr> statements;
+
+    while (!this->check(Token::Type::RightBrace) && !this->isAtEnd()) {
+        statements.push_back(this->declaration());
+    }
+
+    Token braceToken = this->consume(
+        Token::Type::RightBrace, "Expected '}' after block.");
+
+    return std::make_unique<BlockStmt>(braceToken, std::move(statements));
 }
 
 std::unique_ptr<ASTNode> Parser::exprStmt() {
@@ -62,7 +128,26 @@ std::unique_ptr<ASTNode> Parser::exprStmt() {
 }
 
 std::unique_ptr<ASTNode> Parser::expression() {
-    return this->equality();
+    return this->assignment();
+}
+
+std::unique_ptr<ASTNode> Parser::assignment() {
+    std::unique_ptr<ASTNode> expr = this->equality();
+
+    if (this->match({Token::Type::Equal})) {
+        Token equals = this->previous();
+        std::unique_ptr<ASTNode> value = this->assignment();
+
+        // Perform assignment only if the left side is a VariableNode
+        if (expr->type != ASTNodeType::Variable) {
+            throw ParserError(equals, "Invalid assignment target.");
+        }
+
+        return std::make_unique<AssignExpr>(
+            equals, std::move(expr), std::move(value));
+    }
+
+    return expr;
 }
 
 std::unique_ptr<ASTNode> Parser::equality() {
@@ -162,6 +247,12 @@ std::unique_ptr<ASTNode> Parser::primary() {
         return std::make_unique<LiteralNode>(this->previous());
     }
 
+    // Make a variable node for identifiers
+    if (this->match({Token::Type::Identifier})) {
+        return std::make_unique<VariableNode>(
+            this->previous(), this->previous().lexeme);
+    }
+
     // If left parenthesis, parse a grouped expression
     if (this->match({Token::Type::LeftParen})) {
         std::unique_ptr<ASTNode> expr = this->expression();
@@ -179,9 +270,19 @@ Parser::Parser(const std::vector<Token> &tokens) : current(0), tokens(tokens) {}
 
 std::unique_ptr<ASTNode> Parser::parse() {
     std::vector<ASTNodePtr> statements;
+    bool failed = false;
 
     while (!this->isAtEnd()) {
-        statements.push_back(this->statement());
+        auto stmt = this->declaration();
+        if (stmt != nullptr) {
+            statements.push_back(std::move(stmt));
+        } else {
+            failed = true;
+        }
+    }
+
+    if (failed) {
+        return nullptr;
     }
 
     return std::make_unique<BlockStmt>(Token{}, std::move(statements));

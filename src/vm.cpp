@@ -93,24 +93,40 @@ InterpretResult VM::run() {
             case OpCode::F2B: CAST(floating, boolean, bool);
             case OpCode::B2F: CAST(boolean, floating, FloatingType);
 
-            case OpCode::EqI: BINARY_OP(==, fixed)
-            case OpCode::NeI: BINARY_OP(!=, fixed)
-            case OpCode::EqF: BINARY_OP(==, floating)
-            case OpCode::NeF: BINARY_OP(!=, floating)
-            case OpCode::EqB: BINARY_OP(==, boolean)
-            case OpCode::NeB: BINARY_OP(!=, boolean)
+            case OpCode::EqI: BINARY_OP(==, fixed);
+            case OpCode::NeI: BINARY_OP(!=, fixed);
+            case OpCode::EqF: BINARY_OP(==, floating);
+            case OpCode::NeF: BINARY_OP(!=, floating);
+            case OpCode::EqB: BINARY_OP(==, boolean);
+            case OpCode::NeB: BINARY_OP(!=, boolean);
 
-            case OpCode::GtI: BINARY_OP(>, fixed)
-            case OpCode::LtI: BINARY_OP(<, fixed)
-            case OpCode::GeI: BINARY_OP(>=, fixed)
-            case OpCode::LeI: BINARY_OP(<=, fixed)
-            case OpCode::GtF: BINARY_OP(>, floating)
-            case OpCode::LtF: BINARY_OP(<, floating)
-            case OpCode::GeF: BINARY_OP(>=, floating)
-            case OpCode::LeF: BINARY_OP(<=, floating)
+            case OpCode::GtI: BINARY_OP(>, fixed);
+            case OpCode::LtI: BINARY_OP(<, fixed);
+            case OpCode::GeI: BINARY_OP(>=, fixed);
+            case OpCode::LeI: BINARY_OP(<=, fixed);
+            case OpCode::GtF: BINARY_OP(>, floating);
+            case OpCode::LtF: BINARY_OP(<, floating);
+            case OpCode::GeF: BINARY_OP(>=, floating);
+            case OpCode::LeF: BINARY_OP(<=, floating);
 
             case OpCode::Pop: {
+#ifndef NDEBUG
+                const auto val = this->stack.back();
+                std::println("{} {} {}", val.floating, val.fixed, val.boolean);
+#endif
                 this->stack.pop_back();
+                break;
+            }
+
+            case OpCode::GetLocal: {
+                const uint8_t slot = READ_BYTE();
+                this->stack.push_back(this->stack[slot]);
+                break;
+            }
+
+            case OpCode::SetLocal: {
+                const uint8_t slot = READ_BYTE();
+                this->stack[slot] = this->stack.back();
                 break;
             }
 

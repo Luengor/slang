@@ -60,6 +60,8 @@ Token Scanner::scanToken() {
     switch (c) {
         case '(': return this->makeToken(Token::LeftParen);
         case ')': return this->makeToken(Token::RightParen);
+        case '{': return this->makeToken(Token::LeftBrace);
+        case '}': return this->makeToken(Token::RightBrace);
         case '-': return this->makeToken(Token::Minus);
         case '+': return this->makeToken(Token::Plus);
         case '*': return this->makeToken(Token::Star);
@@ -82,7 +84,7 @@ Token Scanner::scanToken() {
                 this->current++;
                 return this->makeToken(Token::EqualEqual);
             }
-            break;
+            return this->makeToken(Token::Equal);
         case '!':
             if (this->peek() == '=') {
                 this->current++;
@@ -144,9 +146,15 @@ Token Scanner::makeIdentifier() {
     switch (token.lexeme[0]) {
         case 'a':
             if (token.lexeme == "and") token.type = Token::And;
+            else if (token.lexeme == "auto") token.type = Token::Auto;
+            break;
+        case 'b':
+            if (token.lexeme == "bool") token.type = Token::Bool;
             break;
         case 'f':
             if (token.lexeme == "false") token.type = Token::False;
+            else if (token.lexeme == "float") token.type = Token::Float;
+            else if (token.lexeme == "fixed") token.type = Token::Fixed;
             break;
         case 'n':
             if (token.lexeme == "not") token.type = Token::Not;

@@ -73,6 +73,9 @@ int Chunk::disassebleInstruction(int offset) {
 
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
 
+        case OpCode::GetLocal: return constantInstruction("OP_GETLOCAL", offset);
+        case OpCode::SetLocal: return constantInstruction("OP_SETLOCAL", offset);
+
         default:
             std::print("Unknown opcode {}\n",
                        static_cast<uint8_t>(instruction));

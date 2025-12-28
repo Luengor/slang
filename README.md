@@ -2,16 +2,20 @@
 ## Sintax
 ### Rules
 ```
-program     -> statement* EOF
-statement   -> exprStmt
+program     -> declaration* EOF
+declaration -> varDecl | statement
+varDecl     -> ("fixed" | "float" | "bool") IDENTIFIER ( "=" expression )? ";"
+statement   -> exprStmt | block
+block       -> "{" declaration* "}"
 exprStmt    -> expression ";"
-expression  -> equality
+expression  -> assignment
+assignment  -> IDENTIFIER "=" assignment | equality
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
 comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" | "or" ) factor )*
 factor      -> unary ( ( "*" | "/" | "and" ) unary )*
 unary       -> ( "-" | "not" ) unary | primary
-primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")"
+primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER
 ```
 
 ### Operators Precedence
@@ -22,4 +26,5 @@ From highest to lowest:
 4. Term and OR: `+`, `-`, `or`
 5. Comparison: `>`, `>=`, `<`, `<=`
 6. Equality: `==`, `!=`
+7. Assignment: `=`
 
