@@ -4,20 +4,6 @@
 #include <iostream>
 #include <print>
 
-void repl() {
-    std::string line;
-    VM vm;
-
-    for (;;) {
-        std::print("> ");
-        if (!std::getline(std::cin, line)) {
-            break;
-        }
-
-        vm.interpret(line);
-    }
-}
-
 void runFile(const char *path) {
     // Read the file
     std::ifstream file(path, std::ios::in);
@@ -42,12 +28,10 @@ void runFile(const char *path) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc == 1) {
-        repl();
-    } else if (argc == 2) {
+    if (argc == 2) {
         runFile(argv[1]);
     } else {
-        std::print("Usage: cia [path]\n");
+        std::print("Usage: cia <path>\n");
         return 64;
     }
 
