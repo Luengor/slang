@@ -190,8 +190,15 @@ void VariableNode::compile(CompileContext &ctx) {
     }
 
     // Load the variable from the local slot
-    ctx.chunk.write(OpCode::GetLocal, this->token.line);
-    ctx.chunk.write(static_cast<uint8_t>(this->local_index), this->token.line);
+    if (this->local_index > 255) {
+        ctx.chunk.write(OpCode::GetLocalLong, this->token.line);
+        ctx.chunk.writeWord(static_cast<uint16_t>(this->local_index),
+                            this->token.line);
+    } else {
+        ctx.chunk.write(OpCode::GetLocal, this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(this->local_index),
+                        this->token.line);
+    }
 }
 
 void VariableNode::print(int indent) {
@@ -822,8 +829,15 @@ void AssignExpr::compile(CompileContext &ctx) {
     }
 
     // Store the value into the local variable
-    ctx.chunk.write(OpCode::SetLocal, this->token.line);
-    ctx.chunk.write(static_cast<uint8_t>(varNode->local_index), this->token.line);
+    if (varNode->local_index > 255) {
+        ctx.chunk.write(OpCode::SetLocalLong, this->token.line);
+        ctx.chunk.writeWord(static_cast<uint16_t>(varNode->local_index),
+                            this->token.line);
+    } else {
+        ctx.chunk.write(OpCode::SetLocal, this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(varNode->local_index),
+                        this->token.line);
+    }
 }
 
 void AssignExpr::print(int indent) {

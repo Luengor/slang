@@ -7,6 +7,11 @@ int Chunk::simpleInstruction(const char *name, int offset) {
     return offset+1;
 }
 
+int Chunk::simpleArgInstruction(const char *name, int offset, int arg) {
+    std::print("{}\n", name);
+    return offset + 1 + arg;
+}
+
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
     const auto constant = this->constants[constant_i];
@@ -73,8 +78,12 @@ int Chunk::disassebleInstruction(int offset) {
 
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
 
-        case OpCode::GetLocal: return constantInstruction("OP_GETLOCAL", offset);
-        case OpCode::SetLocal: return constantInstruction("OP_SETLOCAL", offset);
+        case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 1);
+        case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 1);
+        case OpCode::GetLocalLong:
+            return simpleArgInstruction("OP_GETLOCAL", offset, 2);
+        case OpCode::SetLocalLong:
+            return simpleArgInstruction("OP_SETLOCAL", offset, 2);
 
         default:
             std::print("Unknown opcode {}\n",
@@ -86,6 +95,11 @@ int Chunk::disassebleInstruction(int offset) {
 void Chunk::write(uint8_t byte, int line) {
     this->code.push_back(byte);
     this->lines.push_back(line);
+}
+
+void Chunk::writeWord(uint16_t word, int line) {
+    this->write(static_cast<uint8_t>((word >> 8) & 0xFF), line);
+    this->write(static_cast<uint8_t>(word & 0xFF), line);
 }
 
 int Chunk::addConstant(Value value) {

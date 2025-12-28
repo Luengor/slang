@@ -26,6 +26,12 @@ InterpretResult VM::run() {
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
 #define READ_CONSTANT() (this->chunk.constants[READ_BYTE()])
 
+    const auto readWord = [] (uint8_t *&ip) {
+        uint16_t high = static_cast<uint16_t>(*ip++);
+        uint16_t low = static_cast<uint16_t>(*ip++);
+        return (high << 8) | low;
+    };
+
 #define BINARY_OP(op, mode)            \
     {                            \
         const auto b = this->stack.back(); \
@@ -124,8 +130,20 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::GetLocalLong: {
+                const uint16_t slot = readWord(this->ip);
+                this->stack.push_back(this->stack[slot]);
+                break;
+            }
+
             case OpCode::SetLocal: {
                 const uint8_t slot = READ_BYTE();
+                this->stack[slot] = this->stack.back();
+                break;
+            }
+
+            case OpCode::SetLocalLong: {
+                const uint16_t slot = readWord(this->ip);
                 this->stack[slot] = this->stack.back();
                 break;
             }
