@@ -158,6 +158,7 @@ Token Scanner::makeIdentifier() {
             if (token.lexeme == "false") token.type = Token::False;
             else if (token.lexeme == "float") token.type = Token::Float;
             else if (token.lexeme == "fixed") token.type = Token::Fixed;
+            else if (token.lexeme == "for") token.type = Token::For;
             break;
         case 'i':
             if (token.lexeme == "if") token.type = Token::If;

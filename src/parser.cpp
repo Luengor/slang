@@ -63,6 +63,7 @@ void Parser::syncronize() {
             case Token::Type::Auto:
             case Token::Type::If:
             case Token::Type::While:
+            case Token::Type::For:
                 return;
             default:
                 break;
@@ -110,6 +111,8 @@ std::unique_ptr<ASTNode> Parser::statement() {
         return this->ifStmt();
     } else if (this->match({Token::Type::While})) {
         return this->whileStmt();
+    } else if (this->match({Token::Type::For})) {
+        return this->forStmt();
     }
 
     return this->exprStmt();
@@ -148,6 +151,73 @@ std::unique_ptr<ASTNode> Parser::whileStmt() {
 
     return std::make_unique<WhileStmt>(
         while_token, std::move(condition), std::move(body));
+}
+
+std::unique_ptr<ASTNode> Parser::forStmt() {
+    Token for_token = this->previous();
+    this->consume(Token::Type::LeftParen, "Expected '(' after 'for'.");
+    std::unique_ptr<ASTNode> initializer = nullptr;
+
+    if (!this->match({Token::Type::Semicolon})) {
+        if (this->match({Token::Type::Fixed, Token::Type::Float,
+                         Token::Type::Bool, Token::Type::Auto})) {
+            initializer = this->varDecl();
+        } else {
+            initializer = this->exprStmt();
+        }
+    }
+
+    std::unique_ptr<ASTNode> condition = nullptr;
+    if (!this->match({Token::Type::Semicolon})) {
+        condition = this->expression();
+        this->consume(Token::Type::Semicolon, "Expected ';' after loop condition.");
+    }
+
+    std::unique_ptr<ASTNode> increment = nullptr;
+    if (!this->match({Token::Type::RightParen})) {
+        increment = this->expression();
+        this->consume(Token::Type::RightParen, "Expected ')' after for clauses.");
+    }
+
+    std::unique_ptr<ASTNode> body = this->statement();
+
+    // caramelize for loop into while loop
+    // Prepare a secuence of statements for the block
+    std::vector<ASTNodePtr> statements;
+
+    // If there's an initializer, add it first
+    if (initializer) {
+        statements.push_back(std::move(initializer));
+    }
+
+    // Add the increment clause to the end of the body
+    if (increment) {
+        std::vector<ASTNodePtr> body_statements;
+        body_statements.push_back(std::move(body));
+
+        // The increment should be an expression statement to pop its result
+        body_statements.push_back(
+            std::make_unique<ExprStmt>(increment->token, std::move(increment)));
+        body = std::make_unique<BlockStmt>(for_token, std::move(body_statements));
+    }
+
+    // If no condition, use 'true' literal
+    if (!condition) {
+        Token trueToken{
+            .type = Token::Type::True,
+            .lexeme = "true",
+            .line = for_token.line
+        };
+        condition = std::make_unique<LiteralNode>(trueToken);
+    }
+
+    // Create the while statement
+    std::unique_ptr<ASTNode> whileStmt = std::make_unique<WhileStmt>(
+        for_token, std::move(condition), std::move(body));
+
+    statements.push_back(std::move(whileStmt));
+
+    return std::make_unique<BlockStmt>(for_token, std::move(statements));
 }
 
 std::unique_ptr<ASTNode> Parser::block() {
