@@ -113,6 +113,10 @@ std::unique_ptr<ASTNode> Parser::statement() {
         return this->whileStmt();
     } else if (this->match({Token::Type::For})) {
         return this->forStmt();
+    } else if (this->match({Token::Type::Semicolon})) {
+        // Empty statement
+        Token semicolonToken = this->previous();
+        return std::make_unique<ExprStmt>(semicolonToken, nullptr);
     }
 
     return this->exprStmt();

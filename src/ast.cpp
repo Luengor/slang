@@ -630,14 +630,22 @@ ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
       expression(std::move(expression)) {}
 
 void ExprStmt::resolveType(CompileContext &ctx) {
-    // Resolve the expression type
-    this->expression->resolveType(ctx);
+    ResolveGuard;
+
+    // Resolve the expression type if any
+    if (this->expression)
+        this->expression->resolveType(ctx);
 
     // Expression statements have no result type
     this->result_type = ctx.typeRegistry.noneType();
 }
 
 void ExprStmt::compile(CompileContext &ctx) {
+    // If there is no expression, nothing to compile
+    if (!this->expression) {
+        return;
+    }
+
     // Compile the expression
     this->expression->compile(ctx);
 
@@ -646,6 +654,12 @@ void ExprStmt::compile(CompileContext &ctx) {
 }
 
 void ExprStmt::print(int indent) {
+    if (!this->expression) {
+        for (int i = 0; i < indent; i++) std::cout << "  ";
+        std::cout << "ExprStmt(Empty)\n";
+        return;
+    }
+
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "ExprStmt\n";
     this->expression->print(indent + 1);
