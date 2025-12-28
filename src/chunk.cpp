@@ -3,20 +3,28 @@
 #include <print>
 
 int Chunk::simpleInstruction(const char *name, int offset) {
-    std::print("{}\n", name);
+    std::print("{:13s}\n", name);
     return offset+1;
 }
 
 int Chunk::simpleArgInstruction(const char *name, int offset, int arg) {
-    std::print("{}\n", name);
+    std::print("{:13s}\n", name);
     return offset + 1 + arg;
 }
 
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
     const auto constant = this->constants[constant_i];
-    std::print("{} {:4d} '{:g}'/'{:d}' {}\n", name, constant_i, constant.floating, constant.fixed, constant.boolean);
-    return offset+2;
+    std::print("{:13s} {:4d} '{:g}'/'{:d}' {}\n", name, constant_i,
+               constant.floating, constant.fixed, constant.boolean);
+    return offset + 2;
+}
+
+int Chunk::jumpInstruction(const char *name, int offset) {
+    const uint16_t jump = static_cast<uint16_t>((this->code[offset + 1] << 8) |
+                                                this->code[offset + 2]);
+    std::print("{:13s} {:4d} -> {:04d}\n", name, offset, offset + 3 + jump);
+    return offset + 3;
 }
 
 int Chunk::disassebleInstruction(int offset) {
@@ -77,6 +85,10 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
 
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
+
+        case OpCode::Jmp: return jumpInstruction("OP_JMP", offset);
+        case OpCode::JmpIfFalse: return jumpInstruction("OP_JNT", offset);
+        case OpCode::JmpIfFalsePop: return jumpInstruction("OP_JNT_POP", offset);
 
         case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 1);
         case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 1);

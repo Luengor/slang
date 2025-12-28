@@ -43,6 +43,7 @@ class Chunk {
     int simpleInstruction(const char *name, int offset);
     int simpleArgInstruction(const char *name, int offset, int arg);
     int constantInstruction(const char *name, int offset);
+    int jumpInstruction(const char *name, int offset);
     int disassebleInstruction(int offset);
 
 public:
