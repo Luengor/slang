@@ -151,10 +151,16 @@ Token Scanner::makeIdentifier() {
         case 'b':
             if (token.lexeme == "bool") token.type = Token::Bool;
             break;
+        case 'e':
+            if (token.lexeme == "else") token.type = Token::Else;
+            break;
         case 'f':
             if (token.lexeme == "false") token.type = Token::False;
             else if (token.lexeme == "float") token.type = Token::Float;
             else if (token.lexeme == "fixed") token.type = Token::Fixed;
+            break;
+        case 'i':
+            if (token.lexeme == "if") token.type = Token::If;
             break;
         case 'n':
             if (token.lexeme == "not") token.type = Token::Not;

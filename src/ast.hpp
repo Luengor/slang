@@ -19,6 +19,7 @@ enum class ASTNodeType {
     BlockStmt,
     VarDeclStmt,
     AssignExpr,
+    IfStmt,
 };
 
 struct Local {
@@ -153,6 +154,18 @@ struct AssignExpr : public ASTNode {
     ASTNodePtr value;
 
     AssignExpr(const Token &token, ASTNodePtr target, ASTNodePtr value);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct IfStmt : public ASTNode {
+    ASTNodePtr condition;
+    ASTNodePtr then_branch;
+    ASTNodePtr else_branch;
+
+    IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
+           ASTNodePtr else_branch);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;

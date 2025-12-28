@@ -92,14 +92,29 @@ int Chunk::disassebleInstruction(int offset) {
     }
 }
 
-void Chunk::write(uint8_t byte, int line) {
+unsigned Chunk::write(uint8_t byte, int line) {
     this->code.push_back(byte);
     this->lines.push_back(line);
+
+    return this->code.size() - 1;
 }
 
-void Chunk::writeWord(uint16_t word, int line) {
+unsigned Chunk::writeWord(uint16_t word, int line) {
     this->write(static_cast<uint8_t>((word >> 8) & 0xFF), line);
     this->write(static_cast<uint8_t>(word & 0xFF), line);
+
+    return this->code.size() - 2;
+}
+
+void Chunk::patchWord(unsigned offset, uint16_t word) {
+    assert(offset + 1 < this->code.size());
+
+    this->code[offset] = static_cast<uint8_t>((word >> 8) & 0xFF);
+    this->code[offset + 1] = static_cast<uint8_t>(word & 0xFF);
+}
+
+unsigned Chunk::currentOffset() const {
+    return this->code.size();
 }
 
 int Chunk::addConstant(Value value) {

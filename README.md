@@ -5,7 +5,8 @@
 program     -> declaration* EOF
 declaration -> varDecl | statement
 varDecl     -> ("fixed" | "float" | "bool") IDENTIFIER ( "=" expression )? ";"
-statement   -> exprStmt | block
+statement   -> exprStmt | ifStmt | block
+ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 block       -> "{" declaration* "}"
 exprStmt    -> expression ";"
 expression  -> assignment

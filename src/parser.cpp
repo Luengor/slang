@@ -60,6 +60,8 @@ void Parser::syncronize() {
             case Token::Type::Fixed:
             case Token::Type::Float:
             case Token::Type::Bool:
+            case Token::Type::Auto:
+            case Token::Type::If:
                 return;
             default:
                 break;
@@ -103,9 +105,34 @@ std::unique_ptr<ASTNode> Parser::varDecl() {
 std::unique_ptr<ASTNode> Parser::statement() {
     if (this->match({Token::Type::LeftBrace})) {
         return this->block();
+    } else if (this->match({Token::Type::If})) {
+        return this->ifStmt();
     }
 
     return this->exprStmt();
+}
+
+std::unique_ptr<ASTNode> Parser::exprStmt() {
+    std::unique_ptr<ASTNode> expr = this->expression();
+    this->consume(Token::Type::Semicolon, "Expected ';' after expression.");
+    return std::make_unique<ExprStmt>(expr->token, std::move(expr));
+}
+
+std::unique_ptr<ASTNode> Parser::ifStmt() {
+    Token ifToken = this->previous();
+    this->consume(Token::Type::LeftParen, "Expected '(' after 'if'.");
+    std::unique_ptr<ASTNode> condition = this->expression();
+    this->consume(Token::Type::RightParen, "Expected ')' after if condition.");
+
+    std::unique_ptr<ASTNode> thenBranch = this->statement();
+    std::unique_ptr<ASTNode> elseBranch = nullptr;
+
+    if (this->match({Token::Type::Else})) {
+        elseBranch = this->statement();
+    }
+
+    return std::make_unique<IfStmt>(
+        ifToken, std::move(condition), std::move(thenBranch), std::move(elseBranch));
 }
 
 std::unique_ptr<ASTNode> Parser::block() {
@@ -119,12 +146,6 @@ std::unique_ptr<ASTNode> Parser::block() {
         Token::Type::RightBrace, "Expected '}' after block.");
 
     return std::make_unique<BlockStmt>(braceToken, std::move(statements));
-}
-
-std::unique_ptr<ASTNode> Parser::exprStmt() {
-    std::unique_ptr<ASTNode> expr = this->expression();
-    this->consume(Token::Type::Semicolon, "Expected ';' after expression.");
-    return std::make_unique<ExprStmt>(expr->token, std::move(expr));
 }
 
 std::unique_ptr<ASTNode> Parser::expression() {

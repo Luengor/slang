@@ -847,6 +847,98 @@ void AssignExpr::print(int indent) {
     this->value->print(indent + 1);
 }
 
+// IfStmt Implementation
+IfStmt::IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
+               ASTNodePtr else_branch)
+    : ASTNode(ASTNodeType::IfStmt, token),
+      condition(std::move(condition)),
+      then_branch(std::move(then_branch)),
+      else_branch(std::move(else_branch)) {}
+
+void IfStmt::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve everything first
+    this->condition->resolveType(ctx);
+    this->then_branch->resolveType(ctx);
+    if (this->else_branch) {
+        this->else_branch->resolveType(ctx);
+    }
+
+    // For now, this has no result type
+    this->result_type = ctx.typeRegistry.noneType();
+
+    // Condition must be boolean
+    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    if (this->condition->result_type == booleanType)
+        return;
+
+    // If not, find a cast
+    auto castOp = ctx.typeRegistry.getCastOp(
+        this->condition->result_type.value(), booleanType);
+    if (!castOp.has_value()) {
+        throw ParserError(
+            this->token,
+            "If statement condition should coerce to boolean type.");
+    }
+
+    this->condition = std::make_unique<CastExpr>(
+        this->token,
+        std::move(this->condition),
+        booleanType);
+    this->condition->resolveType(ctx);
+}
+
+void IfStmt::compile(CompileContext &ctx) {
+    // Compile the condition first
+    this->condition->compile(ctx);
+
+    // Insert jump if false, take note of the jump address and insert dummy
+    ctx.chunk.write(OpCode::JmpIfFalsePop, this->token.line);
+    const auto if_jump =
+        ctx.chunk.writeWord(0xFFFF, this->token.line); // Placeholder
+
+    // Compile then branch
+    this->then_branch->compile(ctx);
+    
+    // If there is an else branch, insert jump to after else
+    unsigned else_jump = 0;
+    if (this->else_branch) {
+        ctx.chunk.write(OpCode::Jmp, this->token.line);
+        else_jump =
+            ctx.chunk.writeWord(0xFFFF, this->token.line); // Placeholder
+    }
+
+    // Patch first jump
+    const unsigned after_then_addr = ctx.chunk.currentOffset();
+    const int16_t offset_to_after_then =
+        static_cast<int16_t>(after_then_addr - (if_jump + 2));
+    ctx.chunk.patchWord(if_jump, offset_to_after_then);
+
+    // If there is no else branch, we're done
+    if (!this->else_branch)
+        return;
+
+    // Compile else branch
+    this->else_branch->compile(ctx);
+
+    // Patch else jump
+    const unsigned after_else_addr = ctx.chunk.currentOffset();
+    const int16_t offset_to_after_else =
+        static_cast<int16_t>(after_else_addr - (else_jump + 2));
+    ctx.chunk.patchWord(else_jump, offset_to_after_else);
+}
+
+void IfStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "IfStmt\n";
+    this->condition->print(indent + 1);
+    this->then_branch->print(indent + 1);
+    if (this->else_branch) {
+        this->else_branch->print(indent + 1);
+    }
+}
+
 Chunk compileAST(ASTNode *root) {
     // Create compile context
     Chunk chunk;

@@ -2,6 +2,7 @@
 #include "chunk.hpp"
 #include "compiler.hpp"
 #include "value.hpp"
+#include <cassert>
 #include <print>
 
 InterpretResult VM::interpret(const std::string &source) {
@@ -23,14 +24,12 @@ InterpretResult VM::interpret(const std::string &source) {
 InterpretResult VM::run() {
 #define ever ;;
 #define READ_BYTE() (*this->ip++)
+#define READ_UWORD()                                                           \
+    (this->ip += 2, static_cast<uint16_t>((this->ip[-2] << 8) | this->ip[-1]))
+#define READ_WORD()                                                            \
+    (this->ip += 2, static_cast<int16_t>((this->ip[-2] << 8) | this->ip[-1]))
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
 #define READ_CONSTANT() (this->chunk.constants[READ_BYTE()])
-
-    const auto readWord = [] (uint8_t *&ip) {
-        uint16_t high = static_cast<uint16_t>(*ip++);
-        uint16_t low = static_cast<uint16_t>(*ip++);
-        return (high << 8) | low;
-    };
 
 #define BINARY_OP(op, mode)            \
     {                            \
@@ -58,7 +57,9 @@ InterpretResult VM::run() {
 
         const OpCode instruction = READ_INS();
         switch (instruction) {
-            case OpCode::Return: return InterpretResult::Ok;
+            case OpCode::Return:
+                assert(this->stack.size() == 0 && "Stack should be empty on return");
+                return InterpretResult::Ok;
 
             case OpCode::Constant: {
                 const auto constant = READ_CONSTANT();
@@ -131,7 +132,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::GetLocalLong: {
-                const uint16_t slot = readWord(this->ip);
+                const uint16_t slot = READ_UWORD();
                 this->stack.push_back(this->stack[slot]);
                 break;
             }
@@ -143,8 +144,32 @@ InterpretResult VM::run() {
             }
 
             case OpCode::SetLocalLong: {
-                const uint16_t slot = readWord(this->ip);
+                const uint16_t slot = READ_UWORD();
                 this->stack[slot] = this->stack.back();
+                break;
+            }
+
+            case OpCode::Jmp: {
+                const int16_t offset = READ_WORD();
+                this->ip += offset;
+                break;
+            }
+
+            case OpCode::JmpIfFalse: {
+                const int16_t offset = READ_WORD();
+                if (!this->stack.back().boolean) {
+                    this->ip += offset;
+                }
+                // no pop!
+                break;
+            }
+
+            case OpCode::JmpIfFalsePop: {
+                const int16_t offset = READ_WORD();
+                if (!this->stack.back().boolean) {
+                    this->ip += offset;
+                }
+                this->stack.pop_back(); // pop!
                 break;
             }
 
@@ -161,6 +186,7 @@ InterpretResult VM::run() {
     return InterpretResult::Ok;
 
 #undef ever
+#undef READ_WORD 
 #undef READ_BYTE
 #undef READ_INS
 #undef READ_CONSTANT

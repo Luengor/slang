@@ -26,6 +26,8 @@ enum class OpCode : uint8_t {
     I2B, B2I,
     F2B, B2F,
 
+    Jmp, JmpIfFalse, JmpIfFalsePop,
+
     Pop,
     GetLocal, SetLocal,
     GetLocalLong, SetLocalLong,
@@ -44,11 +46,16 @@ class Chunk {
     int disassebleInstruction(int offset);
 
 public:
-    // Write a byte to the chunk
-    void write(uint8_t byte, int line);
+    // Write a byte to the chunk and return its offset
+    unsigned write(uint8_t byte, int line);
 
-    // Write a word to the chunk
-    void writeWord(uint16_t word, int line);
+    // Write a word to the chunk and return its offset
+    unsigned writeWord(uint16_t word, int line);
+
+    // Patch a word at the given offset
+    void patchWord(unsigned offset, uint16_t word);
+
+    unsigned currentOffset() const;
 
     template <typename T>
     inline void write(T data, int line) {
