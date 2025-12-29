@@ -13,7 +13,7 @@ enum class OpCode : uint8_t {
     SubtractF, SubtractI,
     MultiplyF, MultiplyI,
     DivideF, DivideI,
-    Not, And, Or,
+    Not,
 
     EqI, NeI,
     EqF, NeF,
@@ -27,6 +27,7 @@ enum class OpCode : uint8_t {
     F2B, B2F,
 
     Jmp, JmpIfFalse, JmpIfFalsePop,
+    JmpIfTrue,
 
     Pop,
     GetLocal, SetLocal,

@@ -596,24 +596,52 @@ void LogicExpr::resolveType(CompileContext &ctx) {
 }
 
 void LogicExpr::compile(CompileContext &ctx) {
-    // Compile left and right operands first
+    if (this->token.type == Token::Type::And) {
+        return compileAnd(ctx);
+    } else if (this->token.type == Token::Type::Or) {
+        return compileOr(ctx);
+    }
+}
+
+void LogicExpr::compileAnd(CompileContext &ctx) {
+    // Compile first operand
     this->left->compile(ctx);
+
+    // If that operand is false, we can skip the second operand
+    // note that this jump does NOT pop the value
+    ctx.chunk.write(OpCode::JmpIfFalse, this->token.line);
+    const int16_t jmp_pos = ctx.chunk.writeWord(0xFFFF);
+
+    // If its not false, we need to pop the true value
+    ctx.chunk.write(OpCode::Pop, this->token.line);
+
+    // Compile second operand
     this->right->compile(ctx);
 
-    // Compile the appropriate logical operation
-    switch (this->token.type) {
-        case Token::Type::And:
-            ctx.chunk.write(OpCode::And, this->token.line);
-            break;
-        case Token::Type::Or:
-            ctx.chunk.write(OpCode::Or, this->token.line);
-            break;
+    // Patch the jump position
+    const int16_t after_pos = static_cast<int16_t>(ctx.chunk.currentOffset());
+    const int16_t offset = after_pos - (jmp_pos + 2);
+    ctx.chunk.patchWord(jmp_pos, offset);
+}
 
-        default:
-            throw ParserError(
-                this->token, "Unsupported logical operator during compilation.");
-            break;
-    }
+void LogicExpr::compileOr(CompileContext &ctx) {
+    // Compile first operand
+    this->left->compile(ctx);
+
+    // If its true, we can skip evaluating the second operand
+    ctx.chunk.write(OpCode::JmpIfTrue, this->token.line);
+    const int16_t jmp_pos = ctx.chunk.writeWord(0xFFFF);
+
+    // If its not true, we need to pop the false value
+    ctx.chunk.write(OpCode::Pop, this->token.line);
+
+    // Compile second operand
+    this->right->compile(ctx);
+
+    // Patch the jump position
+    const int16_t after_pos = static_cast<int16_t>(ctx.chunk.currentOffset());
+    const int16_t offset = after_pos - (jmp_pos + 2);
+    ctx.chunk.patchWord(jmp_pos, offset);
 }
 
 void LogicExpr::print(int indent) {

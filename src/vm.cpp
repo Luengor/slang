@@ -85,8 +85,6 @@ InterpretResult VM::run() {
             case OpCode::MultiplyI: BINARY_OP(*, fixed)
             case OpCode::DivideF: BINARY_OP(/, floating)
             case OpCode::DivideI: BINARY_OP(/, fixed)
-            case OpCode::And: BINARY_OP(&&, boolean)
-            case OpCode::Or: BINARY_OP(||, boolean)
 
             case OpCode::Not: {
                 this->stack.back().boolean = !this->stack.back().boolean;
@@ -158,6 +156,15 @@ InterpretResult VM::run() {
             case OpCode::JmpIfFalse: {
                 const int16_t offset = READ_WORD();
                 if (!this->stack.back().boolean) {
+                    this->ip += offset;
+                }
+                // no pop!
+                break;
+            }
+
+            case OpCode::JmpIfTrue: {
+                const int16_t offset = READ_WORD();
+                if (this->stack.back().boolean) {
                     this->ip += offset;
                 }
                 // no pop!

@@ -119,6 +119,10 @@ struct LogicExpr : public ASTNode {
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;
+
+private:
+    void compileAnd(CompileContext &ctx);
+    void compileOr(CompileContext &ctx);
 };
 
 struct ExprStmt : public ASTNode {
