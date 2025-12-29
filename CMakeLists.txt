@@ -10,9 +10,12 @@ option(DEBUG "Don't define NDEBUG and disable optimizations" ON)
 set(TARGET_NAME cia)
 
 set(SOURCES
-    src/ast.cpp
+    src/ast_core.cpp
+    src/ast_expr.cpp
+    src/ast_stmt.cpp
     src/chunk.cpp
     src/compiler.cpp
+    src/compile_context.cpp
     src/error.cpp
     src/parser.cpp
     src/scanner.cpp

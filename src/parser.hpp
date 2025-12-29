@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ast.hpp"
+#include "ast_core.hpp"
 #include "scanner.hpp"
 #include <memory>
 

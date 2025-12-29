@@ -1,0 +1,78 @@
+#pragma once
+
+// Expressions are AST nodes that are not statements.
+// Statements are AST nodes that have side effects.
+// (statements can, and often do, behave like expressions)
+// ((but I have to draw the line somewhere))
+
+#include "ast_core.hpp"
+
+struct LiteralNode : public ASTNode {
+    TypedValue value;
+
+    LiteralNode(const Token &token);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+
+  private:
+    void print_object();
+};
+
+struct VariableNode : public ASTNode {
+    std::string name;
+    int local_index = -1;
+
+    VariableNode(const Token &token, const std::string &name);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct UnaryExpr : public ASTNode {
+    ASTNodePtr operand;
+
+    UnaryExpr(const Token &token, ASTNodePtr operand);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct CastExpr : public ASTNode {
+    ASTNodePtr operand;
+    OpCode cast_op;
+    TypeID target_type;
+
+    CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
+struct BinaryExpr : public ASTNode {
+    ASTNodePtr left, right;
+
+    BinaryExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+
+  private:
+    void compileArithmetic(CompileContext &ctx);
+    void compileEquality(CompileContext &ctx);
+    void compileComparison(CompileContext &ctx);
+};
+
+struct LogicExpr : public ASTNode {
+    ASTNodePtr left, right;
+
+    LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+
+private:
+    void compileAnd(CompileContext &ctx);
+    void compileOr(CompileContext &ctx);
+};
+

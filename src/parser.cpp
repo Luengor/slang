@@ -1,5 +1,7 @@
+#include "ast_core.hpp"
+#include "ast_expr.hpp"
+#include "ast_stmt.hpp"
 #include "parser.hpp"
-#include "ast.hpp"
 #include "error.hpp"
 #include <cassert>
 #include <iostream>
