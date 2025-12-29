@@ -26,10 +26,10 @@ struct BlockStmt : public ASTNode {
 };
 
 struct VarDeclStmt : public ASTNode {
+    ASTNodePtr type_expr;
     ASTNodePtr initializer;
-    Token type_token;
 
-    VarDeclStmt(const Token &type_token, const Token &name_token,
+    VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
                 ASTNodePtr initializer);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;

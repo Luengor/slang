@@ -1,10 +1,12 @@
 #include "ast_core.hpp"
 #include "ast_expr.hpp"
 #include "ast_stmt.hpp"
+#include "ast_type.hpp"
 #include "parser.hpp"
 #include "error.hpp"
 #include <cassert>
 #include <iostream>
+#include <memory>
 #include <vector>
 
 /// Parser helper methods
@@ -75,12 +77,98 @@ void Parser::syncronize() {
     }
 }
 
+bool Parser::isFunctionTypeAhead() {
+    size_t temp_current = this->current;
+
+    // Check if there is an opening parenthesis
+    if (!this->check(Token::Type::LeftParen))
+        return false;
+    this->advance();
+
+    // Find the matching closing parenthesis
+    int paren_count = 0;
+    do {
+        if (this->isAtEnd()) {
+            this->current = temp_current; // Restore current
+            return false;
+        }
+
+        if (this->check(Token::Type::LeftParen)) {
+            paren_count++;
+        } else if (this->check(Token::Type::RightParen)) {
+            if (paren_count == 0) {
+                this->advance(); // Consume the closing parenthesis
+                break;
+            } else {
+                paren_count--;
+            }
+        }
+        this->advance();
+    } while (true);
+
+    // Check for an arrow or an identifier next
+    bool is_function_type = this->check(Token::Type::Arrow) ||
+                            this->check(Token::Type::Identifier);
+
+    this->current = temp_current; // Restore current
+    return is_function_type;
+}
+
 /// Recursive descent parsing methods
+
+std::unique_ptr<ASTNode> Parser::typeExpr() {
+    // Try primitive type first
+    if (this->match({Token::Type::Fixed, Token::Type::Float,
+                         Token::Type::Bool})) {
+        return this->primitiveType();
+    }
+
+    // Then try function type
+    return this->functionType();
+}
+
+std::unique_ptr<ASTNode> Parser::functionType() {
+    // Start consuming the function type
+    this->consume(Token::Type::LeftParen,
+                  "Expected '(' at start of function type.");
+
+    std::vector<ASTNodePtr> param_types;
+    if (!this->check(Token::Type::RightParen)) {
+        do {
+            param_types.push_back(this->typeExpr());
+        } while (this->match({Token::Type::Comma}));
+    }
+
+    this->consume(Token::Type::RightParen,
+                  "Expected ')' after function parameter types.");
+    this->consume(Token::Type::Arrow,
+                  "Expected '->' after function parameter list.");
+
+    // Return typeExpr or none
+    std::unique_ptr<ASTNode> return_type;
+    if (this->match({Token::Type::None})) {
+        return_type = std::make_unique<PrimitiveTypeNode>(this->previous());
+    } else {
+        return_type = this->typeExpr();
+    }
+
+    return std::make_unique<FunctionTypeNode>(
+        this->previous(), std::move(param_types), std::move(return_type));
+}
+
+std::unique_ptr<ASTNode> Parser::primitiveType() {
+    Token type_token = this->previous();
+    return std::make_unique<PrimitiveTypeNode>(type_token);
+}
 
 std::unique_ptr<ASTNode> Parser::declaration() {
     try {
-        if (this->match({Token::Type::Fixed, Token::Type::Float,
-                         Token::Type::Bool, Token::Type::Auto})) {
+        // Check if its a function declaration first
+        if (this->isFunctionTypeAhead()) {
+            return this->funcDecl();
+        } else if (this->match({Token::Type::Fixed, Token::Type::Float,
+                                Token::Type::Bool, Token::Type::Auto})) {
+            // This is a variable declaration
             return this->varDecl();
         }
 
@@ -93,7 +181,9 @@ std::unique_ptr<ASTNode> Parser::declaration() {
 }
 
 std::unique_ptr<ASTNode> Parser::varDecl() {
-    Token type_token = this->previous();
+    std::unique_ptr<ASTNode> type_node =
+        this->previous().type == Token::Type::Auto ? nullptr
+                                                   : this->primitiveType();
     Token name = this->consume(Token::Type::Identifier, "Expected variable name.");
 
     std::unique_ptr<ASTNode> initializer = nullptr;
@@ -102,8 +192,18 @@ std::unique_ptr<ASTNode> Parser::varDecl() {
     }
 
     this->consume(Token::Type::Semicolon, "Expected ';' after variable declaration.");
-    return std::make_unique<VarDeclStmt>(type_token, name,
+    return std::make_unique<VarDeclStmt>(std::move(type_node), name,
                                          std::move(initializer));
+}
+
+std::unique_ptr<ASTNode> Parser::funcDecl() {
+    std::unique_ptr<ASTNode> type_node = this->functionType();
+    Token name = this->consume(Token::Type::Identifier, "Expected function name.");
+    this->consume(Token::Type::Equal, "Expected '=' after function declaration.");
+
+    // For now, we won't parse the function body
+    type_node->print();
+    throw ParserError(this->peek(), "Function body parsing not implemented yet.");
 }
 
 std::unique_ptr<ASTNode> Parser::statement() {

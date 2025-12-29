@@ -62,10 +62,16 @@ Token Scanner::scanToken() {
         case ')': return this->makeToken(Token::RightParen);
         case '{': return this->makeToken(Token::LeftBrace);
         case '}': return this->makeToken(Token::RightBrace);
-        case '-': return this->makeToken(Token::Minus);
+        case '-':
+            if (this->peek() == '>') {
+                this->current++;
+                return this->makeToken(Token::Arrow);
+            }
+            return this->makeToken(Token::Minus);
         case '+': return this->makeToken(Token::Plus);
         case '*': return this->makeToken(Token::Star);
         case '/': return this->makeToken(Token::Slash);
+        case ',': return this->makeToken(Token::Comma);
         case ';': return this->makeToken(Token::Semicolon);
         case '>':
             if (this->peek() == '=') {
@@ -165,6 +171,7 @@ Token Scanner::makeIdentifier() {
             break;
         case 'n':
             if (token.lexeme == "not") token.type = Token::Not;
+            else if (token.lexeme == "none") token.type = Token::None;
             break;
         case 'o':
             if (token.lexeme == "or") token.type = Token::Or;

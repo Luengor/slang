@@ -1,10 +1,23 @@
 # slang
 ## Sintax
 ### Rules
+#### Main rule
 ```
 program     -> declaration* EOF
-declaration -> varDecl | statement
-varDecl     -> ("fixed" | "float" | "bool") IDENTIFIER ( "=" expression )? ";"
+```
+
+#### Type rules
+```
+typeExpr      -> functionType | primitiveType
+functionType  -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" ( typeExpr | "none" )
+primitiveType -> "fixed" | "float" | "bool"
+```
+
+#### Declaration and statement rules
+```
+declaration -> varDecl | funcDecl | statement
+varDecl     -> ( primitiveType | "auto" )IDENTIFIER ( "=" expression )? ";"
+funcDecl    -> ( functionType | "auto" ) IDENTIFIER "=" ...
 statement   -> exprStmt | ifStmt | whileStmt | forStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 whileStmt   -> "while" "(" expression ")" statement
@@ -12,6 +25,10 @@ forStmt     -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"
                          expression? ")" statement
 block       -> "{" declaration* "}"
 exprStmt    -> expression ";"
+```
+
+#### Expression rules
+```
 expression  -> assignment
 assignment  -> IDENTIFIER "=" assignment | logicOr
 logicOr     -> logicAnd ( "or" logicAnd )*

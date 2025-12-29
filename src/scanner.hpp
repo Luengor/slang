@@ -10,18 +10,19 @@ struct Token {
         LeftBrace, RightBrace,
         Minus, Plus, Slash, Star,
         Greater, Less, Semicolon,
-        Equal,
+        Equal, Comma,
 
         // Two-character tokens.
         EqualEqual, BangEqual,
         GreaterEqual, LessEqual,
+        Arrow,
 
         // Literals.
         Identifier, String, Number,
 
         // Keywords.
         And, Or, Not, True, False,
-        Fixed, Float, Bool, Auto,
+        Fixed, Float, Bool, None, Auto,
         If, Else, While, For,
         
         Error, Eof

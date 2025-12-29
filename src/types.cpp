@@ -47,6 +47,11 @@ TypeID TypeRegistry::getPrimitive(PrimitiveKind kind) {
     return getOrAdd(PrimitiveType{kind});
 }
 
+TypeID TypeRegistry::getFunction(const std::vector<TypeID> &param_types,
+                                 TypeID return_type) {
+    return getOrAdd(FunctionType{param_types, return_type});
+}
+
 TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.first) {
         case ValueType::Fixed:

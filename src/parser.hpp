@@ -48,12 +48,27 @@ class Parser {
     // Error recovery: synchronize the parser state after an error
     void syncronize();
 
-    // declaration -> varDecl | statement
+    // Check if the upcoming tokens indicate a function type
+    // (instead of a parenthesized expression)
+    bool isFunctionTypeAhead();
+
+    // typeExpr -> functionType | primitiveType
+    std::unique_ptr<ASTNode> typeExpr();
+
+    // functionType -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" typeExpr
+    std::unique_ptr<ASTNode> functionType();
+
+    // primitiveType -> "fixed" | "float" | "bool"
+    std::unique_ptr<ASTNode> primitiveType();
+
+    // declaration -> varDecl | funcDecl | statement
     std::unique_ptr<ASTNode> declaration();
 
-    //  varDecl     -> ("fixed" | "float" | "bool") IDENTIFIER ( "=" expression
-    //  )? ";"
+    // varDecl -> ( primitiveType | "auto" ) IDENTIFIER ( "=" expression )? ";"
     std::unique_ptr<ASTNode> varDecl();
+
+    // funcDecl -> ( functionType ) IDENTIFIER "=" ...
+    std::unique_ptr<ASTNode> funcDecl();
 
     // statement -> exprStmt | ifStmt | whileStmt | forStmt | block
     std::unique_ptr<ASTNode> statement();

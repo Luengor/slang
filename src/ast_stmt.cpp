@@ -95,51 +95,49 @@ void BlockStmt::print(int indent) {
 }
 
 // VarDeclStmt Implementation
-VarDeclStmt::VarDeclStmt(const Token &type_token, const Token &name_token,
+VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
                          ASTNodePtr initializer)
     : ASTNode(ASTNodeType::VarDeclStmt, name_token),
-      initializer(std::move(initializer)), type_token(type_token) {}
+      type_expr(std::move(type_expr)), initializer(std::move(initializer)) {}
 
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
+
+    // If we have a type expression, resolve it
+    if (this->type_expr) {
+        this->type_expr->resolveType(ctx);
+    }
 
     // If there's an initializer, resolve its type
     if (this->initializer) {
         this->initializer->resolveType(ctx);
     }
 
-    // If the variable type is auto, infer from initializer
-    if (this->type_token.type == Token::Type::Auto) {
-        if (!this->initializer) {
+    // If this is auto, infer the type from the initializer
+    if (this->type_expr == nullptr) {
+        if (this->initializer == nullptr) {
             throw ParserError(
                 this->token,
                 "Auto variable declaration requires an initializer.");
         }
 
         this->result_type = this->initializer->result_type;
-    }
+    } else {
+        // Otherwise, use the declared type
+        this->result_type = this->type_expr->result_type;
 
-    // If no initializer, just use the declared type
-    else {
-        switch (this->type_token.type) {
-            case Token::Type::Fixed:
-                this->result_type =
-                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
-                break;
-
-            case Token::Type::Float:
-                this->result_type =
-                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
-                break;
-
-            case Token::Type::Bool:
-                this->result_type =
-                    ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-                break;
-
-            default:
-                throw ParserError(this->token,
-                                  "Unsupported variable type in declaration.");
+        // If there is an initializer, ensure it matches the declared type
+        if (this->initializer) {
+            if (this->initializer->result_type != this->result_type) {
+                // Try to insert a cast if possible
+                auto castOp = ctx.typeRegistry.getCastOp(
+                    this->initializer->result_type.value(), this->result_type.value());
+                if (!castOp.has_value()) {
+                    throw ParserError(
+                        this->token,
+                        "Incompatible types in variable initializer.");
+                }
+            }
         }
     }
 

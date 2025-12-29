@@ -13,6 +13,7 @@ set(SOURCES
     src/ast_core.cpp
     src/ast_expr.cpp
     src/ast_stmt.cpp
+    src/ast_type.cpp
     src/chunk.cpp
     src/compiler.cpp
     src/compile_context.cpp

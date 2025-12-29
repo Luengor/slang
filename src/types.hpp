@@ -25,7 +25,17 @@ struct PrimitiveType {
     }
 };
 
-using TypeData = std::variant<PrimitiveType>;
+struct FunctionType {
+    std::vector<TypeID> param_types;
+    TypeID return_type;
+
+    bool operator==(const FunctionType &other) const noexcept {
+        return this->param_types == other.param_types &&
+               this->return_type == other.return_type;
+    }
+};
+
+using TypeData = std::variant<PrimitiveType, FunctionType>;
 
 class TypeRegistry {
     std::vector<TypeData> types;
@@ -34,6 +44,8 @@ class TypeRegistry {
 
   public:
     TypeID getPrimitive(PrimitiveKind kind);
+    TypeID getFunction(const std::vector<TypeID> &param_types,
+                           TypeID return_type);
     TypeID getFromValue(const TypedValue &value);
 
     inline TypeID noneType() {
