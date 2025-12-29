@@ -77,8 +77,14 @@ class Parser {
     // expression -> assignment 
     std::unique_ptr<ASTNode> expression();
 
-    // assignment  -> IDENTIFIER "=" assignment | equality
+    // assignment  -> IDENTIFIER "=" assignment | logicOr
     std::unique_ptr<ASTNode> assignment();
+
+    // logicOr -> logicAnd ( "or" logicAnd )*
+    std::unique_ptr<ASTNode> logicOr();
+
+    // logicAnd -> equality ( "and" equality )*
+    std::unique_ptr<ASTNode> logicAnd();
 
     // equality -> comparison ( ( "==" | "!=" ) comparison )*
     std::unique_ptr<ASTNode> equality();

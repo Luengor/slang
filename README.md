@@ -13,7 +13,9 @@ forStmt     -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"
 block       -> "{" declaration* "}"
 exprStmt    -> expression ";"
 expression  -> assignment
-assignment  -> IDENTIFIER "=" assignment | equality
+assignment  -> IDENTIFIER "=" assignment | logicOr
+logicOr     -> logicAnd ( "or" logicAnd )*
+logicAnd    -> equality ( "and" equality )*
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
 comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" | "or" ) factor )*
@@ -26,9 +28,11 @@ primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIF
 From highest to lowest:
 1. Parentheses `()`
 2. Unary operators: `-`, `!`, `not`
-3. Factor and AND: `*`, `/`, `and`
-4. Term and OR: `+`, `-`, `or`
+3. Factor and AND: `*`, `/`
+4. Term and OR: `+`, `-`
 5. Comparison: `>`, `>=`, `<`, `<=`
 6. Equality: `==`, `!=`
+7. Logic AND: `and`
+8. Logic OR: `or`
 7. Assignment: `=`
 

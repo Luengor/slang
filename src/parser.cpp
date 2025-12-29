@@ -242,7 +242,7 @@ std::unique_ptr<ASTNode> Parser::expression() {
 }
 
 std::unique_ptr<ASTNode> Parser::assignment() {
-    std::unique_ptr<ASTNode> expr = this->equality();
+    std::unique_ptr<ASTNode> expr = this->logicOr();
 
     if (this->match({Token::Type::Equal})) {
         Token equals = this->previous();
@@ -255,6 +255,40 @@ std::unique_ptr<ASTNode> Parser::assignment() {
 
         return std::make_unique<AssignExpr>(
             equals, std::move(expr), std::move(value));
+    }
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::logicOr() {
+    // Get the left operand
+    std::unique_ptr<ASTNode> expr = this->logicAnd();
+
+    // While the current token is 'or', parse the right operand
+    while (this->match({Token::Type::Or})) {
+        Token operatorToken = this->previous();
+        std::unique_ptr<ASTNode> right = this->logicAnd();
+
+        // Create a logic expression node
+        expr = std::make_unique<LogicExpr>(
+            operatorToken, std::move(expr), std::move(right));
+    }
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::logicAnd() {
+    // Get the left operand
+    std::unique_ptr<ASTNode> expr = this->equality();
+
+    // While the current token is 'and', parse the right operand
+    while (this->match({Token::Type::And})) {
+        Token operatorToken = this->previous();
+        std::unique_ptr<ASTNode> right = this->equality();
+
+        // Create a logic expression node
+        expr = std::make_unique<LogicExpr>(
+            operatorToken, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -299,18 +333,14 @@ std::unique_ptr<ASTNode> Parser::term() {
     // Get the left operand
     std::unique_ptr<ASTNode> expr = this->factor();
 
-    // While the current token is a '+', '-' or 'or', parse the right operand
-    while (this->match({Token::Type::Plus, Token::Type::Minus, Token::Type::Or})) {
+    // While the current token is a '+' or '-', parse the right operand
+    while (this->match({Token::Type::Plus, Token::Type::Minus})) {
         Token operatorToken = this->previous();
         std::unique_ptr<ASTNode> right = this->factor();
 
         // Create a binary expression node
-        if (operatorToken.type == Token::Type::Or) 
-            expr = std::make_unique<LogicExpr>(
-                operatorToken, std::move(expr), std::move(right));
-        else
-            expr = std::make_unique<BinaryExpr>(
-                operatorToken, std::move(expr), std::move(right));
+        expr = std::make_unique<BinaryExpr>(
+            operatorToken, std::move(expr), std::move(right));
     }
 
     return expr;
@@ -320,18 +350,14 @@ std::unique_ptr<ASTNode> Parser::factor() {
     // Get the left operand
     std::unique_ptr<ASTNode> expr = this->unary();
 
-    // While the current token is a '*', '/' or 'and', parse the right operand
-    while (this->match({Token::Type::Star, Token::Type::Slash, Token::Type::And})) {
+    // While the current token is a '*' or '/', parse the right operand
+    while (this->match({Token::Type::Star, Token::Type::Slash})) {
         Token operatorToken = this->previous();
         std::unique_ptr<ASTNode> right = this->unary();
 
         // Create a binary expression node
-        if (operatorToken.type == Token::Type::And) 
-            expr = std::make_unique<LogicExpr>(
-                operatorToken, std::move(expr), std::move(right));
-        else
-            expr = std::make_unique<BinaryExpr>(
-                operatorToken, std::move(expr), std::move(right));
+        expr = std::make_unique<BinaryExpr>(
+            operatorToken, std::move(expr), std::move(right));
     }
 
     return expr;
