@@ -15,7 +15,7 @@ int Chunk::simpleArgInstruction(const char *name, int offset, int arg) {
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
     const auto constant = this->constants[constant_i];
-    std::print("{:13s} {:4d} '{:g}'/'{:d}' {}\n", name, constant_i,
+    std::print("{:13s} {:4d} -> {:g} | {:d} | {}\n", name, constant_i,
                constant.floating, constant.fixed, constant.boolean);
     return offset + 2;
 }
@@ -105,6 +105,9 @@ int Chunk::disassebleInstruction(int offset) {
 }
 
 unsigned Chunk::write(uint8_t byte, int line) {
+    if (line == -1)
+        line = this->lines.empty() ? 0 : this->lines.back();
+
     this->code.push_back(byte);
     this->lines.push_back(line);
 

@@ -126,7 +126,7 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 void LiteralNode::compile(CompileContext &ctx) {
     const auto constant = ctx.chunk.addConstant(this->value.second);
     ctx.chunk.write(OpCode::Constant, this->token.line);
-    ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
+    ctx.chunk.write(static_cast<uint8_t>(constant));
 }
 
 void LiteralNode::print(int indent) {
@@ -192,12 +192,10 @@ void VariableNode::compile(CompileContext &ctx) {
     // Load the variable from the local slot
     if (this->local_index > 255) {
         ctx.chunk.write(OpCode::GetLocalLong, this->token.line);
-        ctx.chunk.writeWord(static_cast<uint16_t>(this->local_index),
-                            this->token.line);
+        ctx.chunk.writeWord(static_cast<uint16_t>(this->local_index));
     } else {
         ctx.chunk.write(OpCode::GetLocal, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(this->local_index),
-                        this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(this->local_index));
     }
 }
 
@@ -318,7 +316,7 @@ void CastExpr::compile(CompileContext &ctx) {
     this->operand->compile(ctx);
 
     // Write the cast operation
-    ctx.chunk.write(this->cast_op, this->token.line);
+    ctx.chunk.write(this->cast_op, this->operand->token.line);
 }
 
 void CastExpr::print(int indent) {
@@ -699,7 +697,7 @@ void BlockStmt::compile(CompileContext &ctx) {
 
     // Pop local variables declared in this block
     for (int i = 0; i < this->pop; i++) {
-        ctx.chunk.write(OpCode::Pop, this->token.line);
+        ctx.chunk.write(OpCode::Pop); // Use the line of the last statement
     }
 }
 
@@ -779,7 +777,7 @@ void VarDeclStmt::compile(CompileContext &ctx) {
         Value defaultValue {.boolean = false};
         const auto constant = ctx.chunk.addConstant(defaultValue);
         ctx.chunk.write(OpCode::Constant, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(constant), this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(constant));
     }
 
     // Nothing more to do, we pray now
@@ -846,12 +844,10 @@ void AssignExpr::compile(CompileContext &ctx) {
     // Store the value into the local variable
     if (varNode->local_index > 255) {
         ctx.chunk.write(OpCode::SetLocalLong, this->token.line);
-        ctx.chunk.writeWord(static_cast<uint16_t>(varNode->local_index),
-                            this->token.line);
+        ctx.chunk.writeWord(static_cast<uint16_t>(varNode->local_index));
     } else {
         ctx.chunk.write(OpCode::SetLocal, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(varNode->local_index),
-                        this->token.line);
+        ctx.chunk.write(static_cast<uint8_t>(varNode->local_index));
     }
 }
 
@@ -911,7 +907,7 @@ void IfStmt::compile(CompileContext &ctx) {
     // Insert jump if false, take note of the jump address and insert dummy
     ctx.chunk.write(OpCode::JmpIfFalsePop, this->token.line);
     const auto if_jump =
-        ctx.chunk.writeWord(0xFFFF, this->token.line); // Placeholder
+        ctx.chunk.writeWord(0xFFFF); // Placeholder
 
     // Compile then branch
     this->then_branch->compile(ctx);
@@ -919,9 +915,9 @@ void IfStmt::compile(CompileContext &ctx) {
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch) {
-        ctx.chunk.write(OpCode::Jmp, this->token.line);
+        ctx.chunk.write(OpCode::Jmp);
         else_jump =
-            ctx.chunk.writeWord(0xFFFF, this->token.line); // Placeholder
+            ctx.chunk.writeWord(0xFFFF); // Placeholder
     }
 
     // Patch first jump
@@ -999,18 +995,18 @@ void WhileStmt::compile(CompileContext &ctx) {
     this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    ctx.chunk.write(OpCode::JmpIfFalsePop, this->token.line);
-    const auto jump_to_patch = ctx.chunk.writeWord(0xFFFF, this->token.line);
+    ctx.chunk.write(OpCode::JmpIfFalsePop);
+    const auto jump_to_patch = ctx.chunk.writeWord(0xFFFF);
 
     // Compile body
     this->body->compile(ctx);
 
     // Insert jump to condition
-    ctx.chunk.write(OpCode::Jmp, this->token.line);
+    ctx.chunk.write(OpCode::Jmp);
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
         static_cast<int16_t>(ctx.chunk.currentOffset() + 2);
-    ctx.chunk.writeWord(before_offset, this->token.line);
+    ctx.chunk.writeWord(before_offset);
 
     // Patch first jump
     const unsigned final_addr = ctx.chunk.currentOffset();
@@ -1044,7 +1040,7 @@ Chunk compileAST(ASTNode *root) {
     // Compile the AST
     root->compile(ctx);
 
-    chunk.write(OpCode::Return, 0);
+    chunk.write(OpCode::Return);
 
     return chunk;
 }

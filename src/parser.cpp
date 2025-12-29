@@ -125,7 +125,7 @@ std::unique_ptr<ASTNode> Parser::statement() {
 std::unique_ptr<ASTNode> Parser::exprStmt() {
     std::unique_ptr<ASTNode> expr = this->expression();
     this->consume(Token::Type::Semicolon, "Expected ';' after expression.");
-    return std::make_unique<ExprStmt>(expr->token, std::move(expr));
+    return std::make_unique<ExprStmt>(this->previous(), std::move(expr));
 }
 
 std::unique_ptr<ASTNode> Parser::ifStmt() {

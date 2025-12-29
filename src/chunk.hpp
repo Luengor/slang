@@ -48,10 +48,10 @@ class Chunk {
 
 public:
     // Write a byte to the chunk and return its offset
-    unsigned write(uint8_t byte, int line);
+    unsigned write(uint8_t byte, int line = -1);
 
     // Write a word to the chunk and return its offset
-    unsigned writeWord(uint16_t word, int line);
+    unsigned writeWord(uint16_t word, int line = -1);
 
     // Patch a word at the given offset
     void patchWord(unsigned offset, uint16_t word);
@@ -59,7 +59,7 @@ public:
     unsigned currentOffset() const;
 
     template <typename T>
-    inline void write(T data, int line) {
+    inline void write(T data, int line = -1) {
         this->write(static_cast<uint8_t>(data), line);
     }
 
