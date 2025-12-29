@@ -93,9 +93,9 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 1);
         case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 1);
         case OpCode::GetLocalLong:
-            return simpleArgInstruction("OP_GETLOCAL", offset, 2);
+            return simpleArgInstruction("OP_GETLOCALL", offset, 2);
         case OpCode::SetLocalLong:
-            return simpleArgInstruction("OP_SETLOCAL", offset, 2);
+            return simpleArgInstruction("OP_SETLOCALL", offset, 2);
 
         default:
             std::print("Unknown opcode {}\n",

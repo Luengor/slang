@@ -90,6 +90,7 @@ struct UnaryExpr : public ASTNode {
 struct CastExpr : public ASTNode {
     ASTNodePtr operand;
     OpCode cast_op;
+    TypeID target_type;
 
     CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
     void resolveType(CompileContext &ctx) override;

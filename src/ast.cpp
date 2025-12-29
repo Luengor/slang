@@ -288,13 +288,14 @@ void UnaryExpr::print(int indent) {
 // CastExpr Implementation
 CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
     : ASTNode(ASTNodeType::CastExpr, token),
-      operand(std::move(operand)) {
-    // Copy result type
-    this->result_type = target_type;
+      operand(std::move(operand)), target_type(target_type) {
 }
 
 void CastExpr::resolveType(CompileContext &ctx) {
     ResolveGuard;
+
+    // "Dodge" the guard for target type
+    this->result_type = this->target_type;
 
     // The operand should already be resolved, just ensure it's done
     this->operand->resolveType(ctx);
