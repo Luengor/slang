@@ -106,14 +106,19 @@ class Parser {
     // factor -> unary ( ( "*" | "/" | "and" ) unary )*
     std::unique_ptr<ASTNode> factor();
 
-    // unary -> ( "-" | "not" ) unary | primary
+    // unary -> ( "-" | "not" ) unary | call 
     std::unique_ptr<ASTNode> unary();
+
+    // call -> primary ( "(" arguments? ")" )*
+    std::unique_ptr<ASTNode> call();
+
+    std::unique_ptr<ASTNode> finishCall(std::unique_ptr<ASTNode> expr);
 
     // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")" |
     //            IDENTIFIER | function
     std::unique_ptr<ASTNode> primary();
 
-
+    // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
     std::unique_ptr<ASTNode> function();
 
 public:

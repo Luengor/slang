@@ -36,7 +36,9 @@ equality    -> comparison ( ( "==" | "!=" ) comparison )*
 comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" | "or" ) factor )*
 factor      -> unary ( ( "*" | "/" | "and" ) unary )*
-unary       -> ( "-" | "not" ) unary | primary
+unary       -> ( "-" | "not" ) unary | call 
+call        -> primary ( "(" arguments? ")" )*
+arguments   -> expression ( "," expression )*
 primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER |
                function
 function    -> "(" parameters ")" "->" ( typeExpr | "none" ) block 

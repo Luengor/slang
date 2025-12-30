@@ -428,8 +428,37 @@ std::unique_ptr<ASTNode> Parser::unary() {
             operatorToken, std::move(right));
     }
 
-    // If no unary operator, parse a primary expression
-    return this->primary();
+    // If no unary operator, parse a call expression
+    return this->call();
+}
+
+std::unique_ptr<ASTNode> Parser::call() {
+    std::unique_ptr<ASTNode> expr = this->primary();
+
+    while (true) {
+        if (this->match({Token::LeftParen}))
+            expr = this->finishCall(std::move(expr));
+        else
+            break;
+    };
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::finishCall(std::unique_ptr<ASTNode> expr) {
+    std::vector<ASTNodePtr> arguments;
+
+    if (!this->check(Token::RightParen)) {
+        do {
+            arguments.push_back(this->expression());
+        } while (this->match({Token::Comma}));
+    }
+
+    auto token =
+        this->consume(Token::RightParen, "Expected ')' after arguments.");
+
+    return std::make_unique<CallExpr>(token, std::move(expr),
+                                      std::move(arguments));
 }
 
 std::unique_ptr<ASTNode> Parser::primary() {

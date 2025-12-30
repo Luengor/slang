@@ -89,3 +89,15 @@ private:
     void compileOr(CompileContext &ctx);
 };
 
+struct CallExpr : public ASTNode {
+    ASTNodePtr callee;
+    std::vector<ASTNodePtr> arguments;
+
+    CallExpr(const Token &token, ASTNodePtr callee,
+             std::vector<ASTNodePtr> arguments);
+
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+

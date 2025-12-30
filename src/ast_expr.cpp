@@ -2,7 +2,10 @@
 #include "error.hpp"
 #include "object.hpp"
 #include <iostream>
+#include <memory>
+#include <optional>
 #include <print>
+#include <variant>
 
 // overload boilerplate
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
@@ -683,4 +686,70 @@ void LogicExpr::print(int indent) {
     this->left->print(indent + 1);
     this->right->print(indent + 1);
 }
+
+// CallExpr Implementation
+CallExpr::CallExpr(const Token &token, ASTNodePtr callee,
+                                 std::vector<ASTNodePtr> arguments)
+    : ASTNode(ASTNodeType::CallExpr, token), callee(std::move(callee)),
+      arguments(std::move(arguments)) {}
+
+void CallExpr::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve callee type first
+    this->callee->resolveType(ctx);
+
+    // Ensure callee is a function
+    const auto type_data =
+        ctx.typeRegistry.getTypeData(this->callee->result_type.value());
+    if (!std::holds_alternative<FunctionType>(type_data)) {
+        throw ParserError(this->token,
+                "Callee isn't a function");
+    }
+    const FunctionType &function_type = std::get<FunctionType>(type_data);
+
+    // The result_type of this call is the return type of the function
+    this->result_type = function_type.return_type;
+
+    // Check the number of arguments is correct
+    if (this->arguments.size() != function_type.param_types.size())
+        throw ParserError(this->token,
+                          std::format("Wrong number of arguments in function "
+                                      "call. Expected {}, got {}",
+                                      function_type.param_types.size(),
+                                      this->arguments.size()));
+
+    // Check the arguments one by one
+    for (unsigned i = 0; i < this->arguments.size(); i++) {
+        this->arguments[i]->resolveType(ctx);
+        const auto &from_type = this->arguments[i]->result_type.value();
+        const auto &target_type = function_type.param_types[i]; 
+        if (from_type == target_type) 
+            continue;
+
+        // If they are not the same, try to cast
+        auto cast_op = ctx.typeRegistry.getCastOp(from_type, target_type);
+        if (cast_op == std::nullopt)
+            throw ParserError(
+                this->arguments[i]->token,
+                std::format("Incompatible type for argument {} in call", i + 1));
+
+        this->arguments[i] = std::make_unique<CastExpr>(
+            arguments[i]->token, std::move(arguments[i]), target_type);
+    }
+
+    // Everything ok
+}
+
+void CallExpr::compile(CompileContext &ctx) {
+}
+
+void CallExpr::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "CallExpr()\n";
+    this->callee->print(indent + 1);
+    for (auto &arg : this->arguments)
+        arg->print(indent + 1);
+}
+
 

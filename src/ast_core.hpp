@@ -22,6 +22,7 @@ enum class ASTNodeType {
     WhileStmt,
     PrimitiveType,
     FunctionType,
+    CallExpr,
 };
 
 // Base class for all AST nodes
