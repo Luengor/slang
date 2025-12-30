@@ -17,6 +17,11 @@ struct Local {
     int depth;
 };
 
+struct PopCount {
+    int total = 0;
+    std::vector<int> objects = {};
+};
+
 struct CompileContext {
     // The current chunk being compiled into
     Chunk *chunk;
@@ -39,6 +44,6 @@ struct CompileContext {
     void enterScope();
 
     // Exits the current scope and returns the number of locals to pop
-    int exitScope();
+    PopCount exitScope();
 };
 

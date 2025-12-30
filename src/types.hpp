@@ -52,6 +52,8 @@ class TypeRegistry {
         return getPrimitive(PrimitiveKind::None);
     }
     bool isNumeric(TypeID typeID);
+    bool isPrimitive(TypeID typeID);
+    bool isObject(TypeID typeID);
 
     inline TypeData getTypeData(TypeID typeID) const {
         return this->types[typeID];

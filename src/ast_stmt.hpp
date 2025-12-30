@@ -17,7 +17,7 @@ struct ExprStmt : public ASTNode {
 
 struct BlockStmt : public ASTNode {
     std::vector<ASTNodePtr> statements;
-    int pop = 0;
+    PopCount pop;
 
     BlockStmt(const Token &token, std::vector<ASTNodePtr> statements);
     void resolveType(CompileContext &ctx) override;

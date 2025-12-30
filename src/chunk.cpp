@@ -83,6 +83,8 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
 
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
+        case OpCode::Retain: return simpleInstruction("OP_RETAIN", offset);
+        case OpCode::Release: return simpleInstruction("OP_RELEASE", offset);
 
         case OpCode::Jmp: return jumpInstruction("OP_JMP", offset);
         case OpCode::JmpIfFalse: return jumpInstruction("OP_JNT", offset);

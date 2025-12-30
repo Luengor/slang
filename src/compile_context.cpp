@@ -27,15 +27,19 @@ int CompileContext::findLocal(const std::string &name) {
 
 void CompileContext::enterScope() { this->scope_depth++; }
 
-int CompileContext::exitScope() {
+PopCount CompileContext::exitScope() {
     this->scope_depth--;
 
-    int pop_count = 0;
+    PopCount pop_count;
+
     for (auto it = this->locals.rbegin();
          it != this->locals.rend() && it->depth > this->scope_depth; ++it) {
         // Remove local variables from this scope and count how many to pop
+        if (this->typeRegistry.isObject(it->type)) {
+            pop_count.objects.push_back(pop_count.total);
+        }
         this->locals.pop_back();
-        pop_count++;
+        pop_count.total++;
     }
 
     return pop_count;

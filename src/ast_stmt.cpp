@@ -81,8 +81,14 @@ void BlockStmt::compile(CompileContext &ctx) {
     }
 
     // Pop local variables declared in this block
-    for (int i = 0; i < this->pop; i++) {
-        ctx.chunk->write(OpCode::Pop); // Use the line of the last statement
+    unsigned j = 0;
+    for (int i = 0; i < this->pop.total; i++) {
+        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
+            ctx.chunk->write(OpCode::Release);
+            j++;
+        } else {
+            ctx.chunk->write(OpCode::Pop);
+        }
     }
 }
 

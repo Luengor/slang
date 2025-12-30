@@ -85,6 +85,20 @@ bool TypeRegistry::isNumeric(TypeID typeID) {
            typeID == this->getPrimitive(PrimitiveKind::Floating);
 }
 
+bool TypeRegistry::isPrimitive(TypeID typeID) {
+    const auto &typeData = this->getTypeData(typeID);
+    return std::holds_alternative<PrimitiveType>(typeData);
+}
+
+bool TypeRegistry::isObject(TypeID typeID) {
+    const auto &typeData = this->getTypeData(typeID);
+    if (std::holds_alternative<PrimitiveType>(typeData)) {
+        const PrimitiveType primType = std::get<PrimitiveType>(typeData);
+        return primType.kind == PrimitiveKind::String;
+    }
+    return true; // If not primitive, is a function 
+}
+
 std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {
     if (from == to) return std::nullopt; // No cast needed
 

@@ -51,9 +51,7 @@ LiteralNode::LiteralNode(const Token &token)
             std::string strValue = token.lexeme.substr(1, token.lexeme.length() - 2);
 
             // Create a StringObj
-            StringObj *strObj = new StringObj();
-            strObj->type = Object::Type::String;
-            strObj->value = strValue;
+            StringObj *strObj = new StringObj(strValue);
 
             Value val {.object = strObj};
             this->value = std::make_pair(ValueType::Object, val);
@@ -226,6 +224,11 @@ void VariableNode::compile(CompileContext &ctx) {
     } else {
         ctx.chunk->write(OpCode::GetLocal, this->token.line);
         ctx.chunk->write(static_cast<uint8_t>(this->local_index));
+    }
+
+    // If its an object, we need to retain it
+    if (ctx.typeRegistry.isObject(this->result_type.value())) {
+        ctx.chunk->write(OpCode::Retain);
     }
 }
 

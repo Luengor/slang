@@ -2,6 +2,7 @@
 #include "chunk.hpp"
 #include "compiler.hpp"
 #include "value.hpp"
+#include "object.hpp"
 #include <cassert>
 #include <print>
 
@@ -177,6 +178,17 @@ InterpretResult VM::run() {
                     this->ip += offset;
                 }
                 this->stack.pop_back(); // pop!
+                break;
+            }
+
+            case OpCode::Retain: {
+                this->stack.back().object->retain();
+                break;
+            }
+
+            case OpCode::Release: {
+                this->stack.back().object->release();
+                this->stack.pop_back();
                 break;
             }
 

@@ -13,17 +13,17 @@ struct Object {
     int ref_count = 1;
 
     virtual ~Object() = default;
-    void retain() { ref_count++; }
-    void release() {
-        ref_count--;
-        if (ref_count <= 0) {
-            delete this;
-        }
-    }
+    void retain();
+    void release();
 };
 
 struct StringObj : public Object {
     std::string value;
+
+    StringObj(const std::string &value);
+#ifndef NDEBUG
+    ~StringObj();
+#endif
 };
 
 struct FunctionObj : public Object {
@@ -34,8 +34,9 @@ struct FunctionObj : public Object {
     // The chunk of bytecode representing the function body
     Chunk chunk;
 
-    FunctionObj() : Object() {
-        this->type = Object::Type::Function;
-    }
+    FunctionObj();
+#ifndef NDEBUG
+    ~FunctionObj();
+#endif
 };
 
