@@ -40,6 +40,8 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::Return:
             return simpleInstruction("OP_RETURN", offset);
 
+        case OpCode::Call: return simpleArgInstruction("OP_CALL", offset, 1);
+
         case OpCode::NegateF: return simpleInstruction("OP_NEGATEF", offset);
         case OpCode::NegateI: return simpleInstruction("OP_NEGATEI", offset);
 

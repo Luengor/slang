@@ -6,7 +6,7 @@
 #include <vector>
 
 enum class OpCode : uint8_t {
-    Return,
+    Return, Call,
     Constant,
     NegateF, NegateI,
     AddF, AddI,

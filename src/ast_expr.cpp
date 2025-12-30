@@ -742,6 +742,16 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx) {
+    // Compile the callee
+    this->callee->compile(ctx);
+
+    // Compile the arguments
+    for (auto &arg : this->arguments)
+        arg->compile(ctx);
+
+    // Emit call
+    ctx.chunk->write(OpCode::Call, this->token.line);
+    ctx.chunk->write(this->arguments.size());
 }
 
 void CallExpr::print(int indent) {
