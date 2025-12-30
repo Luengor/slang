@@ -1,4 +1,5 @@
 #include "types.hpp"
+#include "object.hpp"
 #include <stdexcept>
 #include <unordered_map>
 #include <variant>

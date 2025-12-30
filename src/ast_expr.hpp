@@ -19,6 +19,19 @@ struct LiteralNode : public ASTNode {
     void print_object();
 };
 
+struct FunctionNode : public ASTNode {
+    std::vector<ASTNodePtr> arguments;
+    ASTNodePtr return_type;
+    ASTNodePtr body;
+    std::unique_ptr<CompileContext> fn_ctx;
+
+    FunctionNode(const Token &token, std::vector<ASTNodePtr> arguments,
+                 ASTNodePtr return_type, ASTNodePtr body);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct VariableNode : public ASTNode {
     std::string name;
     int local_index = -1;

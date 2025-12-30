@@ -8,6 +8,7 @@
 // AST Node Types 
 enum class ASTNodeType {
     Literal,
+    Function,
     Variable,
     UnaryExpr,
     CastExpr,

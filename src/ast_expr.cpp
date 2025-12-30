@@ -1,5 +1,6 @@
 #include "ast_expr.hpp"
 #include "error.hpp"
+#include "object.hpp"
 #include <iostream>
 #include <print>
 
@@ -76,9 +77,9 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 }
 
 void LiteralNode::compile(CompileContext &ctx) {
-    const auto constant = ctx.chunk.addConstant(this->value.second);
-    ctx.chunk.write(OpCode::Constant, this->token.line);
-    ctx.chunk.write(static_cast<uint8_t>(constant));
+    const auto constant = ctx.chunk->addConstant(this->value.second);
+    ctx.chunk->write(OpCode::Constant, this->token.line);
+    ctx.chunk->write(static_cast<uint8_t>(constant));
 }
 
 void LiteralNode::print(int indent) {
@@ -113,7 +114,84 @@ void LiteralNode::print_object() {
             std::println("Literal(\"{}\")", strObj->value);
             break;
         }
+
+        case Object::Type::Function: {
+            std::println("Literal(<Function Object>)");
+            break;
+        }
     }
+}
+
+// FunctionNode Implementation
+FunctionNode::FunctionNode(const Token &token,
+                           std::vector<ASTNodePtr> arguments,
+                           ASTNodePtr return_type, ASTNodePtr body)
+    : ASTNode(ASTNodeType::Function, token), arguments(std::move(arguments)),
+      return_type(std::move(return_type)), body(std::move(body)) {}
+
+void FunctionNode::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Nefarious things here
+    CompileContext *fn_ctx = new CompileContext{
+        .typeRegistry = ctx.typeRegistry,
+
+        .scope_depth = 0,
+        .locals = {},
+    };
+    this->fn_ctx.reset(fn_ctx);
+
+    // Resolve argument types
+    std::vector<TypeID> param_types;
+    for (const auto &arg : this->arguments) {
+        arg->resolveType(*fn_ctx);
+        param_types.push_back(arg->result_type.value());
+    }
+
+    // Resolve result type
+    this->return_type->resolveType(*fn_ctx);
+    TypeID return_type_id = this->return_type->result_type.value();
+
+    // Get the function type ID
+    this->result_type = ctx.typeRegistry.getFunction(
+        param_types, return_type_id);
+
+    // Resolve type of the body
+    // (for now, nothing is checked :))
+    // (but when type checking for blocks is added, it will be needed)
+    this->body->resolveType(*fn_ctx);
+}
+
+void FunctionNode::compile(CompileContext &ctx) {
+    // Use the function's own compile context
+    CompileContext &fn_ctx = *this->fn_ctx;
+    fn_ctx.chunk = new Chunk();
+    this->body->compile(fn_ctx);
+    fn_ctx.chunk->write(OpCode::Return);
+
+    // Create the FunctionObj
+    FunctionObj *fnObj = new FunctionObj();
+    fnObj->type = Object::Type::Function;
+    fnObj->chunk = std::move(*fn_ctx.chunk);
+
+    // Add the function object as a constant to the main chunk
+    Value val {.object = fnObj};
+    const auto constant = ctx.chunk->addConstant(val);
+    ctx.chunk->write(OpCode::Constant, this->token.line);
+    ctx.chunk->write(static_cast<uint8_t>(constant));
+
+    delete fn_ctx.chunk;
+}
+
+void FunctionNode::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "Function(\n";
+    for (const auto &arg : this->arguments) {
+        arg->print(indent + 1);
+    }
+    this->body->print(indent + 1);
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << ")\n";
 }
 
 // Variable Node Implementation
@@ -143,11 +221,11 @@ void VariableNode::compile(CompileContext &ctx) {
 
     // Load the variable from the local slot
     if (this->local_index > 255) {
-        ctx.chunk.write(OpCode::GetLocalLong, this->token.line);
-        ctx.chunk.writeWord(static_cast<uint16_t>(this->local_index));
+        ctx.chunk->write(OpCode::GetLocalLong, this->token.line);
+        ctx.chunk->writeWord(static_cast<uint16_t>(this->local_index));
     } else {
-        ctx.chunk.write(OpCode::GetLocal, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(this->local_index));
+        ctx.chunk->write(OpCode::GetLocal, this->token.line);
+        ctx.chunk->write(static_cast<uint8_t>(this->local_index));
     }
 }
 
@@ -211,14 +289,14 @@ void UnaryExpr::compile(CompileContext &ctx) {
         case Token::Type::Minus:
             if (this->result_type ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
-                ctx.chunk.write(OpCode::NegateI, this->token.line);
+                ctx.chunk->write(OpCode::NegateI, this->token.line);
             } else {
-                ctx.chunk.write(OpCode::NegateF, this->token.line);
+                ctx.chunk->write(OpCode::NegateF, this->token.line);
             }
             break;
 
         case Token::Type::Not:
-            ctx.chunk.write(OpCode::Not, this->token.line);
+            ctx.chunk->write(OpCode::Not, this->token.line);
             break;
 
         default:
@@ -268,7 +346,7 @@ void CastExpr::compile(CompileContext &ctx) {
     this->operand->compile(ctx);
 
     // Write the cast operation
-    ctx.chunk.write(this->cast_op, this->operand->token.line);
+    ctx.chunk->write(this->cast_op, this->operand->token.line);
 }
 
 void CastExpr::print(int indent) {
@@ -411,16 +489,16 @@ void BinaryExpr::compileArithmetic(CompileContext &ctx) {
 
     switch (this->token.type) {
         case Token::Type::Plus:
-            ctx.chunk.write(IorF(Add), this->token.line);
+            ctx.chunk->write(IorF(Add), this->token.line);
             break;
         case Token::Type::Minus:
-            ctx.chunk.write(IorF(Subtract), this->token.line);
+            ctx.chunk->write(IorF(Subtract), this->token.line);
             break;
         case Token::Type::Star:
-            ctx.chunk.write(IorF(Multiply), this->token.line);
+            ctx.chunk->write(IorF(Multiply), this->token.line);
             break;
         case Token::Type::Slash:
-            ctx.chunk.write(IorF(Divide), this->token.line);
+            ctx.chunk->write(IorF(Divide), this->token.line);
             break;
 
         default:
@@ -451,15 +529,15 @@ void BinaryExpr::compileEquality(CompileContext &ctx) {
 
     switch (prim_type.kind) {
         case PrimitiveKind::Fixed:
-            ctx.chunk.write(EqOrNe(I), this->token.line);
+            ctx.chunk->write(EqOrNe(I), this->token.line);
             break;
 
         case PrimitiveKind::Floating:
-            ctx.chunk.write(EqOrNe(F), this->token.line);
+            ctx.chunk->write(EqOrNe(F), this->token.line);
             break;
 
         case PrimitiveKind::Boolean:
-            ctx.chunk.write(EqOrNe(B), this->token.line);
+            ctx.chunk->write(EqOrNe(B), this->token.line);
             break;
 
         default:
@@ -495,16 +573,16 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {
 
     switch (this->token.type) {
         case Token::Type::Greater: 
-            ctx.chunk.write(IorF(Gt), this->token.line);
+            ctx.chunk->write(IorF(Gt), this->token.line);
             break;
         case Token::Type::GreaterEqual:
-            ctx.chunk.write(IorF(Ge), this->token.line);
+            ctx.chunk->write(IorF(Ge), this->token.line);
             break;
         case Token::Type::Less:
-            ctx.chunk.write(IorF(Lt), this->token.line);
+            ctx.chunk->write(IorF(Lt), this->token.line);
             break;
         case Token::Type::LessEqual:
-            ctx.chunk.write(IorF(Le), this->token.line);;
+            ctx.chunk->write(IorF(Le), this->token.line);;
             break;
         default:
             throw ParserError(
@@ -561,19 +639,19 @@ void LogicExpr::compileAnd(CompileContext &ctx) {
 
     // If that operand is false, we can skip the second operand
     // note that this jump does NOT pop the value
-    ctx.chunk.write(OpCode::JmpIfFalse, this->token.line);
-    const int16_t jmp_pos = ctx.chunk.writeWord(0xFFFF);
+    ctx.chunk->write(OpCode::JmpIfFalse, this->token.line);
+    const int16_t jmp_pos = ctx.chunk->writeWord(0xFFFF);
 
     // If its not false, we need to pop the true value
-    ctx.chunk.write(OpCode::Pop, this->token.line);
+    ctx.chunk->write(OpCode::Pop, this->token.line);
 
     // Compile second operand
     this->right->compile(ctx);
 
     // Patch the jump position
-    const int16_t after_pos = static_cast<int16_t>(ctx.chunk.currentOffset());
+    const int16_t after_pos = static_cast<int16_t>(ctx.chunk->currentOffset());
     const int16_t offset = after_pos - (jmp_pos + 2);
-    ctx.chunk.patchWord(jmp_pos, offset);
+    ctx.chunk->patchWord(jmp_pos, offset);
 }
 
 void LogicExpr::compileOr(CompileContext &ctx) {
@@ -581,19 +659,19 @@ void LogicExpr::compileOr(CompileContext &ctx) {
     this->left->compile(ctx);
 
     // If its true, we can skip evaluating the second operand
-    ctx.chunk.write(OpCode::JmpIfTrue, this->token.line);
-    const int16_t jmp_pos = ctx.chunk.writeWord(0xFFFF);
+    ctx.chunk->write(OpCode::JmpIfTrue, this->token.line);
+    const int16_t jmp_pos = ctx.chunk->writeWord(0xFFFF);
 
     // If its not true, we need to pop the false value
-    ctx.chunk.write(OpCode::Pop, this->token.line);
+    ctx.chunk->write(OpCode::Pop, this->token.line);
 
     // Compile second operand
     this->right->compile(ctx);
 
     // Patch the jump position
-    const int16_t after_pos = static_cast<int16_t>(ctx.chunk.currentOffset());
+    const int16_t after_pos = static_cast<int16_t>(ctx.chunk->currentOffset());
     const int16_t offset = after_pos - (jmp_pos + 2);
-    ctx.chunk.patchWord(jmp_pos, offset);
+    ctx.chunk->patchWord(jmp_pos, offset);
 }
 
 void LogicExpr::print(int indent) {

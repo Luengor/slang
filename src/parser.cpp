@@ -77,43 +77,6 @@ void Parser::syncronize() {
     }
 }
 
-bool Parser::isFunctionTypeAhead() {
-    size_t temp_current = this->current;
-
-    // Check if there is an opening parenthesis
-    if (!this->check(Token::Type::LeftParen))
-        return false;
-    this->advance();
-
-    // Find the matching closing parenthesis
-    int paren_count = 0;
-    do {
-        if (this->isAtEnd()) {
-            this->current = temp_current; // Restore current
-            return false;
-        }
-
-        if (this->check(Token::Type::LeftParen)) {
-            paren_count++;
-        } else if (this->check(Token::Type::RightParen)) {
-            if (paren_count == 0) {
-                this->advance(); // Consume the closing parenthesis
-                break;
-            } else {
-                paren_count--;
-            }
-        }
-        this->advance();
-    } while (true);
-
-    // Check for an arrow or an identifier next
-    bool is_function_type = this->check(Token::Type::Arrow) ||
-                            this->check(Token::Type::Identifier);
-
-    this->current = temp_current; // Restore current
-    return is_function_type;
-}
-
 /// Recursive descent parsing methods
 
 std::unique_ptr<ASTNode> Parser::typeExpr() {
@@ -163,15 +126,15 @@ std::unique_ptr<ASTNode> Parser::primitiveType() {
 
 std::unique_ptr<ASTNode> Parser::declaration() {
     try {
-        // Check if its a function declaration first
-        if (this->isFunctionTypeAhead()) {
-            return this->funcDecl();
-        } else if (this->match({Token::Type::Fixed, Token::Type::Float,
-                                Token::Type::Bool, Token::Type::Auto})) {
-            // This is a variable declaration
+        // Try variable declaration and backtrack on failure
+        const auto current_pos = this->current;
+        try {
             return this->varDecl();
+        } catch (const ParserError &) {
+            this->current = current_pos; // Backtrack
         }
 
+        // Otherwise parse as a statement
         return this->statement();
     } catch (const ParserError &error) {
         std::cerr << error.what() << std::endl;
@@ -181,9 +144,9 @@ std::unique_ptr<ASTNode> Parser::declaration() {
 }
 
 std::unique_ptr<ASTNode> Parser::varDecl() {
+    // Parse type or auto
     std::unique_ptr<ASTNode> type_node =
-        this->previous().type == Token::Type::Auto ? nullptr
-                                                   : this->primitiveType();
+        this->match({Token::Type::Auto}) ? nullptr : this->typeExpr();
     Token name = this->consume(Token::Type::Identifier, "Expected variable name.");
 
     std::unique_ptr<ASTNode> initializer = nullptr;
@@ -194,16 +157,6 @@ std::unique_ptr<ASTNode> Parser::varDecl() {
     this->consume(Token::Type::Semicolon, "Expected ';' after variable declaration.");
     return std::make_unique<VarDeclStmt>(std::move(type_node), name,
                                          std::move(initializer));
-}
-
-std::unique_ptr<ASTNode> Parser::funcDecl() {
-    std::unique_ptr<ASTNode> type_node = this->functionType();
-    Token name = this->consume(Token::Type::Identifier, "Expected function name.");
-    this->consume(Token::Type::Equal, "Expected '=' after function declaration.");
-
-    // For now, we won't parse the function body
-    type_node->print();
-    throw ParserError(this->peek(), "Function body parsing not implemented yet.");
 }
 
 std::unique_ptr<ASTNode> Parser::statement() {
@@ -267,6 +220,7 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
     if (!this->match({Token::Type::Semicolon})) {
         if (this->match({Token::Type::Fixed, Token::Type::Float,
                          Token::Type::Bool, Token::Type::Auto})) {
+            this->current--; // backtrack
             initializer = this->varDecl();
         } else {
             initializer = this->exprStmt();
@@ -491,6 +445,17 @@ std::unique_ptr<ASTNode> Parser::primary() {
             this->previous(), this->previous().lexeme);
     }
 
+    // Try to parse a function definition 
+    const auto current_pos = this->current;
+    try {
+        if (this->match({Token::Type::LeftParen})) {
+            this->current = current_pos; // Backtrack
+            return this->function();
+        }
+    } catch (const ParserError &) {
+        this->current = current_pos; // Backtrack
+    }
+
     // If left parenthesis, parse a grouped expression
     if (this->match({Token::Type::LeftParen})) {
         std::unique_ptr<ASTNode> expr = this->expression();
@@ -500,6 +465,46 @@ std::unique_ptr<ASTNode> Parser::primary() {
 
     // Else, throw an error for unexpected token
     throw ParserError(this->peek(), "Expected expression.");
+}
+
+std::unique_ptr<ASTNode> Parser::function() {
+    // Parse parameter list
+    this->consume(Token::Type::LeftParen, "Expected '(' at start of function.");
+
+    std::vector<ASTNodePtr> arguments;
+    if (!this->check(Token::Type::RightParen)) {
+        do {
+            // Parse parameter type
+            std::unique_ptr<ASTNode> param_type = this->typeExpr();
+
+            // Parse parameter name
+            Token param_name = this->consume(Token::Type::Identifier,
+                                             "Expected parameter name.");
+
+            // Create variable node for parameter
+            arguments.push_back(std::make_unique<VarDeclStmt>(
+                std::move(param_type), param_name, nullptr));
+
+        } while (this->match({Token::Type::Comma}));
+    }
+
+    this->consume(Token::Type::RightParen, "Expected ')' after function parameters.");
+
+    // Parse return type 
+    this->consume(Token::Type::Arrow, "Expected '->' after function parameters.");
+    std::unique_ptr<ASTNode> return_type =
+        this->match({Token::Type::None})
+            ? std::make_unique<PrimitiveTypeNode>(this->previous())
+            : this->typeExpr();
+
+    // Parse function body
+    this->consume(Token::Type::LeftBrace,
+                  "Expected '{' at start of function body.");
+    std::unique_ptr<ASTNode> body = this->block();
+
+    return std::make_unique<FunctionNode>(
+        this->previous(), std::move(arguments), std::move(return_type),
+        std::move(body));
 }
 
 /// Public interface

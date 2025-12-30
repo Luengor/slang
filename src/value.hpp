@@ -1,6 +1,5 @@
 #pragma once
 
-#include "object.hpp"
 #include <vector>
 
 // Values
@@ -12,6 +11,8 @@ enum class ValueType {
     Floating,
     Object,
 };
+
+struct Object;
 
 using FloatingType = double;
 using FixedType = long long;

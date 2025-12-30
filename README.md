@@ -16,8 +16,7 @@ primitiveType -> "fixed" | "float" | "bool"
 #### Declaration and statement rules
 ```
 declaration -> varDecl | funcDecl | statement
-varDecl     -> ( primitiveType | "auto" )IDENTIFIER ( "=" expression )? ";"
-funcDecl    -> ( functionType | "auto" ) IDENTIFIER "=" ...
+varDecl     -> ( typeExpr | auto" ) IDENTIFIER ( "=" expression )? ";"
 statement   -> exprStmt | ifStmt | whileStmt | forStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 whileStmt   -> "while" "(" expression ")" statement
@@ -38,7 +37,10 @@ comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" | "or" ) factor )*
 factor      -> unary ( ( "*" | "/" | "and" ) unary )*
 unary       -> ( "-" | "not" ) unary | primary
-primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER
+primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER |
+               function
+function    -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
+parameters  -> ( typeExpr IDENTIFIER ( "," typeExpr IDENTIFIER )* )? 
 ```
 
 ### Operators Precedence

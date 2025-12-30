@@ -19,7 +19,7 @@ struct Local {
 
 struct CompileContext {
     // The current chunk being compiled into
-    Chunk &chunk;
+    Chunk *chunk;
 
     // The type registry for type management
     TypeRegistry &typeRegistry;

@@ -8,7 +8,7 @@ Chunk compileAST(ASTNode *root) {
     Chunk chunk;
     TypeRegistry typeRegistry;
     CompileContext ctx{
-        .chunk = chunk,
+        .chunk = &chunk,
         .typeRegistry = typeRegistry,
 
         .scope_depth = 0,

@@ -34,7 +34,7 @@ void ExprStmt::compile(CompileContext &ctx) {
     this->expression->compile(ctx);
 
     // Pop the result off the stack since it's not used
-    ctx.chunk.write(OpCode::Pop, this->token.line);
+    ctx.chunk->write(OpCode::Pop, this->token.line);
 }
 
 void ExprStmt::print(int indent) {
@@ -82,7 +82,7 @@ void BlockStmt::compile(CompileContext &ctx) {
 
     // Pop local variables declared in this block
     for (int i = 0; i < this->pop; i++) {
-        ctx.chunk.write(OpCode::Pop); // Use the line of the last statement
+        ctx.chunk->write(OpCode::Pop); // Use the line of the last statement
     }
 }
 
@@ -158,9 +158,9 @@ void VarDeclStmt::compile(CompileContext &ctx) {
         // Default initializer
         // for now, push false and good luck if it's not a boolean :)
         Value defaultValue {.boolean = false};
-        const auto constant = ctx.chunk.addConstant(defaultValue);
-        ctx.chunk.write(OpCode::Constant, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(constant));
+        const auto constant = ctx.chunk->addConstant(defaultValue);
+        ctx.chunk->write(OpCode::Constant, this->token.line);
+        ctx.chunk->write(static_cast<uint8_t>(constant));
     }
 
     // Nothing more to do, we pray now
@@ -226,11 +226,11 @@ void AssignExpr::compile(CompileContext &ctx) {
 
     // Store the value into the local variable
     if (varNode->local_index > 255) {
-        ctx.chunk.write(OpCode::SetLocalLong, this->token.line);
-        ctx.chunk.writeWord(static_cast<uint16_t>(varNode->local_index));
+        ctx.chunk->write(OpCode::SetLocalLong, this->token.line);
+        ctx.chunk->writeWord(static_cast<uint16_t>(varNode->local_index));
     } else {
-        ctx.chunk.write(OpCode::SetLocal, this->token.line);
-        ctx.chunk.write(static_cast<uint8_t>(varNode->local_index));
+        ctx.chunk->write(OpCode::SetLocal, this->token.line);
+        ctx.chunk->write(static_cast<uint8_t>(varNode->local_index));
     }
 }
 
@@ -288,9 +288,9 @@ void IfStmt::compile(CompileContext &ctx) {
     this->condition->compile(ctx);
 
     // Insert jump if false, take note of the jump address and insert dummy
-    ctx.chunk.write(OpCode::JmpIfFalsePop, this->token.line);
+    ctx.chunk->write(OpCode::JmpIfFalsePop, this->token.line);
     const auto if_jump =
-        ctx.chunk.writeWord(0xFFFF); // Placeholder
+        ctx.chunk->writeWord(0xFFFF); // Placeholder
 
     // Compile then branch
     this->then_branch->compile(ctx);
@@ -298,16 +298,16 @@ void IfStmt::compile(CompileContext &ctx) {
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch) {
-        ctx.chunk.write(OpCode::Jmp);
+        ctx.chunk->write(OpCode::Jmp);
         else_jump =
-            ctx.chunk.writeWord(0xFFFF); // Placeholder
+            ctx.chunk->writeWord(0xFFFF); // Placeholder
     }
 
     // Patch first jump
-    const unsigned after_then_addr = ctx.chunk.currentOffset();
+    const unsigned after_then_addr = ctx.chunk->currentOffset();
     const int16_t offset_to_after_then =
         static_cast<int16_t>(after_then_addr - (if_jump + 2));
-    ctx.chunk.patchWord(if_jump, offset_to_after_then);
+    ctx.chunk->patchWord(if_jump, offset_to_after_then);
 
     // If there is no else branch, we're done
     if (!this->else_branch)
@@ -317,10 +317,10 @@ void IfStmt::compile(CompileContext &ctx) {
     this->else_branch->compile(ctx);
 
     // Patch else jump
-    const unsigned after_else_addr = ctx.chunk.currentOffset();
+    const unsigned after_else_addr = ctx.chunk->currentOffset();
     const int16_t offset_to_after_else =
         static_cast<int16_t>(after_else_addr - (else_jump + 2));
-    ctx.chunk.patchWord(else_jump, offset_to_after_else);
+    ctx.chunk->patchWord(else_jump, offset_to_after_else);
 }
 
 void IfStmt::print(int indent) {
@@ -372,30 +372,30 @@ void WhileStmt::resolveType(CompileContext &ctx) {
 
 void WhileStmt::compile(CompileContext &ctx) {
     // Mark the beggining of the condition
-    const auto before_condition = ctx.chunk.currentOffset();
+    const auto before_condition = ctx.chunk->currentOffset();
 
     // Compile the condition
     this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    ctx.chunk.write(OpCode::JmpIfFalsePop);
-    const auto jump_to_patch = ctx.chunk.writeWord(0xFFFF);
+    ctx.chunk->write(OpCode::JmpIfFalsePop);
+    const auto jump_to_patch = ctx.chunk->writeWord(0xFFFF);
 
     // Compile body
     this->body->compile(ctx);
 
     // Insert jump to condition
-    ctx.chunk.write(OpCode::Jmp);
+    ctx.chunk->write(OpCode::Jmp);
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
-        static_cast<int16_t>(ctx.chunk.currentOffset() + 2);
-    ctx.chunk.writeWord(before_offset);
+        static_cast<int16_t>(ctx.chunk->currentOffset() + 2);
+    ctx.chunk->writeWord(before_offset);
 
     // Patch first jump
-    const unsigned final_addr = ctx.chunk.currentOffset();
+    const unsigned final_addr = ctx.chunk->currentOffset();
     const int16_t offset_to_end =
         static_cast<int16_t>(final_addr - (jump_to_patch + 2));
-    ctx.chunk.patchWord(jump_to_patch, offset_to_end);
+    ctx.chunk->patchWord(jump_to_patch, offset_to_end);
 }
 
 void WhileStmt::print(int indent) {

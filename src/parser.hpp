@@ -48,10 +48,6 @@ class Parser {
     // Error recovery: synchronize the parser state after an error
     void syncronize();
 
-    // Check if the upcoming tokens indicate a function type
-    // (instead of a parenthesized expression)
-    bool isFunctionTypeAhead();
-
     // typeExpr -> functionType | primitiveType
     std::unique_ptr<ASTNode> typeExpr();
 
@@ -64,11 +60,8 @@ class Parser {
     // declaration -> varDecl | funcDecl | statement
     std::unique_ptr<ASTNode> declaration();
 
-    // varDecl -> ( primitiveType | "auto" ) IDENTIFIER ( "=" expression )? ";"
+    // varDecl -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
     std::unique_ptr<ASTNode> varDecl();
-
-    // funcDecl -> ( functionType ) IDENTIFIER "=" ...
-    std::unique_ptr<ASTNode> funcDecl();
 
     // statement -> exprStmt | ifStmt | whileStmt | forStmt | block
     std::unique_ptr<ASTNode> statement();
@@ -116,8 +109,12 @@ class Parser {
     // unary -> ( "-" | "not" ) unary | primary
     std::unique_ptr<ASTNode> unary();
 
-    // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")"
+    // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")" |
+    //            IDENTIFIER | function
     std::unique_ptr<ASTNode> primary();
+
+
+    std::unique_ptr<ASTNode> function();
 
 public:
     Parser(const std::vector<Token> &tokens);
