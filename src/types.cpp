@@ -80,6 +80,11 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
                 static_cast<FunctionObj *>(value.second.object);
             return fnObj->type_id;
         }
+        case Object::Type::NativeFunction: {
+            NativeFunctionObj *nativeFn =
+                static_cast<NativeFunctionObj *>(value.second.object);
+            return nativeFn->type_id;
+        }
     }
 
     throw std::runtime_error("Unknown object type in getFromValue.");

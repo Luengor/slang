@@ -122,6 +122,13 @@ void LiteralNode::print_object() {
             std::println("Literal(<Function Object>)");
             break;
         }
+
+        case Object::Type::NativeFunction: {
+            NativeFunctionObj *nativeFn =
+                static_cast<NativeFunctionObj *>(this->value.second.object);
+            std::println("Literal(<Native Function: {}>)", nativeFn->name);
+            break;
+        }
     }
 }
 
