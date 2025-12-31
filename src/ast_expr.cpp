@@ -153,10 +153,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     };
     this->fn_ctx.reset(fn_ctx);
 
-    // Add a local for the return value
     // Add a local for the function itself (for recursion)
+    // We will also use this slot to store the return value 
     // noneType until we resolve the function type
-    const int return_local = fn_ctx->addLocal("", ctx.typeRegistry.noneType());
     const int self_local = fn_ctx->addLocal("self", ctx.typeRegistry.noneType());
 
     // Resolve argument types
@@ -177,7 +176,6 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function->type_id = this->result_type.value();
 
     // Update the locals to have the correct types
-    fn_ctx->locals[return_local].type = return_type_id;
     fn_ctx->locals[self_local].type = this->result_type.value();
 
     // Resolve type of the body
@@ -781,9 +779,6 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx) {
-    // Before compiling the callee, we need to add a space for the return value
-    ctx.function->chunk.write(OpCode::False, this->token.line);
-
     // Compile the callee
     this->callee->compile(ctx);
 
