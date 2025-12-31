@@ -93,12 +93,27 @@ InterpretResult VM::run() {
             case OpCode::Call: {
                 const uint8_t arg_count = READ_BYTE();
                 const Value callee = this->stack[this->stack.size() - 1 - arg_count];
-                assert(callee.object->type == Object::Type::Function &&
-                       "Callee must be a function");
+                assert(callee.object);
 
-                FunctionObj *function = static_cast<FunctionObj *>(callee.object);
-                this->call_frames.push_back(
-                    CallFrame(function, this->stack.size() - arg_count));
+                if (callee.object->type == Object::Type::Function) {
+                    FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                    this->call_frames.push_back(
+                        CallFrame(function, this->stack.size() - arg_count));
+                } else {
+                    NativeFunctionObj *native_function =
+                        static_cast<NativeFunctionObj *>(callee.object);
+
+                    // Call the native function
+                    Value result = native_function->function_ptr(
+                        &this->stack[this->stack.size() - arg_count],
+                        arg_count);
+
+                    // Pop the arguments and the function itself
+                    this->stack.resize(this->stack.size() - arg_count - 1);
+
+                    // Push the result onto the stack
+                    this->stack.push_back(result);
+                }
                 break;
             }
 

@@ -8,13 +8,14 @@ struct Object {
     enum Type {
         String,
         Function,
+        NativeFunction,
     };
     Type type;
     int ref_count = 1;
 
     virtual ~Object() = default;
-    void retain();
-    void release();
+    virtual void retain();
+    virtual void release();
 };
 
 struct StringObj : public Object {
@@ -38,5 +39,24 @@ struct FunctionObj : public Object {
 #ifndef NDEBUG
     ~FunctionObj();
 #endif
+};
+
+
+using NativeFunctionPtr = Value(*)(const Value *args, size_t arg_count);
+
+struct NativeFunctionObj : public Object {
+    // The type ID of the function
+    TypeID type_id;
+
+    // The pointer to the native function implementation
+    NativeFunctionPtr function_ptr;
+
+    // A name to find the function
+    std::string name;
+
+    NativeFunctionObj(TypeID type_id, NativeFunctionPtr function_ptr);
+
+    void retain() override;
+    void release() override;
 };
 

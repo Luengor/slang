@@ -6,6 +6,7 @@
 // ((but I have to draw the line somewhere))
 
 #include "ast_core.hpp"
+#include "compile_context.hpp"
 
 struct LiteralNode : public ASTNode {
     TypedValue value;
@@ -34,7 +35,7 @@ struct FunctionNode : public ASTNode {
 
 struct VariableNode : public ASTNode {
     std::string name;
-    int local_index = -1;
+    NameResolution resolution;
 
     VariableNode(const Token &token, const std::string &name);
     void resolveType(CompileContext &ctx) override;

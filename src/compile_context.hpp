@@ -22,6 +22,10 @@ struct PopCount {
 };
 
 struct FunctionObj;
+struct NativeFunctionObj;
+struct NativeRegistry;
+
+using NameResolution = std::optional<std::variant<int, NativeFunctionObj *>>;
 
 struct CompileContext {
     // The current function being compiled
@@ -29,6 +33,9 @@ struct CompileContext {
 
     // The type registry for type management
     TypeRegistry &typeRegistry;
+
+    // The native function registry
+    NativeRegistry &nativeRegistry;
 
     // The current scope depth
     int scope_depth = 0;
@@ -42,13 +49,17 @@ struct CompileContext {
     // Adds a local variable to the current scope
     int addLocal(const std::string &name, TypeID type);
 
-    // Finds a local variable by name and returns its index, or -1 if not found
-    int findLocal(const std::string &name);
+    // Resolves a name to either a local variable index or a native function
+    NameResolution resolveName(const std::string &name);
 
     // Enters a new scope
     void enterScope();
 
     // Exits the current scope and returns the number of locals to pop
     PopCount exitScope();
+
+private:
+    // Finds a local variable by name and returns its index, or -1 if not found
+    int findLocal(const std::string &name);
 };
 

@@ -18,6 +18,20 @@ FunctionObj::FunctionObj() : Object() {
     this->type = Object::Type::Function;
 }
 
+NativeFunctionObj::NativeFunctionObj(
+    TypeID type_id, NativeFunctionPtr function_ptr)
+    : Object(), type_id(type_id), function_ptr(function_ptr) {
+    this->type = Object::Type::NativeFunction;
+}
+
+void NativeFunctionObj::retain() {
+    // do nothing
+}
+
+void NativeFunctionObj::release() {
+    // do nothing
+}
+
 #ifndef NDEBUG
 
 StringObj::~StringObj() {
@@ -27,6 +41,7 @@ StringObj::~StringObj() {
 FunctionObj::~FunctionObj() {
     std::cout << "FunctionObj destroyed" << std::endl;
 }
+
 #endif
 
 

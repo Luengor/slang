@@ -1,6 +1,8 @@
 #include "ast_expr.hpp"
 #include "error.hpp"
+#include "native.hpp"
 #include "object.hpp"
+#include <cassert>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -98,7 +100,7 @@ void LiteralNode::print(int indent) {
             std::println("Literal({})", this->value.second.boolean);
             break;
 
-        case ValueType::Object: 
+        case ValueType::Object:
             print_object();
             break;
 
@@ -135,8 +137,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
 
     // Nefarious things here
     CompileContext *fn_ctx = new CompileContext{
-        .function = new FunctionObj(), 
+        .function = new FunctionObj(),
         .typeRegistry = ctx.typeRegistry,
+        .nativeRegistry = ctx.nativeRegistry,
         .scope_depth = 0,
         .locals = {},
         .next = &ctx,
@@ -203,36 +206,48 @@ VariableNode::VariableNode(const Token &token, const std::string &name)
 void VariableNode::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
-    // Find the variable in the local scope
-    const int local_index = ctx.findLocal(this->name);
-    if (local_index == -1) {
+    // Resolve the name
+    this->resolution = ctx.resolveName(this->name);
+    if (!this->resolution)
         throw ParserError(this->token,
-                          "Undefined variable during type resolution.");
-    }
+                          "Undefined variable: " + this->name);
 
-    this->local_index = local_index;
-    this->result_type = ctx.locals[local_index].type;
+    this->result_type = std::visit(
+        overloaded{
+            [&](int local_index) { return ctx.locals[local_index].type; },
+            [&](NativeFunctionObj *native_fn) { return native_fn->type_id; }},
+        this->resolution.value());
 }
 
 void VariableNode::compile(CompileContext &ctx) {
-    if (this->local_index == -1) {
-        throw ParserError(this->token,
-                          "Variable not resolved before compilation.");
-    }
+    assert(this->resolution.has_value());
 
-    // Load the variable from the local slot
-    if (this->local_index > 255) {
-        ctx.function->chunk.write(OpCode::GetLocalLong, this->token.line);
-        ctx.function->chunk.writeWord(static_cast<uint16_t>(this->local_index));
-    } else {
-        ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(this->local_index));
-    }
+    std::visit(overloaded{
+        [&](int local_index) {
+            // Load the variable from the local slot
+            if (local_index > 255) {
+                ctx.function->chunk.write(OpCode::GetLocalLong, this->token.line);
+                ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
+            } else {
+                ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
+                ctx.function->chunk.write(static_cast<uint8_t>(local_index));
+            }
 
-    // If its an object, we need to retain it
-    if (ctx.typeRegistry.isObject(this->result_type.value())) {
-        ctx.function->chunk.write(OpCode::Retain);
-    }
+            // If its an object, we need to retain it
+            if (ctx.typeRegistry.isObject(this->result_type.value())) {
+                ctx.function->chunk.write(OpCode::Retain);
+            }
+        },
+        [&](NativeFunctionObj *native_fn) {
+            // Load the native function as a constant
+            Value val {.object = native_fn};
+            const auto constant = ctx.function->chunk.addConstant(val);
+            ctx.function->chunk.write(OpCode::Constant, this->token.line);
+            ctx.function->chunk.write(static_cast<uint8_t>(constant));
+
+            // No need to retain native functions
+        }
+    }, this->resolution.value());
 }
 
 void VariableNode::print(int indent) {
@@ -252,7 +267,7 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
     this->operand->resolveType(ctx);
     auto operand_type = this->operand->result_type;
 
-    // Determine the result type based on the type and operator 
+    // Determine the result type based on the type and operator
     const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
     const auto floatingType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -384,7 +399,7 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
                 auto common = ctx.typeRegistry.getCommonPrimitive(l.kind, r.kind);
                 if (common.has_value()) {
                     return ctx.typeRegistry.getPrimitive(common.value());
-                } 
+                }
 
                 return std::nullopt;
             },
@@ -578,7 +593,7 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {
     prim_type.kind == PrimitiveKind::Floating ? OpCode::op##F : OpCode::op##I
 
     switch (this->token.type) {
-        case Token::Type::Greater: 
+        case Token::Type::Greater:
             ctx.function->chunk.write(IorF(Gt), this->token.line);
             break;
         case Token::Type::GreaterEqual:
@@ -723,8 +738,8 @@ void CallExpr::resolveType(CompileContext &ctx) {
     for (unsigned i = 0; i < this->arguments.size(); i++) {
         this->arguments[i]->resolveType(ctx);
         const auto &from_type = this->arguments[i]->result_type.value();
-        const auto &target_type = function_type.param_types[i]; 
-        if (from_type == target_type) 
+        const auto &target_type = function_type.param_types[i];
+        if (from_type == target_type)
             continue;
 
         // If they are not the same, try to cast

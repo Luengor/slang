@@ -112,6 +112,15 @@ VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
+    // Resolve the name first to ensure it isn't a native function
+    auto nameResolution = ctx.resolveName(this->token.lexeme);
+    if (nameResolution.has_value() &&
+        std::holds_alternative<NativeFunctionObj *>(nameResolution.value())) {
+        throw ParserError(
+            this->token,
+            "Variable name conflicts with a native function name.");
+    }
+
     // If we have a type expression, resolve it
     if (this->type_expr) {
         this->type_expr->resolveType(ctx);
@@ -227,19 +236,24 @@ void AssignExpr::compile(CompileContext &ctx) {
     // The variable is only compiled on read, so we don't do it now
     // We get the local index from the target variable node
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
-    if (varNode == nullptr || varNode->local_index == -1) {
-        throw ParserError(
-            this->token,
-            "Invalid assignment target during compilation.");
+
+    // Ensure it's a valid assignment target
+    if (varNode == nullptr ||
+        !std::holds_alternative<int>(varNode->resolution.value())) {
+        throw ParserError(this->token,
+                          "Invalid assignment target during compilation.");
     }
 
+    const int local_index =
+        std::get<int>(varNode->resolution.value());
+
     // Store the value into the local variable
-    if (varNode->local_index > 255) {
+    if (local_index > 255) {
         ctx.function->chunk.write(OpCode::SetLocalLong, this->token.line);
-        ctx.function->chunk.writeWord(static_cast<uint16_t>(varNode->local_index));
+        ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
     } else {
         ctx.function->chunk.write(OpCode::SetLocal, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(varNode->local_index));
+        ctx.function->chunk.write(static_cast<uint8_t>(local_index));
     }
 }
 

@@ -1,4 +1,5 @@
 #include "ast_core.hpp"
+#include "native.hpp"
 #include "object.hpp"
 
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
@@ -8,13 +9,15 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     // Create compile context
     TypeRegistry typeRegistry;
 
+    NativeRegistry nativeRegistry(typeRegistry);
+
     std::unique_ptr<FunctionObj> function = std::make_unique<FunctionObj>();
     function->type_id = typeRegistry.getFunction({}, typeRegistry.noneType());
     
     CompileContext ctx{
         .function = function.get(), 
         .typeRegistry = typeRegistry,
-
+        .nativeRegistry = nativeRegistry,
         .scope_depth = 0,
         .locals = {},
     };

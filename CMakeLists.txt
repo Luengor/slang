@@ -18,6 +18,7 @@ set(SOURCES
     src/compiler.cpp
     src/compile_context.cpp
     src/error.cpp
+    src/native.cpp
     src/object.cpp
     src/parser.cpp
     src/scanner.cpp
