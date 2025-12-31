@@ -37,7 +37,11 @@ void ExprStmt::compile(CompileContext &ctx) {
     this->expression->compile(ctx);
 
     // Pop the result off the stack since it's not used
-    ctx.function->chunk.write(OpCode::Pop, this->token.line);
+    if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
+        ctx.function->chunk.write(OpCode::Release, this->token.line);
+    } else {
+        ctx.function->chunk.write(OpCode::Pop, this->token.line);
+    }
 }
 
 void ExprStmt::print(int indent) {
