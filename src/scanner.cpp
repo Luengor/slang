@@ -176,6 +176,8 @@ Token Scanner::makeIdentifier() {
         case 'o':
             if (token.lexeme == "or") token.type = Token::Or;
             break;
+        case 'r': if (token.lexeme == "return") token.type = Token::Return;
+            break;
         case 't':
             if (token.lexeme == "true") token.type = Token::True;
             break;

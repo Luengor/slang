@@ -36,10 +36,11 @@ enum class OpCode : uint8_t {
 
 class Chunk {
     friend class VM;
+    friend struct CallFrame;
 
     std::vector<uint8_t> code;
     std::vector<int> lines;
-    ValueArray constants;
+    ValueArray constants = {};
 
     int simpleInstruction(const char *name, int offset);
     int simpleArgInstruction(const char *name, int offset, int arg);

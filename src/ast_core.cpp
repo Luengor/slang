@@ -1,14 +1,18 @@
 #include "ast_core.hpp"
+#include "object.hpp"
 
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
     : type(type), token(token) {}
 
-Chunk compileAST(ASTNode *root) {
+std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     // Create compile context
-    Chunk chunk;
     TypeRegistry typeRegistry;
+
+    std::unique_ptr<FunctionObj> function = std::make_unique<FunctionObj>();
+    function->type_id = typeRegistry.getFunction({}, typeRegistry.noneType());
+    
     CompileContext ctx{
-        .chunk = &chunk,
+        .function = function.get(), 
         .typeRegistry = typeRegistry,
 
         .scope_depth = 0,
@@ -21,8 +25,7 @@ Chunk compileAST(ASTNode *root) {
     // Compile the AST
     root->compile(ctx);
 
-    chunk.write(OpCode::Return);
+    function->chunk.write(OpCode::Return);
 
-    return chunk;
+    return function;
 }
-

@@ -48,6 +48,8 @@ class Parser {
     // Error recovery: synchronize the parser state after an error
     void syncronize();
 
+    std::unique_ptr<ASTNode> finishCall(std::unique_ptr<ASTNode> expr);
+
     // typeExpr -> functionType | primitiveType
     std::unique_ptr<ASTNode> typeExpr();
 
@@ -63,7 +65,7 @@ class Parser {
     // varDecl -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
     std::unique_ptr<ASTNode> varDecl();
 
-    // statement -> exprStmt | ifStmt | whileStmt | forStmt | block
+    // statement -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block
     std::unique_ptr<ASTNode> statement();
 
     // exprStmt -> expression ";"
@@ -78,6 +80,9 @@ class Parser {
     // forStmt -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"
     //                       expression? ")" statement
     std::unique_ptr<ASTNode> forStmt();
+
+    // returnStmt -> "return" expression? ";"
+    std::unique_ptr<ASTNode> returnStmt();
 
     // block -> "{" declaration* "}"
     std::unique_ptr<ASTNode> block();
@@ -111,8 +116,6 @@ class Parser {
 
     // call -> primary ( "(" arguments? ")" )*
     std::unique_ptr<ASTNode> call();
-
-    std::unique_ptr<ASTNode> finishCall(std::unique_ptr<ASTNode> expr);
 
     // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")" |
     //            IDENTIFIER | function

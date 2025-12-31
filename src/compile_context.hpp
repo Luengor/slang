@@ -1,6 +1,5 @@
 #pragma once
 
-#include "chunk.hpp"
 #include "types.hpp"
 #include <string>
 #include <vector>
@@ -22,9 +21,11 @@ struct PopCount {
     std::vector<int> objects = {};
 };
 
+struct FunctionObj;
+
 struct CompileContext {
-    // The current chunk being compiled into
-    Chunk *chunk;
+    // The current function being compiled
+    FunctionObj *function = nullptr;
 
     // The type registry for type management
     TypeRegistry &typeRegistry;
@@ -33,6 +34,10 @@ struct CompileContext {
     int scope_depth = 0;
     // The list of local variables currently in scope
     std::vector<Local> locals = {};
+
+    // The parent compile context.
+    // If this value is nullptr, this is the top-level context.
+    CompileContext *next = nullptr;
 
     // Adds a local variable to the current scope
     int addLocal(const std::string &name, TypeID type);

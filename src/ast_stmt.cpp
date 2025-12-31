@@ -1,7 +1,10 @@
 #include "ast_stmt.hpp"
 #include "ast_expr.hpp"
 #include "error.hpp"
+#include "object.hpp"
+#include <cassert>
 #include <iostream>
+#include <variant>
 
 #define ResolveGuard \
     if (this->result_type.has_value()) { \
@@ -34,7 +37,7 @@ void ExprStmt::compile(CompileContext &ctx) {
     this->expression->compile(ctx);
 
     // Pop the result off the stack since it's not used
-    ctx.chunk->write(OpCode::Pop, this->token.line);
+    ctx.function->chunk.write(OpCode::Pop, this->token.line);
 }
 
 void ExprStmt::print(int indent) {
@@ -84,10 +87,10 @@ void BlockStmt::compile(CompileContext &ctx) {
     unsigned j = 0;
     for (int i = 0; i < this->pop.total; i++) {
         if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
-            ctx.chunk->write(OpCode::Release);
+            ctx.function->chunk.write(OpCode::Release);
             j++;
         } else {
-            ctx.chunk->write(OpCode::Pop);
+            ctx.function->chunk.write(OpCode::Pop);
         }
     }
 }
@@ -164,9 +167,9 @@ void VarDeclStmt::compile(CompileContext &ctx) {
         // Default initializer
         // for now, push false and good luck if it's not a boolean :)
         Value defaultValue {.boolean = false};
-        const auto constant = ctx.chunk->addConstant(defaultValue);
-        ctx.chunk->write(OpCode::Constant, this->token.line);
-        ctx.chunk->write(static_cast<uint8_t>(constant));
+        const auto constant = ctx.function->chunk.addConstant(defaultValue);
+        ctx.function->chunk.write(OpCode::Constant, this->token.line);
+        ctx.function->chunk.write(static_cast<uint8_t>(constant));
     }
 
     // Nothing more to do, we pray now
@@ -232,11 +235,11 @@ void AssignExpr::compile(CompileContext &ctx) {
 
     // Store the value into the local variable
     if (varNode->local_index > 255) {
-        ctx.chunk->write(OpCode::SetLocalLong, this->token.line);
-        ctx.chunk->writeWord(static_cast<uint16_t>(varNode->local_index));
+        ctx.function->chunk.write(OpCode::SetLocalLong, this->token.line);
+        ctx.function->chunk.writeWord(static_cast<uint16_t>(varNode->local_index));
     } else {
-        ctx.chunk->write(OpCode::SetLocal, this->token.line);
-        ctx.chunk->write(static_cast<uint8_t>(varNode->local_index));
+        ctx.function->chunk.write(OpCode::SetLocal, this->token.line);
+        ctx.function->chunk.write(static_cast<uint8_t>(varNode->local_index));
     }
 }
 
@@ -294,9 +297,9 @@ void IfStmt::compile(CompileContext &ctx) {
     this->condition->compile(ctx);
 
     // Insert jump if false, take note of the jump address and insert dummy
-    ctx.chunk->write(OpCode::JmpIfFalsePop, this->token.line);
+    ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
     const auto if_jump =
-        ctx.chunk->writeWord(0xFFFF); // Placeholder
+        ctx.function->chunk.writeWord(0xFFFF); // Placeholder
 
     // Compile then branch
     this->then_branch->compile(ctx);
@@ -304,16 +307,16 @@ void IfStmt::compile(CompileContext &ctx) {
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch) {
-        ctx.chunk->write(OpCode::Jmp);
+        ctx.function->chunk.write(OpCode::Jmp);
         else_jump =
-            ctx.chunk->writeWord(0xFFFF); // Placeholder
+            ctx.function->chunk.writeWord(0xFFFF); // Placeholder
     }
 
     // Patch first jump
-    const unsigned after_then_addr = ctx.chunk->currentOffset();
+    const unsigned after_then_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_then =
         static_cast<int16_t>(after_then_addr - (if_jump + 2));
-    ctx.chunk->patchWord(if_jump, offset_to_after_then);
+    ctx.function->chunk.patchWord(if_jump, offset_to_after_then);
 
     // If there is no else branch, we're done
     if (!this->else_branch)
@@ -323,10 +326,10 @@ void IfStmt::compile(CompileContext &ctx) {
     this->else_branch->compile(ctx);
 
     // Patch else jump
-    const unsigned after_else_addr = ctx.chunk->currentOffset();
+    const unsigned after_else_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_else =
         static_cast<int16_t>(after_else_addr - (else_jump + 2));
-    ctx.chunk->patchWord(else_jump, offset_to_after_else);
+    ctx.function->chunk.patchWord(else_jump, offset_to_after_else);
 }
 
 void IfStmt::print(int indent) {
@@ -378,30 +381,30 @@ void WhileStmt::resolveType(CompileContext &ctx) {
 
 void WhileStmt::compile(CompileContext &ctx) {
     // Mark the beggining of the condition
-    const auto before_condition = ctx.chunk->currentOffset();
+    const auto before_condition = ctx.function->chunk.currentOffset();
 
     // Compile the condition
     this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    ctx.chunk->write(OpCode::JmpIfFalsePop);
-    const auto jump_to_patch = ctx.chunk->writeWord(0xFFFF);
+    ctx.function->chunk.write(OpCode::JmpIfFalsePop);
+    const auto jump_to_patch = ctx.function->chunk.writeWord(0xFFFF);
 
     // Compile body
     this->body->compile(ctx);
 
     // Insert jump to condition
-    ctx.chunk->write(OpCode::Jmp);
+    ctx.function->chunk.write(OpCode::Jmp);
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
-        static_cast<int16_t>(ctx.chunk->currentOffset() + 2);
-    ctx.chunk->writeWord(before_offset);
+        static_cast<int16_t>(ctx.function->chunk.currentOffset() + 2);
+    ctx.function->chunk.writeWord(before_offset);
 
     // Patch first jump
-    const unsigned final_addr = ctx.chunk->currentOffset();
+    const unsigned final_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_end =
         static_cast<int16_t>(final_addr - (jump_to_patch + 2));
-    ctx.chunk->patchWord(jump_to_patch, offset_to_end);
+    ctx.function->chunk.patchWord(jump_to_patch, offset_to_end);
 }
 
 void WhileStmt::print(int indent) {
@@ -409,5 +412,68 @@ void WhileStmt::print(int indent) {
     std::cout << "WhileStmt\n";
     this->condition->print(indent + 1);
     this->body->print(indent + 1);
+}
+
+// ReturnStmt
+ReturnStmt::ReturnStmt(const Token &token, ASTNodePtr return_expr)
+    : ASTNode(ASTNodeType::ReturnStmt, token),
+      return_expr(std::move(return_expr)) {};
+
+void ReturnStmt::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Ensure this is happening in a function
+    if (!ctx.next)
+        throw ParserError(this->token,
+            "Return statement outside function");
+
+    // The return type of the statement is none
+    this->result_type = ctx.typeRegistry.noneType();
+
+    // If there is expr, compile it
+    if (!this->return_expr) return;
+    this->return_expr->resolveType(ctx);
+
+    // Check for types
+    const auto function_type_data =
+        ctx.typeRegistry.getTypeData(ctx.function->type_id);
+    assert(std::holds_alternative<FunctionType>(function_type_data));
+    TypeID return_type = std::get<FunctionType>(function_type_data).return_type;
+
+    if (return_type != this->return_expr->result_type) {
+        // Cast
+        auto cast_op = ctx.typeRegistry.getCastOp(
+            return_type, this->return_expr->result_type.value());
+
+        if (!cast_op)
+            throw ParserError(
+                this->return_expr->token,
+                "Return type doesn't match with function declaration");
+
+        this->return_expr = std::make_unique<CastExpr>(
+            this->return_expr->token, std::move(this->return_expr),
+            return_type);
+        this->return_expr->resolveType(ctx);
+    }
+}
+
+void ReturnStmt::compile(CompileContext &ctx) {
+    // If there is expression, compile that
+    if (this->return_expr)
+        this->return_expr->compile(ctx);
+    else {
+        // If not, put a random constant
+        ctx.function->chunk.write(OpCode::Constant, this->token.line);
+        ctx.function->chunk.write(0);
+    }
+
+    ctx.function->chunk.write(OpCode::Return);
+}
+
+void ReturnStmt::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "ReturnStmt\n";
+    if (this->return_expr)
+        this->return_expr->print(indent + 1);
 }
 

@@ -1,13 +1,15 @@
 #pragma once
 
-#include "chunk.hpp"
+#include <memory>
 #include <string>
+
+struct FunctionObj;
 
 class Compiler {
     const std::string source;
 
   public:
     Compiler(const std::string &source);
-    Chunk compile();
+    std::unique_ptr<FunctionObj> compile();
 };
 

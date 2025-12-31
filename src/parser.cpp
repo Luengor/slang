@@ -68,6 +68,7 @@ void Parser::syncronize() {
             case Token::Type::If:
             case Token::Type::While:
             case Token::Type::For:
+            case Token::Type::Return:
                 return;
             default:
                 break;
@@ -168,6 +169,8 @@ std::unique_ptr<ASTNode> Parser::statement() {
         return this->whileStmt();
     } else if (this->match({Token::Type::For})) {
         return this->forStmt();
+    } else if (this->match({Token::Type::Return})) {
+        return this->returnStmt();
     } else if (this->match({Token::Type::Semicolon})) {
         // Empty statement
         Token semicolonToken = this->previous();
@@ -278,6 +281,18 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
     statements.push_back(std::move(whileStmt));
 
     return std::make_unique<BlockStmt>(for_token, std::move(statements));
+}
+
+std::unique_ptr<ASTNode> Parser::returnStmt() {
+    Token return_token = this->previous();
+
+    // Get return expression if any
+    ASTNodePtr expr = nullptr;
+    if (!this->check(Token::Type::Semicolon))
+        expr = this->expression();
+
+    this->consume(Token::Type::Semicolon, "Expected ';' after return statement.");
+    return std::make_unique<ReturnStmt>(return_token, std::move(expr));
 }
 
 std::unique_ptr<ASTNode> Parser::block() {

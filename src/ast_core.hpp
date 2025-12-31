@@ -23,6 +23,7 @@ enum class ASTNodeType {
     PrimitiveType,
     FunctionType,
     CallExpr,
+    ReturnStmt,
 };
 
 // Base class for all AST nodes
@@ -53,5 +54,7 @@ struct ASTNode {
 
 using ASTNodePtr = std::unique_ptr<ASTNode>;
 
-Chunk compileAST(ASTNode *root);
+struct FunctionObj;
+
+std::unique_ptr<FunctionObj> compileAST(ASTNode *root);
 

@@ -2,13 +2,15 @@
 #include "ast_core.hpp"
 #include "parser.hpp"
 #include "scanner.hpp"
+#include "object.hpp"
 #include <format>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 
 Compiler::Compiler(const std::string &source) : source(source) {}
 
-Chunk Compiler::compile() {
+std::unique_ptr<FunctionObj> Compiler::compile() {
     // Scan source
     Scanner scanner;
     std::vector<Token> tokens = scanner.scan(this->source);
@@ -32,7 +34,7 @@ Chunk Compiler::compile() {
     if (root == nullptr)
         throw std::runtime_error("Parsing failed.");
 
-    Chunk chunk = compileAST(root.get());
+    auto function = compileAST(root.get());
 
 #ifndef NDEBUG
     // Print AST for debugging _after_ compilation
@@ -48,9 +50,9 @@ Chunk Compiler::compile() {
 #ifndef NDEBUG
     // Print Chunk for debugging
     std::cout << "\nCompiled Chunk:\n";
-    chunk.disassemble("code");
+    function->chunk.disassemble("code");
 #endif
 
-    return chunk;
+    return function;
 }
 

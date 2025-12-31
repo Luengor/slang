@@ -4,33 +4,46 @@
 #include "value.hpp"
 #include "object.hpp"
 #include <cassert>
+#include <memory>
 #include <print>
 
+CallFrame::CallFrame(FunctionObj *function, size_t stack_base) {
+    this->function = function;
+    this->ip = function->chunk.code.data();
+    this->stack_base = stack_base;
+}
+
 InterpretResult VM::interpret(const std::string &source) {
-    // Compile the source code into a chunk
+    // Compile the source code into a function 
     Compiler compiler(source);
+    std::unique_ptr<FunctionObj> function;
 
     try {
-        this->chunk = compiler.compile();
+        function = compiler.compile();
     } catch (const std::runtime_error &error) {
         std::print("Compilation error: {}\n", error.what());
         return InterpretResult::CompileError;
     }
-    this->ip = this->chunk.code.data();
 
-    // Run the chunk
+    // Create the first call frame
+    this->call_frames.push_back(
+        CallFrame(function.get(), 0));
+
+    // Run the code 
     return this->run();
 }
 
 InterpretResult VM::run() {
 #define ever ;;
-#define READ_BYTE() (*this->ip++)
+#define frame this->call_frames.back()
+#define frame_stack (this->stack.data() + frame.stack_base)
+#define READ_BYTE() (*frame.ip++)
 #define READ_UWORD()                                                           \
-    (this->ip += 2, static_cast<uint16_t>((this->ip[-2] << 8) | this->ip[-1]))
+    (frame.ip += 2, static_cast<uint16_t>((frame.ip[-2] << 8) | frame.ip[-1]))
 #define READ_WORD()                                                            \
-    (this->ip += 2, static_cast<int16_t>((this->ip[-2] << 8) | this->ip[-1]))
+    (frame.ip += 2, static_cast<int16_t>((frame.ip[-2] << 8) | frame.ip[-1]))
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
-#define READ_CONSTANT() (this->chunk.constants[READ_BYTE()])
+#define READ_CONSTANT() (frame.function->chunk.constants[READ_BYTE()])
 
 #define BINARY_OP(op, mode)            \
     {                            \
@@ -53,14 +66,41 @@ InterpretResult VM::run() {
     for (ever) {
 #ifndef NDEBUG
         // Print the current instruction
-        this->chunk.disassebleInstruction(static_cast<int>(this->ip - this->chunk.code.data()));
+        frame.function->chunk.disassebleInstruction(static_cast<int>(frame.ip - frame.function->chunk.code.data()));
 #endif
 
         const OpCode instruction = READ_INS();
         switch (instruction) {
-            case OpCode::Return:
-                assert(this->stack.size() == 0 && "Stack should be empty on return");
-                return InterpretResult::Ok;
+            case OpCode::Return: {
+                if (this->call_frames.size() == 1) {
+                    assert(this->stack.size() == 0 && "Stack should be empty on return");
+                    return InterpretResult::Ok;
+                } else {
+                    // Take the return value
+                    const Value return_value = this->stack.back();
+
+                    // Pop the call frame until we reach the stack base
+                    const size_t stack_base = frame.stack_base;
+                    this->call_frames.pop_back();
+                    this->stack.resize(stack_base - 1); // to also remove the function itself
+
+                    // Push the return value back onto the stack
+                    this->stack.push_back(return_value);
+                    break;
+                }
+            }
+
+            case OpCode::Call: {
+                const uint8_t arg_count = READ_BYTE();
+                const Value callee = this->stack[this->stack.size() - 1 - arg_count];
+                assert(callee.object->type == Object::Type::Function &&
+                       "Callee must be a function");
+
+                FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                this->call_frames.push_back(
+                    CallFrame(function, this->stack.size() - arg_count));
+                break;
+            }
 
             case OpCode::Constant: {
                 const auto constant = READ_CONSTANT();
@@ -126,38 +166,38 @@ InterpretResult VM::run() {
 
             case OpCode::GetLocal: {
                 const uint8_t slot = READ_BYTE();
-                this->stack.push_back(this->stack[slot]);
+                this->stack.push_back(frame_stack[slot]);
                 break;
             }
 
             case OpCode::GetLocalLong: {
                 const uint16_t slot = READ_UWORD();
-                this->stack.push_back(this->stack[slot]);
+                this->stack.push_back(frame_stack[slot]);
                 break;
             }
 
             case OpCode::SetLocal: {
                 const uint8_t slot = READ_BYTE();
-                this->stack[slot] = this->stack.back();
+                frame_stack[slot] = this->stack.back();
                 break;
             }
 
             case OpCode::SetLocalLong: {
                 const uint16_t slot = READ_UWORD();
-                this->stack[slot] = this->stack.back();
+                frame_stack[slot] = this->stack.back();
                 break;
             }
 
             case OpCode::Jmp: {
                 const int16_t offset = READ_WORD();
-                this->ip += offset;
+                frame.ip += offset;
                 break;
             }
 
             case OpCode::JmpIfFalse: {
                 const int16_t offset = READ_WORD();
                 if (!this->stack.back().boolean) {
-                    this->ip += offset;
+                    frame.ip += offset;
                 }
                 // no pop!
                 break;
@@ -166,7 +206,7 @@ InterpretResult VM::run() {
             case OpCode::JmpIfTrue: {
                 const int16_t offset = READ_WORD();
                 if (this->stack.back().boolean) {
-                    this->ip += offset;
+                    frame.ip += offset;
                 }
                 // no pop!
                 break;
@@ -175,7 +215,7 @@ InterpretResult VM::run() {
             case OpCode::JmpIfFalsePop: {
                 const int16_t offset = READ_WORD();
                 if (!this->stack.back().boolean) {
-                    this->ip += offset;
+                    frame.ip += offset;
                 }
                 this->stack.pop_back(); // pop!
                 break;

@@ -68,3 +68,12 @@ struct AssignExpr : public ASTNode {
     void print(int indent = 0) override;
 };
 
+struct ReturnStmt : public ASTNode {
+    ASTNodePtr return_expr;
+
+    ReturnStmt(const Token &token, ASTNodePtr return_expr);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+

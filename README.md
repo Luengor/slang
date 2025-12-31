@@ -17,11 +17,12 @@ primitiveType -> "fixed" | "float" | "bool"
 ```
 declaration -> varDecl | funcDecl | statement
 varDecl     -> ( typeExpr | auto" ) IDENTIFIER ( "=" expression )? ";"
-statement   -> exprStmt | ifStmt | whileStmt | forStmt | block | ";"
+statement   -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 whileStmt   -> "while" "(" expression ")" statement
 forStmt     -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"
                          expression? ")" statement
+returnStmt  -> "return" expression? ";"
 block       -> "{" declaration* "}"
 exprStmt    -> expression ";"
 ```

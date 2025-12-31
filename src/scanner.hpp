@@ -23,7 +23,7 @@ struct Token {
         // Keywords.
         And, Or, Not, True, False,
         Fixed, Float, Bool, None, Auto,
-        If, Else, While, For,
+        If, Else, While, For, Return,
         
         Error, Eof
     } type;
