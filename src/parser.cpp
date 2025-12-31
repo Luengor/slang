@@ -62,6 +62,7 @@ void Parser::syncronize() {
 
         switch (this->peek().type) {
             case Token::Type::Fixed:
+            case Token::Type::Str:
             case Token::Type::Float:
             case Token::Type::Bool:
             case Token::Type::Auto:
@@ -83,7 +84,7 @@ void Parser::syncronize() {
 std::unique_ptr<ASTNode> Parser::typeExpr() {
     // Try primitive type first
     if (this->match({Token::Type::Fixed, Token::Type::Float,
-                         Token::Type::Bool})) {
+                         Token::Type::Bool, Token::Type::Str})) {
         return this->primitiveType();
     }
 
@@ -222,7 +223,7 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
 
     if (!this->match({Token::Type::Semicolon})) {
         if (this->match({Token::Type::Fixed, Token::Type::Float,
-                         Token::Type::Bool, Token::Type::Auto})) {
+                         Token::Type::Bool, Token::Type::Str, Token::Type::Auto})) {
             this->current--; // backtrack
             initializer = this->varDecl();
         } else {

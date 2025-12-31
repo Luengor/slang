@@ -75,9 +75,14 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.second.object->type) {
         case Object::Type::String:
             return getPrimitive(PrimitiveKind::String);
-        default:
-            return getPrimitive(PrimitiveKind::None);
+        case Object::Type::Function: {
+            FunctionObj *fnObj =
+                static_cast<FunctionObj *>(value.second.object);
+            return fnObj->type_id;
+        }
     }
+
+    throw std::runtime_error("Unknown object type in getFromValue.");
 }
 
 bool TypeRegistry::isNumeric(TypeID typeID) {

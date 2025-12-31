@@ -178,6 +178,8 @@ Token Scanner::makeIdentifier() {
             break;
         case 'r': if (token.lexeme == "return") token.type = Token::Return;
             break;
+        case 's': if (token.lexeme == "str") token.type = Token::Str;
+            break;
         case 't':
             if (token.lexeme == "true") token.type = Token::True;
             break;

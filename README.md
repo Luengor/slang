@@ -10,7 +10,7 @@ program     -> declaration* EOF
 ```
 typeExpr      -> functionType | primitiveType
 functionType  -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" ( typeExpr | "none" )
-primitiveType -> "fixed" | "float" | "bool"
+primitiveType -> "fixed" | "float" | "bool" | "str"
 ```
 
 #### Declaration and statement rules

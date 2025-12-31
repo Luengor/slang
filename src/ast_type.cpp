@@ -25,6 +25,9 @@ void PrimitiveTypeNode::resolveType(CompileContext &ctx) {
         case Token::Type::Bool:
             kind = PrimitiveKind::Boolean;
             break;
+        case Token::Type::Str:
+            kind = PrimitiveKind::String;
+            break;
         case Token::Type::None:
             kind = PrimitiveKind::None;
             break;
