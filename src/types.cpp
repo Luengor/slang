@@ -27,6 +27,9 @@ std::unordered_map<CastKey, OpCode, CastKeyHash> CAST_TABLE = {
     Cast(Boolean, Fixed, B2I),
     Cast(Floating, Boolean, F2B),
     Cast(Boolean, Floating, B2F),
+    Cast(Fixed, String, I2Str),
+    Cast(Floating, String, F2Str),
+    Cast(Boolean, String, B2Str),
 };
 
 #undef Cast

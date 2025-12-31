@@ -154,6 +154,27 @@ InterpretResult VM::run() {
             case OpCode::F2B: CAST(floating, boolean, bool);
             case OpCode::B2F: CAST(boolean, floating, FloatingType);
 
+            case OpCode::I2Str: {
+                FixedType val = this->stack.back().fixed;
+                auto strObj = new StringObj(std::to_string(val));
+                this->stack.back().object = strObj;
+                break;
+            }
+
+            case OpCode::F2Str: {
+                FloatingType val = this->stack.back().floating;
+                auto strObj = new StringObj(std::to_string(val));
+                this->stack.back().object = strObj;
+                break;
+            }
+
+            case OpCode::B2Str: {
+                bool val = this->stack.back().boolean;
+                auto strObj = new StringObj(val ? "true" : "false");
+                this->stack.back().object = strObj;
+                break;
+            }
+
             case OpCode::EqI: BINARY_OP(==, fixed);
             case OpCode::NeI: BINARY_OP(!=, fixed);
             case OpCode::EqF: BINARY_OP(==, floating);
@@ -171,10 +192,6 @@ InterpretResult VM::run() {
             case OpCode::LeF: BINARY_OP(<=, floating);
 
             case OpCode::Pop: {
-#ifndef NDEBUG
-                const auto val = this->stack.back();
-                std::println("{} {} {}", val.floating, val.fixed, val.boolean);
-#endif
                 this->stack.pop_back();
                 break;
             }
@@ -246,13 +263,6 @@ InterpretResult VM::run() {
                 this->stack.pop_back();
                 break;
             }
-
-            default:
-                {
-                    std::print("Runtime error: Unknown opcode {}\n",
-                               static_cast<int>(instruction));
-                    return InterpretResult::RuntimeError;
-                }
         }
 
     }

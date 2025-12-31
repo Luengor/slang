@@ -67,6 +67,9 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::B2I: return simpleInstruction("OP_B2I", offset);
         case OpCode::F2B: return simpleInstruction("OP_F2B", offset);
         case OpCode::B2F: return simpleInstruction("OP_B2F", offset);
+        case OpCode::I2Str: return simpleInstruction("OP_I2STR", offset);
+        case OpCode::F2Str: return simpleInstruction("OP_F2STR", offset);
+        case OpCode::B2Str: return simpleInstruction("OP_B2STR", offset);
 
         case OpCode::EqI: return simpleInstruction("OP_EQI", offset);
         case OpCode::NeI: return simpleInstruction("OP_NEI", offset);
