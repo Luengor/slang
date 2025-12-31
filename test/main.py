@@ -78,6 +78,9 @@ for root, dirs, files in os.walk(test_directory):
 
 print(f"Found {len(test_cases)} test cases.")
 
+# Sort by full name
+test_cases.sort(key=lambda tc: tc.full_name())
+
 # Run tests
 print("Running tests...")
 counts = {
