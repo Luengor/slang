@@ -758,6 +758,7 @@ void CallExpr::resolveType(CompileContext &ctx) {
 
         this->arguments[i] = std::make_unique<CastExpr>(
             arguments[i]->token, std::move(arguments[i]), target_type);
+        this->arguments[i]->resolveType(ctx);
     }
 
     // Everything ok
