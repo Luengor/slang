@@ -65,6 +65,8 @@ InterpretResult VM::run() {
 
     for (ever) {
 #ifndef NDEBUG
+        // // Print current stack size
+        // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base, this->stack.size());
         // Print the current instruction
         frame.function->chunk.disassebleInstruction(static_cast<int>(frame.ip - frame.function->chunk.code.data()));
 #endif
@@ -82,7 +84,7 @@ InterpretResult VM::run() {
                     // Pop the call frame until we reach the stack base
                     const size_t stack_base = frame.stack_base;
                     this->call_frames.pop_back();
-                    this->stack.resize(stack_base - 1); // to also remove the function itself
+                    this->stack.resize(stack_base); // this also removes the function itself
 
                     // Push the return value back onto the stack
                     this->stack.push_back(return_value);
@@ -98,7 +100,7 @@ InterpretResult VM::run() {
                 if (callee.object->type == Object::Type::Function) {
                     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
                     this->call_frames.push_back(
-                        CallFrame(function, this->stack.size() - arg_count));
+                        CallFrame(function, this->stack.size() - arg_count - 1)); // -1 for the function itself
                 } else {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);

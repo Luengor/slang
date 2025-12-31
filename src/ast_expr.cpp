@@ -153,6 +153,10 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     };
     this->fn_ctx.reset(fn_ctx);
 
+    // Add a local for the function itself (for recursion)
+    // noneType until we resolve the function type
+    const int self_local = fn_ctx->addLocal("self", ctx.typeRegistry.noneType());
+
     // Resolve argument types
     std::vector<TypeID> param_types;
     for (const auto &arg : this->arguments) {
@@ -170,6 +174,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
 
     this->fn_ctx->function->type_id = this->result_type.value();
 
+    // Update the self local to have the correct function type
+    fn_ctx->locals[self_local].type = this->result_type.value();
+
     // Resolve type of the body
     // (for now, nothing is checked :))
     // (but when type checking for blocks is added, it will be needed)
@@ -186,6 +193,12 @@ void FunctionNode::compile(CompileContext &ctx) {
     fn_ctx.function->chunk.write(OpCode::Constant);
     fn_ctx.function->chunk.write(0);
     fn_ctx.function->chunk.write(OpCode::Return);
+
+#ifndef NDEBUG
+    // Debug: print the compiled function bytecode
+    fn_ctx.function->chunk.disassemble(
+        "Function@" + std::to_string(this->token.line));
+#endif
 
     // Add the function object as a constant to the main chunk
     Value val {.object = fn_ctx.function};
