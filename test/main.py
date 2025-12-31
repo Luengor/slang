@@ -21,6 +21,11 @@ class TestStatus(Enum):
     CRASH = "CRASH"
 
 @dataclass
+class TestResult:
+    status: TestStatus
+    details: str = ""
+
+@dataclass
 class TestCase:
     case_name: str
     groups: list[str]
@@ -50,16 +55,16 @@ class TestCase:
     def full_name(self) -> str:
         return '.'.join(self.groups + [self.case_name])
 
-    def test(self) -> TestStatus:
+    def test(self) -> TestResult:
         try:
             result = subprocess.run([executable, self.input_file], capture_output=True, text=True, timeout=5)
             output = result.stdout.strip()
             if output == self.expected_output_file:
-                return TestStatus.PASS
+                return TestResult(status=TestStatus.PASS)
             else:
-                return TestStatus.FAIL
+                return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output_file}, Got: {output}")
         except Exception as e:
-            return TestStatus.CRASH
+            return TestResult(status=TestStatus.CRASH, details=str(e))
 
     def __str__(self) -> str:
         return f"TestCase(name={self.case_name}, groups={self.groups}, input_file={self.input_file}, expected_output_file={self.expected_output_file})"
@@ -82,15 +87,17 @@ counts = {
 }
 for test_case in test_cases:
     print(f"{test_case.full_name()}: ", end="")
-    status = test_case.test()
+    result = test_case.test()
 
-    if status == TestStatus.PASS:
+    if result.status == TestStatus.PASS:
         print("\033[92mPASS\033[0m")
-    elif status == TestStatus.FAIL:
+    elif result.status == TestStatus.FAIL:
         print("\033[91mFAIL\033[0m")
+        print(f"  Details: {result.details}")
     else:
         print("\033[93mCRASH\033[0m")
-    counts[status] += 1
+        print(f"  Details: {result.details}")
+    counts[result.status] += 1
 
 # Summary
 print("\nTest Summary:")
