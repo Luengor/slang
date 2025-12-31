@@ -14,6 +14,10 @@ Value nativePrintF(const Value *args, size_t arg_count) {
     assert(arg_count == 1);
     StringObj *strObj = static_cast<StringObj *>(args[0].object);
     std::cout << strObj->value << std::endl;
+
+    // Decrease ref count of the string object
+    strObj->release();
+
     RETURN;
 }
 

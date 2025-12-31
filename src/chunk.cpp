@@ -87,6 +87,8 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::GeF: return simpleInstruction("OP_GEF", offset);
         case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
 
+        case OpCode::True: return simpleInstruction("OP_TRUE", offset);
+        case OpCode::False: return simpleInstruction("OP_FALSE", offset);
         case OpCode::Pop: return simpleInstruction("OP_POP", offset);
         case OpCode::Retain: return simpleInstruction("OP_RETAIN", offset);
         case OpCode::Release: return simpleInstruction("OP_RELEASE", offset);
@@ -96,6 +98,7 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::JmpIfTrue: return jumpInstruction("OP_JIT", offset);
         case OpCode::JmpIfFalsePop: return jumpInstruction("OP_JNT_POP", offset);
 
+        case OpCode::Move: return simpleArgInstruction("OP_MOVE", offset, 1);
         case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 1);
         case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 1);
         case OpCode::GetLocalLong:

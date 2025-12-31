@@ -78,16 +78,14 @@ InterpretResult VM::run() {
                     assert(this->stack.size() == 0 && "Stack should be empty on return");
                     return InterpretResult::Ok;
                 } else {
-                    // Take the return value
-                    const Value return_value = this->stack.back();
-
-                    // Pop the call frame until we reach the stack base
-                    const size_t stack_base = frame.stack_base;
+                    // The function should have cleaned up its own stack
+                    // The stack should be: [... previous stack ...][return value][function]
+                    // Release and pop the function object and the stack is perfectly restored
                     this->call_frames.pop_back();
-                    this->stack.resize(stack_base); // this also removes the function itself
 
-                    // Push the return value back onto the stack
-                    this->stack.push_back(return_value);
+                    this->stack.back().object->release();
+                    this->stack.pop_back();
+
                     break;
                 }
             }
@@ -99,8 +97,10 @@ InterpretResult VM::run() {
 
                 if (callee.object->type == Object::Type::Function) {
                     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                    // -1 for the function itself
+                    // -1 for the return value slot
                     this->call_frames.push_back(
-                        CallFrame(function, this->stack.size() - arg_count - 1)); // -1 for the function itself
+                        CallFrame(function, this->stack.size() - arg_count - 2));
                 } else {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);
@@ -111,7 +111,8 @@ InterpretResult VM::run() {
                         arg_count);
 
                     // Pop the arguments and the function itself
-                    this->stack.resize(this->stack.size() - arg_count - 1);
+                    // The native IS responsible for releasing any objects arguments
+                    this->stack.resize(this->stack.size() - arg_count - 2);
 
                     // Push the result onto the stack
                     this->stack.push_back(result);
@@ -193,6 +194,20 @@ InterpretResult VM::run() {
             case OpCode::GeF: BINARY_OP(>=, floating);
             case OpCode::LeF: BINARY_OP(<=, floating);
 
+            case OpCode::True: {
+                Value val;
+                val.boolean = true;
+                this->stack.push_back(val);
+                break;
+            }
+
+            case OpCode::False: {
+                Value val;
+                val.boolean = false;
+                this->stack.push_back(val);
+                break;
+            }
+
             case OpCode::Pop: {
                 this->stack.pop_back();
                 break;
@@ -219,6 +234,13 @@ InterpretResult VM::run() {
             case OpCode::SetLocalLong: {
                 const uint16_t slot = READ_UWORD();
                 frame_stack[slot] = this->stack.back();
+                break;
+            }
+
+            case OpCode::Move: {
+                const uint8_t slot = READ_BYTE();
+                frame_stack[slot] = this->stack.back();
+                this->stack.pop_back();
                 break;
             }
 

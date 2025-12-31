@@ -30,8 +30,9 @@ enum class OpCode : uint8_t {
     Jmp, JmpIfFalse, JmpIfFalsePop,
     JmpIfTrue,
 
+    True, False,
     Pop, Retain, Release,
-    GetLocal, SetLocal,
+    GetLocal, SetLocal, Move,
     GetLocalLong, SetLocalLong,
 };
 

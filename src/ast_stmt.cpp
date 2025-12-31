@@ -485,6 +485,28 @@ void ReturnStmt::compile(CompileContext &ctx) {
         ctx.function->chunk.write(0);
     }
 
+    // Move that value to the return slot (the "" local) 
+    ctx.function->chunk.write(OpCode::Move, this->token.line);
+    ctx.function->chunk.write(0); // Return slot is always local 0
+
+    // Clean up the stack and return
+    auto function_type_data =
+        ctx.typeRegistry.getTypeData(ctx.function->type_id);
+    assert(std::holds_alternative<FunctionType>(function_type_data));
+    const FunctionType &function_type =
+        std::get<FunctionType>(function_type_data);
+
+    // Pop all arguments in reverse order
+    for (auto it = function_type.param_types.rbegin();
+         it != function_type.param_types.rend(); ++it) {
+        if (ctx.typeRegistry.isObject(*it)) {
+            ctx.function->chunk.write(OpCode::Release);
+        } else {
+            ctx.function->chunk.write(OpCode::Pop);
+        }
+    }
+
+    // Finally, return
     ctx.function->chunk.write(OpCode::Return);
 }
 
