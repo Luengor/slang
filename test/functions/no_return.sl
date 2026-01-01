@@ -1,0 +1,5 @@
+# 
+auto func = () -> none {};
+
+func();
+

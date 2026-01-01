@@ -1,0 +1,2 @@
+# COMPERROR
+true and 1;

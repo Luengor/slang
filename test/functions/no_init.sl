@@ -1,0 +1,3 @@
+# COMPERROR 
+() -> none func;
+

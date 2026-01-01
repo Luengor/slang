@@ -5,6 +5,8 @@ from enum import Enum
 import subprocess
 
 SLANG_EXTENSIONS = [".slang", ".sl"]
+COMPERROR = "COMPERROR"
+COMPERROR_CODE = 65
 
 # Check command line arguments
 if len(sys.argv) != 3:
@@ -30,7 +32,7 @@ class TestCase:
     case_name: str
     groups: list[str]
     input_file: str
-    expected_output_file: str
+    expected_output: str
 
     @staticmethod
     def from_path(path: str, base_path:str = "") -> 'TestCase':
@@ -45,11 +47,12 @@ class TestCase:
 
         # First line is '# <expected output>'
         expected_output = lines[0].strip().strip('# ').strip()
+
         return TestCase(
             case_name=name,
             groups=groups,
             input_file=input_file,
-            expected_output_file=expected_output
+            expected_output=expected_output
         )
 
     def full_name(self) -> str:
@@ -59,15 +62,22 @@ class TestCase:
         try:
             result = subprocess.run([executable, self.input_file], capture_output=True, text=True, timeout=5)
             output = result.stdout.strip()
-            if output == self.expected_output_file:
-                return TestResult(status=TestStatus.PASS)
+            return_code = result.returncode
+
+            if return_code >= 0:
+                if output == self.expected_output or (self.expected_output == COMPERROR and return_code == COMPERROR_CODE):
+                    return TestResult(status=TestStatus.PASS)
+                else:
+                    return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output}, Got: {output}")
             else:
-                return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output_file}, Got: {output}")
+                error_message = result.stderr.strip() if result.stderr else "No error message."
+                error_code_result = os.strerror(return_code) 
+                return TestResult(status=TestStatus.CRASH, details=f"Process exited with code {return_code} ({error_code_result}). Stderr: {error_message}")
         except Exception as e:
             return TestResult(status=TestStatus.CRASH, details=str(e))
 
     def __str__(self) -> str:
-        return f"TestCase(name={self.case_name}, groups={self.groups}, input_file={self.input_file}, expected_output_file={self.expected_output_file})"
+        return f"TestCase(name={self.case_name}, groups={self.groups}, input_file={self.input_file}, expected_output_file={self.expected_output})"
 
 test_cases: list[TestCase] = []
 for root, dirs, files in os.walk(test_directory):
