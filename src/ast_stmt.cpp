@@ -166,6 +166,11 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                     this->result_type.value());
                 this->initializer->resolveType(ctx);
             }
+        } else if (ctx.typeRegistry.isObject(this->result_type.value())) {
+            // Object types require an initializer
+            throw ParserError(
+                this->token,
+                "Object variables require an initializer.");
         }
     }
 
