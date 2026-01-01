@@ -101,27 +101,51 @@ test_cases.sort(key=lambda tc: tc.full_name())
 # Run tests
 print("Running tests...")
 counts = {
-    TestStatus.PASS: 0,
-    TestStatus.FAIL: 0,
-    TestStatus.CRASH: 0
+    TestStatus.PASS: [],
+    TestStatus.FAIL: [],
+    TestStatus.CRASH: []
 }
+last_group = ""
 for test_case in test_cases:
-    print(f"{test_case.full_name()}: ", end="")
+    new_group = test_case.groups[0] if test_case.groups else test_case.case_name
+    if new_group != last_group:
+        print(f"\n{new_group}: ", end="")
+        last_group = new_group
+
+    # print(f"{test_case.full_name()}: ", end="")
     result = test_case.test()
 
     if result.status == TestStatus.PASS:
-        print("\033[92mPASS\033[0m")
+        print("\033[92m.\033[0m", end="")
     elif result.status == TestStatus.FAIL:
-        print("\033[91mFAIL\033[0m")
-        print(f"  Details: {result.details}")
+        print("\033[93mF\033[0m", end="")
+        # print(f"  Details: {result.details}")
     else:
-        print("\033[93mCRASH\033[0m")
-        print(f"  Details: {result.details}")
-    counts[result.status] += 1
+        print("\033[91mC\033[0m", end="")
+        # print(f"  Details: {result.details}")
+
+    counts[result.status].append(test_case)
+
+# Print more info on failures and crashes
+print('\n')
+
+if counts[TestStatus.FAIL]:
+    print("Failures:")
+    for test_case in counts[TestStatus.FAIL]:
+        result = test_case.test()
+        print(f"- {test_case.full_name()}: {result.details}")
+    print()
+
+if counts[TestStatus.CRASH]:
+    print("Crashes:")
+    for test_case in counts[TestStatus.CRASH]:
+        result = test_case.test()
+        print(f"- {test_case.full_name()}: {result.details}")
+    print()
 
 # Summary
-print("\nTest Summary:")
-total = sum(counts.values())
+print("Test Summary:")
+total = sum(len(v) for v in counts.values())
 print(f"Total: {total:>2d}")
 for status, count in counts.items():
-    print(f"{status.value:>5s}: {count:>2d} ({(count/total*100) if total > 0 else 0:>5.2f}%)")
+    print(f"{status.value:>5s}: {len(count):>2d} ({(len(count)/total*100) if total > 0 else 0:>5.2f}%)")
