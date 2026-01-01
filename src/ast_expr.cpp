@@ -81,6 +81,16 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 }
 
 void LiteralNode::compile(CompileContext &ctx) {
+    if (ctx.typeRegistry.isObject(this->result_type.value())) {
+        // Object constant
+        const auto constant =
+            ctx.function->chunk.addObjectConstant(this->value.second.object);
+        ctx.function->chunk.write(OpCode::Object, this->token.line);
+        ctx.function->chunk.write(static_cast<uint8_t>(constant));
+        return;
+    }
+
+    // Primitive constant
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
     ctx.function->chunk.write(OpCode::Constant, this->token.line);
     ctx.function->chunk.write(static_cast<uint8_t>(constant));
@@ -209,9 +219,9 @@ void FunctionNode::compile(CompileContext &ctx) {
 #endif
 
     // Add the function object as a constant to the main chunk
-    Value val {.object = fn_ctx.function};
-    const auto constant = ctx.function->chunk.addConstant(val);
-    ctx.function->chunk.write(OpCode::Constant, this->token.line);
+    const auto constant =
+        ctx.function->chunk.addObjectConstant(fn_ctx.function);
+    ctx.function->chunk.write(OpCode::Object, this->token.line);
     ctx.function->chunk.write(static_cast<uint8_t>(constant));
 }
 
@@ -268,9 +278,9 @@ void VariableNode::compile(CompileContext &ctx) {
         },
         [&](NativeFunctionObj *native_fn) {
             // Load the native function as a constant
-            Value val {.object = native_fn};
-            const auto constant = ctx.function->chunk.addConstant(val);
-            ctx.function->chunk.write(OpCode::Constant, this->token.line);
+            const auto constant =
+                ctx.function->chunk.addObjectConstant(native_fn);
+            ctx.function->chunk.write(OpCode::Object, this->token.line);
             ctx.function->chunk.write(static_cast<uint8_t>(constant));
 
             // No need to retain native functions

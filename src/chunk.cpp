@@ -1,4 +1,5 @@
 #include "chunk.hpp"
+#include "object.hpp"
 #include <cassert>
 #include <print>
 
@@ -17,6 +18,14 @@ int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant = this->constants[constant_i];
     std::print("{:13s} {:4d} -> {:g} | {:d} | {}\n", name, constant_i,
                constant.floating, constant.fixed, constant.boolean);
+    return offset + 2;
+}
+
+int Chunk::objectInstruction(const char *name, int offset) {
+    const auto object_i = this->code[offset + 1];
+    const Object *object = this->object_constants[object_i];
+    std::print("{:13s} {:4d} -> Object@{}\n", name, object_i,
+               static_cast<const void *>(object));
     return offset + 2;
 }
 
@@ -58,6 +67,7 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::DivideI: return simpleInstruction("OP_DIVIDEI", offset);
 
         case OpCode::Constant: return constantInstruction("OP_CONSTANT", offset);
+        case OpCode::Object: return objectInstruction("OP_OBJECT", offset);
 
         case OpCode::Not: return simpleInstruction("OP_NOT", offset);
 
@@ -144,6 +154,14 @@ unsigned Chunk::currentOffset() const {
 int Chunk::addConstant(Value value) {
     this->constants.push_back(value);
     return this->constants.size() - 1;
+}
+
+int Chunk::addObjectConstant(Object *obj) {
+    assert(obj != nullptr);
+    assert(obj->ref_count == 1 &&
+           "Object should have ref_count 1 when added as constant");
+    this->object_constants.push_back(obj);
+    return this->object_constants.size() - 1;
 }
 
 void Chunk::disassemble(const std::string &header) {

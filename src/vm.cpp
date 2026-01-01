@@ -44,6 +44,7 @@ InterpretResult VM::run() {
     (frame.ip += 2, static_cast<int16_t>((frame.ip[-2] << 8) | frame.ip[-1]))
 #define READ_INS() (static_cast<OpCode>(READ_BYTE()))
 #define READ_CONSTANT() (frame.function->chunk.constants[READ_BYTE()])
+#define READ_OBJECT() (frame.function->chunk.object_constants[READ_BYTE()])
 
 #define BINARY_OP(op, mode)            \
     {                            \
@@ -120,6 +121,12 @@ InterpretResult VM::run() {
             case OpCode::Constant: {
                 const auto constant = READ_CONSTANT();
                 this->stack.push_back(constant);
+                break;
+            }
+
+            case OpCode::Object: {
+                Object *object = READ_OBJECT();
+                this->stack.push_back({.object = object});
                 break;
             }
 

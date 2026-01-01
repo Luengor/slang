@@ -7,7 +7,7 @@
 
 enum class OpCode : uint8_t {
     Return, Call,
-    Constant,
+    Constant, Object,
     NegateF, NegateI,
     AddF, AddI,
     SubtractF, SubtractI,
@@ -43,10 +43,12 @@ class Chunk {
     std::vector<uint8_t> code;
     std::vector<int> lines;
     ValueArray constants = {};
+    std::vector<Object *> object_constants = {};
 
     int simpleInstruction(const char *name, int offset);
     int simpleArgInstruction(const char *name, int offset, int arg);
     int constantInstruction(const char *name, int offset);
+    int objectInstruction(const char *name, int offset);
     int jumpInstruction(const char *name, int offset);
     int disassebleInstruction(int offset);
 
@@ -69,6 +71,9 @@ public:
 
     // Adds a constant to the constants ValueArray
     int addConstant(Value value);
+
+    // Add an object constant to the object constants array
+    int addObjectConstant(Object *obj);
 
     // Print the chunk
     void disassemble(const std::string &header);
