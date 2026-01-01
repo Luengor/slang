@@ -14,8 +14,8 @@ struct Object {
     int ref_count = 1;
 
     virtual ~Object() = default;
-    virtual void retain();
-    virtual void release();
+    void retain();
+    void release();
 };
 
 #ifndef NDEBUG
@@ -60,7 +60,8 @@ struct NativeFunctionObj : public Object {
 
     NativeFunctionObj(TypeID type_id, NativeFunctionPtr function_ptr);
 
-    void retain() override;
-    void release() override;
+#ifndef NDEBUG 
+    ~NativeFunctionObj();
+#endif
 };
 

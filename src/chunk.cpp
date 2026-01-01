@@ -3,6 +3,13 @@
 #include <cassert>
 #include <print>
 
+Chunk::~Chunk() {
+    // Release all object constants
+    for (auto object : this->object_constants) {
+        object->release();
+    }
+}
+
 int Chunk::simpleInstruction(const char *name, int offset) {
     std::print("{:13s}\n", name);
     return offset+1;
@@ -24,8 +31,8 @@ int Chunk::constantInstruction(const char *name, int offset) {
 int Chunk::objectInstruction(const char *name, int offset) {
     const auto object_i = this->code[offset + 1];
     const Object *object = this->object_constants[object_i];
-    std::print("{:13s} {:4d} -> Object@{}\n", name, object_i,
-               static_cast<const void *>(object));
+    std::print("{:13s} {:4d} -> Object@{} {}\n", name, object_i,
+               static_cast<const void *>(object), object->ref_count);
     return offset + 2;
 }
 
@@ -157,9 +164,6 @@ int Chunk::addConstant(Value value) {
 }
 
 int Chunk::addObjectConstant(Object *obj) {
-    assert(obj != nullptr);
-    assert(obj->ref_count == 1 &&
-           "Object should have ref_count 1 when added as constant");
     this->object_constants.push_back(obj);
     return this->object_constants.size() - 1;
 }
@@ -170,9 +174,5 @@ void Chunk::disassemble(const std::string &header) {
     for (uint i = 0; i < this->code.size(); ) {
         i = disassebleInstruction(i);
     }
-}
-
-void Chunk::free() {
-    this->code.clear();
 }
 

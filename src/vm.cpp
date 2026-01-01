@@ -114,6 +114,9 @@ InterpretResult VM::run() {
 
                     // Push the result onto the stack
                     this->stack.push_back(result);
+
+                    // Release the native function object
+                    native_function->release();
                 }
                 break;
             }
@@ -126,6 +129,7 @@ InterpretResult VM::run() {
 
             case OpCode::Object: {
                 Object *object = READ_OBJECT();
+                object->retain();
                 this->stack.push_back({.object = object});
                 break;
             }

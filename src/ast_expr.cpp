@@ -277,6 +277,9 @@ void VariableNode::compile(CompileContext &ctx) {
             }
         },
         [&](NativeFunctionObj *native_fn) {
+            // Retain the native function to pass it to the chunk
+            native_fn->retain();
+
             // Load the native function as a constant
             const auto constant =
                 ctx.function->chunk.addObjectConstant(native_fn);

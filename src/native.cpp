@@ -23,17 +23,24 @@ Value nativePrintF(const Value *args, size_t arg_count) {
 
 NativeRegistry::NativeRegistry(TypeRegistry &typeRegistry) {
     // Register all native functions
-    this->native_functions["print"] = std::make_unique<NativeFunctionObj>(
+    this->native_functions["print"] = new NativeFunctionObj(
         typeRegistry.getFunction(
             {typeRegistry.getPrimitive(PrimitiveKind::String)},
             typeRegistry.noneType()),
         nativePrintF);
 }
 
+NativeRegistry::~NativeRegistry() {
+    // Release all native function objects
+    for (auto &pair : this->native_functions) {
+        pair.second->release();
+    }
+}
+
 NativeFunctionObj *NativeRegistry::getNativeFunction(const std::string &name) {
     auto it = this->native_functions.find(name);
     if (it != this->native_functions.end()) {
-        return it->second.get();
+        return it->second;
     }
     return nullptr;
 }

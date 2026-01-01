@@ -1,11 +1,16 @@
 #include "object.hpp"
 
 #ifndef NDEBUG
+#ifdef DEBUG_PRINT
+#include <print>
+#endif
+
 static int OBJECT_COUNT = 0;
 
 int getObjectCount() { return OBJECT_COUNT; }
 
 #endif
+
 
 
 void Object::retain() { this->ref_count++; }
@@ -37,14 +42,10 @@ NativeFunctionObj::NativeFunctionObj(
     TypeID type_id, NativeFunctionPtr function_ptr)
     : Object(), type_id(type_id), function_ptr(function_ptr) {
     this->type = Object::Type::NativeFunction;
-}
 
-void NativeFunctionObj::retain() {
-    // do nothing
-}
-
-void NativeFunctionObj::release() {
-    // do nothing
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
 }
 
 #ifndef NDEBUG 
@@ -52,10 +53,29 @@ void NativeFunctionObj::release() {
 
 StringObj::~StringObj() {
     OBJECT_COUNT--;
+
+#ifdef DEBUG_PRINT
+    std::print("StringObj ({}) destroyed. Remaining objects: {}\n",
+               this->value, OBJECT_COUNT);
+#endif
 }
 
 FunctionObj::~FunctionObj() {
     OBJECT_COUNT--;
+
+#ifdef DEBUG_PRINT
+    std::print("FunctionObj@{} destroyed. Remaining objects: {}\n",
+               static_cast<const void *>(this), OBJECT_COUNT);
+#endif
+}
+
+NativeFunctionObj::~NativeFunctionObj() {
+    OBJECT_COUNT--;
+
+#ifdef DEBUG_PRINT
+    std::print("NativeFunctionObj ({}) destroyed. Remaining objects: {}\n",
+               this->name, OBJECT_COUNT);
+#endif
 }
 
 #endif

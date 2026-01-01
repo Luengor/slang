@@ -53,6 +53,14 @@ class Chunk {
     int disassebleInstruction(int offset);
 
 public:
+
+    Chunk() = default;
+    ~Chunk();
+    Chunk(const Chunk &) = delete;
+    Chunk &operator=(const Chunk &) = delete;
+    Chunk(Chunk &&) = default;
+    Chunk &operator=(Chunk &&) = default;
+
     // Write a byte to the chunk and return its offset
     unsigned write(uint8_t byte, int line = -1);
 
@@ -77,9 +85,6 @@ public:
 
     // Print the chunk
     void disassemble(const std::string &header);
-
-    // Clear the whole chunk
-    void free();
 };
 
 
