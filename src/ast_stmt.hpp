@@ -70,6 +70,7 @@ struct AssignExpr : public ASTNode {
 
 struct ReturnStmt : public ASTNode {
     ASTNodePtr return_expr;
+    PopCount pop;
 
     ReturnStmt(const Token &token, ASTNodePtr return_expr);
     void resolveType(CompileContext &ctx) override;

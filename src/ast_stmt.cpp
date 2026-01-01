@@ -69,8 +69,19 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     ctx.enterScope();
 
     // Resolve types for all statements
+    bool plain_return = false;
     for (auto &stmt : this->statements) {
-        stmt->resolveType(ctx);
+        if (!plain_return) {
+            stmt->resolveType(ctx);
+            if (stmt->type == ASTNodeType::ReturnStmt) {
+                plain_return = true;
+            }
+        } else {
+            // Dead code after return
+            throw ParserError(
+                stmt->token,
+                "Unreachable code after return statement.");
+        }
     }
 
     // Exit the scope
@@ -88,6 +99,12 @@ void BlockStmt::compile(CompileContext &ctx) {
     }
 
     // Pop local variables declared in this block
+    // We can skip this if there is a return statement at the end
+    if (!this->statements.empty() &&
+        this->statements.back()->type == ASTNodeType::ReturnStmt) {
+        return;
+    }
+
     unsigned j = 0;
     for (int i = 0; i < this->pop.total; i++) {
         if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
@@ -460,30 +477,40 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 
     // If there is expr, compile it
-    if (!this->return_expr) return;
-    this->return_expr->resolveType(ctx);
-
-    // Check for types
-    const auto function_type_data =
-        ctx.typeRegistry.getTypeData(ctx.function->type_id);
-    assert(std::holds_alternative<FunctionType>(function_type_data));
-    TypeID return_type = std::get<FunctionType>(function_type_data).return_type;
-
-    if (return_type != this->return_expr->result_type) {
-        // Cast
-        auto cast_op = ctx.typeRegistry.getCastOp(
-            return_type, this->return_expr->result_type.value());
-
-        if (!cast_op)
-            throw ParserError(
-                this->return_expr->token,
-                "Return type doesn't match with function declaration");
-
-        this->return_expr = std::make_unique<CastExpr>(
-            this->return_expr->token, std::move(this->return_expr),
-            return_type);
+    if (this->return_expr) {
         this->return_expr->resolveType(ctx);
+
+        // Check for types
+        const auto function_type_data =
+            ctx.typeRegistry.getTypeData(ctx.function->type_id);
+        assert(std::holds_alternative<FunctionType>(function_type_data));
+        TypeID return_type = std::get<FunctionType>(function_type_data).return_type;
+
+        if (return_type != this->return_expr->result_type) {
+            // Cast
+            auto cast_op = ctx.typeRegistry.getCastOp(
+                return_type, this->return_expr->result_type.value());
+
+            if (!cast_op)
+                throw ParserError(
+                    this->return_expr->token,
+                    "Return type doesn't match with function declaration");
+
+            this->return_expr = std::make_unique<CastExpr>(
+                this->return_expr->token, std::move(this->return_expr),
+                return_type);
+            this->return_expr->resolveType(ctx);
+        }
     }
+
+    // Exit the scope
+    // (this to save the locals to pop)
+    // (there is no issue doing this here since after return nothing else is
+    // compiled)
+    this->pop = ctx.exitScope();
+
+    // we need to re-enter the scope tho
+    ctx.enterScope();
 }
 
 void ReturnStmt::compile(CompileContext &ctx) {
@@ -500,17 +527,12 @@ void ReturnStmt::compile(CompileContext &ctx) {
     ctx.function->chunk.write(0); // Return slot is always local 0
 
     // Clean up the stack and return
-    auto function_type_data =
-        ctx.typeRegistry.getTypeData(ctx.function->type_id);
-    assert(std::holds_alternative<FunctionType>(function_type_data));
-    const FunctionType &function_type =
-        std::get<FunctionType>(function_type_data);
-
-    // Pop all arguments in reverse order
-    for (auto it = function_type.param_types.rbegin();
-         it != function_type.param_types.rend(); ++it) {
-        if (ctx.typeRegistry.isObject(*it)) {
+    // Pop all locals in reverse order (except the return slot)
+    unsigned j = 0;
+    for (int i = 0; i < this->pop.total - 1; i++) {
+        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
             ctx.function->chunk.write(OpCode::Release);
+            j++;
         } else {
             ctx.function->chunk.write(OpCode::Pop);
         }

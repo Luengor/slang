@@ -167,6 +167,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Add a local for the function itself (for recursion)
     // We will also use this slot to store the return value 
     // noneType until we resolve the function type
+    ctx.enterScope(); // Enter a scope to disallow shadowing
     const int self_local = fn_ctx->addLocal("self", ctx.typeRegistry.noneType());
 
     // Resolve argument types
@@ -201,6 +202,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
             nullptr
         ));
     }
+
+    // Manually reduce the scope depth to account for the function scope
+    fn_ctx->scope_depth--;
 
     // Resolve type of the body
     this->body->resolveType(*fn_ctx);

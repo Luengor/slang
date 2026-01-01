@@ -1,10 +1,7 @@
-# 1
-auto func1 = () -> fixed {
+# 
+auto func1 = () -> none {
     auto hello = "hello";
-
-    return 1;
 };
 
-print(func1());
-
+func1();
 
