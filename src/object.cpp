@@ -32,7 +32,7 @@ void NativeFunctionObj::release() {
     // do nothing
 }
 
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
 
 StringObj::~StringObj() {
     std::cout << "StringObj destroyed: " << this->value << std::endl;

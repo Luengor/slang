@@ -195,7 +195,7 @@ void FunctionNode::compile(CompileContext &ctx) {
     fn_ctx.function->chunk.write(0);
     fn_ctx.function->chunk.write(OpCode::Return);
 
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     // Debug: print the compiled function bytecode
     fn_ctx.function->chunk.disassemble(
         "Function@" + std::to_string(this->token.line));

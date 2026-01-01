@@ -59,12 +59,12 @@ InterpretResult VM::run() {
         break;                    \
     }
 
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     std::print("\n=== VM Execution Start ===\n");
 #endif
 
     for (ever) {
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
         // // Print current stack size
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base, this->stack.size());
         // Print the current instruction

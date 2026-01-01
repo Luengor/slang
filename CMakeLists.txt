@@ -5,7 +5,8 @@ project(ci-again)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-option(DEBUG "Don't define NDEBUG and disable optimizations" ON)
+option(DEBUG_PRINT "Enable debug printing" OFF)
+option(RELEASE "Define NDEBUG and enable optimizations" OFF)
 
 set(TARGET_NAME cia)
 
@@ -30,13 +31,17 @@ set(SOURCES
 add_executable(${TARGET_NAME} ${SOURCES} src/main.cpp)
 
 # Global stuff
-if (${DEBUG})
-    target_compile_options(${TARGET_NAME} PRIVATE -Wall -O0 -g)
-    target_link_options(${TARGET_NAME} PRIVATE -Wall -O0 -g)
-else()
+if (${DEBUG_PRINT})
+    target_compile_definitions(${TARGET_NAME} PRIVATE DEBUG_PRINT)
+endif()
+
+if (${RELEASE})
     target_compile_options(${TARGET_NAME} PRIVATE -O3)
     target_link_options(${TARGET_NAME} PRIVATE -O3)
     target_compile_definitions(${TARGET_NAME} PRIVATE NDEBUG)
+else()
+    target_compile_options(${TARGET_NAME} PRIVATE -Wall -O0 -g)
+    target_link_options(${TARGET_NAME} PRIVATE -Wall -O0 -g)
 endif()
 
 

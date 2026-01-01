@@ -16,7 +16,7 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
     std::vector<Token> tokens = scanner.scan(this->source);
 
     // Print tokens for debugging
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     std::cout << "Tokens:\n";
     for (const Token &token : tokens) {
         std::cout << std::format("[line {}] Type: {}, Lexeme: '{}'\n",
@@ -36,7 +36,7 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
 
     auto function = compileAST(root.get());
 
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     // Print AST for debugging _after_ compilation
     // (because compilation may modify the AST, e.g., inserting casts)
     std::cout << "\nAST:\n";
@@ -47,7 +47,7 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
 #endif
 
 
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     // Print Chunk for debugging
     std::cout << "\nCompiled Chunk:\n";
     function->chunk.disassemble("code");

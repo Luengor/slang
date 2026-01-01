@@ -22,7 +22,7 @@ struct StringObj : public Object {
     std::string value;
 
     StringObj(const std::string &value);
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     ~StringObj();
 #endif
 };
@@ -36,7 +36,7 @@ struct FunctionObj : public Object {
     Chunk chunk;
 
     FunctionObj();
-#ifndef NDEBUG
+#ifdef DEBUG_PRINT
     ~FunctionObj();
 #endif
 };
