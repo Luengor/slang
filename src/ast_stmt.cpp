@@ -508,6 +508,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
     // (there is no issue doing this here since after return nothing else is
     // compiled)
     this->pop = ctx.exitScope();
+    assert(this->pop.total >= 1); // At least the return slot
 
     // we need to re-enter the scope tho
     ctx.enterScope();
