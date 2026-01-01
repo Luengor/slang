@@ -18,11 +18,15 @@ struct Object {
     virtual void release();
 };
 
+#ifndef NDEBUG
+int getObjectCount();
+#endif
+
 struct StringObj : public Object {
     std::string value;
 
     StringObj(const std::string &value);
-#ifdef DEBUG_PRINT
+#ifndef NDEBUG
     ~StringObj();
 #endif
 };
@@ -36,7 +40,7 @@ struct FunctionObj : public Object {
     Chunk chunk;
 
     FunctionObj();
-#ifdef DEBUG_PRINT
+#ifndef NDEBUG 
     ~FunctionObj();
 #endif
 };

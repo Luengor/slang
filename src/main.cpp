@@ -4,6 +4,11 @@
 #include <iostream>
 #include <print>
 
+#ifndef NDEBUG
+#include <cassert>
+#include "object.hpp"
+#endif
+
 void runFile(const char *path) {
     // Read the file
     std::ifstream file(path, std::ios::in);
@@ -20,6 +25,12 @@ void runFile(const char *path) {
     // Run the file
     VM vm;
     const auto result = vm.interpret(source);
+
+#ifndef NDEBUG
+    assert(getObjectCount() == 0 &&
+           "Memory leak detected: not all objects were released.");
+#endif
+
     if (result == InterpretResult::CompileError) {
         exit(65);
     } else if (result == InterpretResult::RuntimeError) {

@@ -1,5 +1,13 @@
 #include "object.hpp"
 
+#ifndef NDEBUG
+static int OBJECT_COUNT = 0;
+
+int getObjectCount() { return OBJECT_COUNT; }
+
+#endif
+
+
 void Object::retain() { this->ref_count++; }
 
 void Object::release() {
@@ -11,10 +19,18 @@ void Object::release() {
 
 StringObj::StringObj(const std::string &value) : Object(), value(value) {
     this->type = Object::Type::String;
+
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
 }
 
 FunctionObj::FunctionObj() : Object() {
     this->type = Object::Type::Function;
+
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
 }
 
 NativeFunctionObj::NativeFunctionObj(
@@ -31,16 +47,15 @@ void NativeFunctionObj::release() {
     // do nothing
 }
 
-#ifdef DEBUG_PRINT
+#ifndef NDEBUG 
 
-#include <iostream>
 
 StringObj::~StringObj() {
-    std::cout << "StringObj destroyed: " << this->value << std::endl;
+    OBJECT_COUNT--;
 }
 
 FunctionObj::~FunctionObj() {
-    std::cout << "FunctionObj destroyed" << std::endl;
+    OBJECT_COUNT--;
 }
 
 #endif
