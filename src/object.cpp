@@ -30,12 +30,20 @@ StringObj::StringObj(const std::string &value) : Object(), value(value) {
 #endif
 }
 
+std::string StringObj::toString() const {
+    return this->value;
+}
+
 FunctionObj::FunctionObj() : Object() {
     this->type = Object::Type::Function;
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
 #endif
+}
+
+std::string FunctionObj::toString() const {
+    return this->name;
 }
 
 NativeFunctionObj::NativeFunctionObj(
@@ -46,6 +54,10 @@ NativeFunctionObj::NativeFunctionObj(
 #ifndef NDEBUG
     OBJECT_COUNT++;
 #endif
+}
+
+std::string NativeFunctionObj::toString() const {
+    return "<native: " + this->name + ">";
 }
 
 #ifndef NDEBUG 

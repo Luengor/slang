@@ -14,6 +14,7 @@ struct Object {
     int ref_count = 1;
 
     virtual ~Object() = default;
+    virtual std::string toString() const = 0;
     void retain();
     void release();
 };
@@ -29,9 +30,14 @@ struct StringObj : public Object {
 #ifndef NDEBUG
     ~StringObj();
 #endif
+
+    std::string toString() const override;
 };
 
 struct FunctionObj : public Object {
+    // A "name" for the function
+    std::string name;
+
     // The type ID of the function, which already encodes parameter and return
     // types
     TypeID type_id;
@@ -43,6 +49,8 @@ struct FunctionObj : public Object {
 #ifndef NDEBUG 
     ~FunctionObj();
 #endif
+
+    std::string toString() const override;
 };
 
 
@@ -63,5 +71,7 @@ struct NativeFunctionObj : public Object {
 #ifndef NDEBUG 
     ~NativeFunctionObj();
 #endif
+
+    std::string toString() const override;
 };
 

@@ -32,7 +32,7 @@ int Chunk::objectInstruction(const char *name, int offset) {
     const auto object_i = this->code[offset + 1];
     const Object *object = this->object_constants[object_i];
     std::print("{:13s} {:4d} -> Object@{} {}\n", name, object_i,
-               static_cast<const void *>(object), object->ref_count);
+               static_cast<const void *>(object), object->toString());
     return offset + 2;
 }
 

@@ -164,6 +164,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     };
     this->fn_ctx.reset(fn_ctx);
 
+    // Name the function after its line number for now
+    fn_ctx->function->name = "<fn@" + std::to_string(this->token.line) + ">";
+
     // Add a local for the function itself (for recursion)
     // We will also use this slot to store the return value 
     // noneType until we resolve the function type
