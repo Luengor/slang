@@ -3,10 +3,13 @@
 #include "parser.hpp"
 #include "scanner.hpp"
 #include "object.hpp"
-#include <format>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
+
+#ifdef DEBUG_PRINT
+#include <format>
+#include <iostream>
+#endif
 
 Compiler::Compiler(const std::string &source) : source(source) {}
 

@@ -1,5 +1,4 @@
 #include "object.hpp"
-#include <iostream>
 
 void Object::retain() { this->ref_count++; }
 
@@ -33,6 +32,8 @@ void NativeFunctionObj::release() {
 }
 
 #ifdef DEBUG_PRINT
+
+#include <iostream>
 
 StringObj::~StringObj() {
     std::cout << "StringObj destroyed: " << this->value << std::endl;
