@@ -1,4 +1,3 @@
-# 
 auto func = () -> none {};
 
 func();

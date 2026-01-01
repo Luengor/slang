@@ -47,8 +47,13 @@ class TestCase:
         with open(path, 'r') as f:
             lines = f.readlines()
 
-        # First line is '# <expected output>'
-        expected_output = lines[0].strip().strip('# ').strip()
+        # all lines starting with '# expect: <>' are expected outputs
+        expected = []
+        for line in lines:
+            line = line.strip()
+            if line.startswith("# expect:"):
+                expected.append(line[len("# expect:"):].strip())
+        expected_output = "\n".join(expected) if expected else ""
 
         return TestCase(
             case_name=name,
@@ -73,7 +78,7 @@ class TestCase:
                     return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output}, Got: {output}")
             else:
                 error_message = result.stderr.strip() if result.stderr else "No error message."
-                error_code_result = os.strerror(return_code) 
+                error_code_result = os.strerror(return_code)
                 return TestResult(status=TestStatus.CRASH, details=f"Process exited with code {return_code} ({error_code_result}). Stderr: {error_message}")
         except Exception as e:
             return TestResult(status=TestStatus.CRASH, details=str(e))

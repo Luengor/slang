@@ -1,4 +1,3 @@
-# 2
 auto fn = (fixed a) -> fixed {
     self = (fixed a) -> fixed {
         return a + 1;
@@ -6,5 +5,6 @@ auto fn = (fixed a) -> fixed {
     return self(a);
 };
 
+# expect: 2
 print(fn(1));
 

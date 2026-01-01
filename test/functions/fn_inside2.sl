@@ -1,4 +1,3 @@
-# 
 auto fn = () -> none {
     () -> none {};
 };

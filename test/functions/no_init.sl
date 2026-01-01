@@ -1,3 +1,3 @@
-# COMPERROR 
+# expect: COMPERROR 
 () -> none func;
 
