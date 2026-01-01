@@ -1,4 +1,5 @@
 #include "ast_expr.hpp"
+#include "ast_stmt.hpp"
 #include "error.hpp"
 #include "native.hpp"
 #include "object.hpp"
@@ -178,9 +179,20 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Update the locals to have the correct types
     fn_ctx->locals[self_local].type = this->result_type.value();
 
+    // Check if the last statement in the body is a return statement
+    assert(this->body->type == ASTNodeType::BlockStmt);
+    auto body_block = static_cast<BlockStmt *>(this->body.get());
+    if (body_block->statements.empty() ||
+        body_block->statements.back()->type != ASTNodeType::ReturnStmt) {
+        // Put an implicit return at the end
+        body_block->statements.push_back(std::make_unique<ReturnStmt>(
+            body_block->statements.empty() ? this->token
+                                        : body_block->statements.back()->token,
+            nullptr
+        ));
+    }
+
     // Resolve type of the body
-    // (for now, nothing is checked :))
-    // (but when type checking for blocks is added, it will be needed)
     this->body->resolveType(*fn_ctx);
 }
 
@@ -189,11 +201,6 @@ void FunctionNode::compile(CompileContext &ctx) {
     CompileContext &fn_ctx = *this->fn_ctx;
 
     this->body->compile(fn_ctx);
-
-    // The function _has_ to return something
-    fn_ctx.function->chunk.write(OpCode::Constant);
-    fn_ctx.function->chunk.write(0);
-    fn_ctx.function->chunk.write(OpCode::Return);
 
 #ifdef DEBUG_PRINT
     // Debug: print the compiled function bytecode

@@ -480,9 +480,8 @@ void ReturnStmt::compile(CompileContext &ctx) {
     if (this->return_expr)
         this->return_expr->compile(ctx);
     else {
-        // If not, put a random constant
-        ctx.function->chunk.write(OpCode::Constant, this->token.line);
-        ctx.function->chunk.write(0);
+        // If not, put something to return 
+        ctx.function->chunk.write(OpCode::False, this->token.line);
     }
 
     // Move that value to the return slot (the "" local) 
