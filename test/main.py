@@ -115,5 +115,6 @@ for test_case in test_cases:
 # Summary
 print("\nTest Summary:")
 total = sum(counts.values())
+print(f"Total: {total:>2d}")
 for status, count in counts.items():
-    print(f"{status.value}: {count} ({(count/total*100) if total > 0 else 0:.2f}%)")
+    print(f"{status.value:>5s}: {count:>2d} ({(count/total*100) if total > 0 else 0:>5.2f}%)")
