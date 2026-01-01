@@ -13,13 +13,26 @@ int getObjectCount() { return OBJECT_COUNT; }
 
 
 
-void Object::retain() { this->ref_count++; }
+void Object::retain() {
+    this->ref_count++;
+
+#ifdef DEBUG_PRINT
+    std::print("{} retained. New ref count: {}\n",
+               this->toString(), this->ref_count);
+#endif
+}
 
 void Object::release() {
     this->ref_count--;
     if (this->ref_count <= 0) {
         delete this;
     }
+#ifdef DEBUG_PRINT
+    else {
+        std::print("{} released. New ref count: {}\n",
+                   this->toString(), this->ref_count);
+    }
+#endif
 }
 
 StringObj::StringObj(const std::string &value) : Object(), value(value) {
@@ -67,8 +80,8 @@ StringObj::~StringObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("StringObj ({}) destroyed. Remaining objects: {}\n",
-               this->value, OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n",
+               this->toString(), OBJECT_COUNT);
 #endif
 }
 
@@ -76,8 +89,8 @@ FunctionObj::~FunctionObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("FunctionObj@{} destroyed. Remaining objects: {}\n",
-               static_cast<const void *>(this), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n",
+               this->toString(), OBJECT_COUNT);
 #endif
 }
 
@@ -85,8 +98,8 @@ NativeFunctionObj::~NativeFunctionObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("NativeFunctionObj ({}) destroyed. Remaining objects: {}\n",
-               this->name, OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n",
+               this->toString(), OBJECT_COUNT);
 #endif
 }
 
