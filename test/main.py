@@ -1,5 +1,5 @@
 #!/bin/env python3
-import sys, os
+import os
 from dataclasses import dataclass
 from enum import Enum
 import subprocess
@@ -8,15 +8,17 @@ SLANG_EXTENSIONS = [".slang", ".sl"]
 COMPERROR = "COMPERROR"
 COMPERROR_CODE = 65
 
-# Check command line arguments
-if len(sys.argv) != 3:
-    print("Usage: python3 main.py <executable> <test_directory>")
-    sys.exit(1)
+# Make the project in the root test_directory
+root_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(root_dir)
 
-executable = sys.argv[1]
-test_directory = sys.argv[2]
+print("Building the project...")
+subprocess.run(["make"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+executable = os.path.join(root_dir, "cia")
 
 # Find all tests
+print("Discovering test cases...")
+
 class TestStatus(Enum):
     PASS = "PASS"
     FAIL = "FAIL"
@@ -80,11 +82,11 @@ class TestCase:
         return f"TestCase(name={self.case_name}, groups={self.groups}, input_file={self.input_file}, expected_output_file={self.expected_output})"
 
 test_cases: list[TestCase] = []
-for root, dirs, files in os.walk(test_directory):
+for root, dirs, files in os.walk(root_dir):
     for file in files:
         if not any(file.endswith(ext) for ext in SLANG_EXTENSIONS): continue
 
-        test_cases.append(TestCase.from_path(os.path.join(root, file), test_directory))
+        test_cases.append(TestCase.from_path(os.path.join(root, file), root_dir))
 
 print(f"Found {len(test_cases)} test cases.")
 
