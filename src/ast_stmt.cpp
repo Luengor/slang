@@ -159,6 +159,12 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                         this->token,
                         "Incompatible types in variable initializer.");
                 }
+
+                this->initializer = std::make_unique<CastExpr>(
+                    this->token,
+                    std::move(this->initializer),
+                    this->result_type.value());
+                this->initializer->resolveType(ctx);
             }
         }
     }
