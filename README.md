@@ -15,8 +15,8 @@ primitiveType -> "fixed" | "float" | "bool" | "str"
 
 #### Declaration and statement rules
 ```
-declaration -> varDecl | funcDecl | statement
-varDecl     -> ( typeExpr | auto" ) IDENTIFIER ( "=" expression )? ";"
+declaration -> varDecl | statement
+varDecl     -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
 statement   -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 whileStmt   -> "while" "(" expression ")" statement
@@ -35,8 +35,8 @@ logicOr     -> logicAnd ( "or" logicAnd )*
 logicAnd    -> equality ( "and" equality )*
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
 comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
-term        -> factor ( ( "+" | "-" | "or" ) factor )*
-factor      -> unary ( ( "*" | "/" | "and" ) unary )*
+term        -> factor ( ( "+" | "-" ) factor )*
+factor      -> unary ( ( "*" | "/" ) unary )*
 unary       -> ( "-" | "not" ) unary | call 
 call        -> primary ( "(" arguments? ")" )*
 arguments   -> expression ( "," expression )*
@@ -49,9 +49,9 @@ parameters  -> ( typeExpr IDENTIFIER ( "," typeExpr IDENTIFIER )* )?
 ### Operators Precedence
 From highest to lowest:
 1. Parentheses `()`
-2. Unary operators: `-`, `!`, `not`
-3. Factor and AND: `*`, `/`
-4. Term and OR: `+`, `-`
+2. Unary operators: `-`, `not`
+3. Factor: `*`, `/`
+4. Term: `+`, `-`
 5. Comparison: `>`, `>=`, `<`, `<=`
 6. Equality: `==`, `!=`
 7. Logic AND: `and`
