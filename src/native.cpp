@@ -27,7 +27,7 @@ NativeRegistry::NativeRegistry(TypeRegistry &typeRegistry) {
         typeRegistry.getFunction(
             {typeRegistry.getPrimitive(PrimitiveKind::String)},
             typeRegistry.noneType()),
-        nativePrintF);
+        nativePrintF, "print");
 }
 
 NativeRegistry::~NativeRegistry() {

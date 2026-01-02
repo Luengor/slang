@@ -60,8 +60,8 @@ std::string FunctionObj::toString() const {
 }
 
 NativeFunctionObj::NativeFunctionObj(
-    TypeID type_id, NativeFunctionPtr function_ptr)
-    : Object(), type_id(type_id), function_ptr(function_ptr) {
+    TypeID type_id, NativeFunctionPtr function_ptr, const std::string &name)
+    : Object(), type_id(type_id), function_ptr(function_ptr), name(name) {
     this->type = Object::Type::NativeFunction;
 
 #ifndef NDEBUG

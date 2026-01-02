@@ -66,7 +66,8 @@ struct NativeFunctionObj : public Object {
     // A name to find the function
     std::string name;
 
-    NativeFunctionObj(TypeID type_id, NativeFunctionPtr function_ptr);
+    NativeFunctionObj(TypeID type_id, NativeFunctionPtr function_ptr,
+                      const std::string &name);
 
 #ifndef NDEBUG 
     ~NativeFunctionObj();
