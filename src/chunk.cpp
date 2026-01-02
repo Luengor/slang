@@ -11,19 +11,19 @@ Chunk::~Chunk() {
 }
 
 int Chunk::simpleInstruction(const char *name, int offset) {
-    std::print("{:13s}\n", name);
+    std::print("{:16s}\n", name);
     return offset+1;
 }
 
 int Chunk::simpleArgInstruction(const char *name, int offset, int arg) {
-    std::print("{:13s}\n", name);
+    std::print("{:16s}\n", name);
     return offset + 1 + arg;
 }
 
 int Chunk::constantInstruction(const char *name, int offset) {
     const auto constant_i = this->code[offset + 1];
     const auto constant = this->constants[constant_i];
-    std::print("{:13s} {:4d} -> {:g} | {:d} | {}\n", name, constant_i,
+    std::print("{:16s} {:4d} -> {:g} | {:d} | {}\n", name, constant_i,
                constant.floating, constant.fixed, constant.boolean);
     return offset + 2;
 }
@@ -31,15 +31,22 @@ int Chunk::constantInstruction(const char *name, int offset) {
 int Chunk::objectInstruction(const char *name, int offset) {
     const auto object_i = this->code[offset + 1];
     const Object *object = this->object_constants[object_i];
-    std::print("{:13s} {:4d} -> Object@{} {}\n", name, object_i,
+    std::print("{:16s} {:4d} -> Object@{} {}\n", name, object_i,
                static_cast<const void *>(object), object->toString());
     return offset + 2;
+}
+
+int Chunk::localInstruction(const char *name, int offset) {
+    const auto local_i = (this->code[offset + 1] << 8) |
+                         this->code[offset + 2];
+    std::print("{:16s} {:4d} -> Local {:d}\n", name, offset, local_i);
+    return offset + 3;
 }
 
 int Chunk::jumpInstruction(const char *name, int offset) {
     const int16_t jump = static_cast<uint16_t>((this->code[offset + 1] << 8) |
                                                 this->code[offset + 2]);
-    std::print("{:13s} {:4d} -> {:04d}\n", name, offset, offset + 3 + jump);
+    std::print("{:16s} {:4d} -> {:04d}\n", name, offset, offset + 3 + jump);
     return offset + 3;
 }
 
@@ -115,13 +122,13 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::JmpIfTrue: return jumpInstruction("OP_JIT", offset);
         case OpCode::JmpIfFalsePop: return jumpInstruction("OP_JNT_POP", offset);
 
-        case OpCode::Move: return simpleArgInstruction("OP_MOVE", offset, 1);
-        case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 2);
-        case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 2);
+        case OpCode::Move: return localInstruction("OP_MOVE", offset);
+        case OpCode::GetLocal: return localInstruction("OP_GETLOCAL", offset);
+        case OpCode::SetLocal: return localInstruction("OP_SETLOCAL", offset);
         case OpCode::GetLocalObject:
-            return simpleArgInstruction("OP_GETLOCAL_OBJ", offset, 2);
+            return localInstruction("OP_GETLOCAL_OBJ", offset);
         case OpCode::SetLocalObject:
-            return simpleArgInstruction("OP_SETLOCAL_OBJ", offset, 2);
+            return localInstruction("OP_SETLOCAL_OBJ", offset);
 
         default:
             std::print("Unknown opcode {}\n",
