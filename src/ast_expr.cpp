@@ -270,18 +270,12 @@ void VariableNode::compile(CompileContext &ctx) {
     std::visit(overloaded{
         [&](int local_index) {
             // Load the variable from the local slot
-            if (local_index > 255) {
-                ctx.function->chunk.write(OpCode::GetLocalLong, this->token.line);
-                ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
+            if (ctx.typeRegistry.isObject(this->result_type.value())) {
+                ctx.function->chunk.write(OpCode::GetLocalObject, this->token.line);
             } else {
                 ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
-                ctx.function->chunk.write(static_cast<uint8_t>(local_index));
             }
-
-            // If its an object, we need to retain it
-            if (ctx.typeRegistry.isObject(this->result_type.value())) {
-                ctx.function->chunk.write(OpCode::Retain);
-            }
+            ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
         },
         [&](NativeFunctionObj *native_fn) {
             // Retain the native function to pass it to the chunk
@@ -292,8 +286,6 @@ void VariableNode::compile(CompileContext &ctx) {
                 ctx.function->chunk.addObjectConstant(native_fn);
             ctx.function->chunk.write(OpCode::Object, this->token.line);
             ctx.function->chunk.write(static_cast<uint8_t>(constant));
-
-            // No need to retain native functions
         }
     }, this->resolution.value());
 }

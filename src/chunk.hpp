@@ -33,7 +33,7 @@ enum class OpCode : uint8_t {
     True, False,
     Pop, Retain, Release,
     GetLocal, SetLocal, Move,
-    GetLocalLong, SetLocalLong,
+    GetLocalObject, SetLocalObject,
 };
 
 class Chunk {

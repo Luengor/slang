@@ -96,6 +96,7 @@ InterpretResult VM::run() {
 
                 if (callee.object->type == Object::Type::Function) {
                     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                    function->retain(); // retain the function to release later
                     // -1 for the function itself
                     this->call_frames.push_back(
                         CallFrame(function, this->stack.size() - arg_count - 1));
@@ -222,25 +223,32 @@ InterpretResult VM::run() {
             }
 
             case OpCode::GetLocal: {
-                const uint8_t slot = READ_BYTE();
-                this->stack.push_back(frame_stack[slot]);
-                break;
-            }
-
-            case OpCode::GetLocalLong: {
                 const uint16_t slot = READ_UWORD();
                 this->stack.push_back(frame_stack[slot]);
                 break;
             }
 
             case OpCode::SetLocal: {
-                const uint8_t slot = READ_BYTE();
+                const uint16_t slot = READ_UWORD();
                 frame_stack[slot] = this->stack.back();
                 break;
             }
 
-            case OpCode::SetLocalLong: {
+            case OpCode::GetLocalObject: {
                 const uint16_t slot = READ_UWORD();
+                this->stack.push_back(frame_stack[slot]);
+                // This adds a new reference to the object
+                this->stack.back().object->retain();
+                break;
+            }
+
+            case OpCode::SetLocalObject: {
+                const uint16_t slot = READ_UWORD();
+                // This removes the previous reference
+                if (frame_stack[slot].object)
+                    frame_stack[slot].object->release();
+                // And also adds a new reference
+                this->stack.back().object->retain();
                 frame_stack[slot] = this->stack.back();
                 break;
             }

@@ -116,12 +116,12 @@ int Chunk::disassebleInstruction(int offset) {
         case OpCode::JmpIfFalsePop: return jumpInstruction("OP_JNT_POP", offset);
 
         case OpCode::Move: return simpleArgInstruction("OP_MOVE", offset, 1);
-        case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 1);
-        case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 1);
-        case OpCode::GetLocalLong:
-            return simpleArgInstruction("OP_GETLOCALL", offset, 2);
-        case OpCode::SetLocalLong:
-            return simpleArgInstruction("OP_SETLOCALL", offset, 2);
+        case OpCode::GetLocal: return simpleArgInstruction("OP_GETLOCAL", offset, 2);
+        case OpCode::SetLocal: return simpleArgInstruction("OP_SETLOCAL", offset, 2);
+        case OpCode::GetLocalObject:
+            return simpleArgInstruction("OP_GETLOCAL_OBJ", offset, 2);
+        case OpCode::SetLocalObject:
+            return simpleArgInstruction("OP_SETLOCAL_OBJ", offset, 2);
 
         default:
             std::print("Unknown opcode {}\n",

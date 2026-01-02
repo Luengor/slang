@@ -279,14 +279,14 @@ void AssignExpr::compile(CompileContext &ctx) {
     const int local_index =
         std::get<int>(varNode->resolution.value());
 
-    // Store the value into the local variable
-    if (local_index > 255) {
-        ctx.function->chunk.write(OpCode::SetLocalLong, this->token.line);
-        ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
+    // Store the local variable
+    if (ctx.typeRegistry.isObject(this->target->result_type.value())) {
+        ctx.function->chunk.write(OpCode::SetLocalObject, this->token.line);
     } else {
         ctx.function->chunk.write(OpCode::SetLocal, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(local_index));
     }
+
+    ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
 }
 
 void AssignExpr::print(int indent) {
@@ -522,6 +522,12 @@ void ReturnStmt::compile(CompileContext &ctx) {
         // If not, put something to return 
         ctx.function->chunk.write(OpCode::False, this->token.line);
     }
+
+    // Get the "return slot" (still with the function) and release it
+    // we dont use GetLocalObject because we don't want to retain here
+    ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
+    ctx.function->chunk.writeWord(0); // Return slot is always local 0
+    ctx.function->chunk.write(OpCode::Release, this->token.line);
 
     // Move that value to the return slot (the "" local) 
     ctx.function->chunk.write(OpCode::Move, this->token.line);
