@@ -167,22 +167,17 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 
         // If there is an initializer, ensure it matches the declared type
         if (this->initializer) {
-            if (this->initializer->result_type != this->result_type) {
-                // Try to insert a cast if possible
-                auto castOp = ctx.typeRegistry.getCastOp(
-                    this->initializer->result_type.value(), this->result_type.value());
-                if (!castOp.has_value()) {
-                    throw ParserError(
-                        this->token,
-                        "Incompatible types in variable initializer.");
-                }
-
-                this->initializer = std::make_unique<CastExpr>(
+            // Cast them if necessary
+            auto cast_result = CastExpr::tryCast(
+                std::move(this->initializer),
+                this->result_type.value(),
+                ctx);
+            if (!cast_result.has_value()) {
+                throw ParserError(
                     this->token,
-                    std::move(this->initializer),
-                    this->result_type.value());
-                this->initializer->resolveType(ctx);
+                    "Incompatible types in variable initializer.");
             }
+            this->initializer = std::move(cast_result.value());
         } else if (ctx.typeRegistry.isObject(this->result_type.value())) {
             // Object types require an initializer
             throw ParserError(
@@ -239,23 +234,16 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->value->resolveType(ctx);
 
     // Ensure the value can be assigned to the target
-    if (this->target->result_type != this->value->result_type) {
-        // Try to insert a cast if possible
-        auto castOp = ctx.typeRegistry.getCastOp(
-            this->value->result_type.value(), this->target->result_type.value());
-
-        if (!castOp.has_value()) {
-            throw ParserError(
-                this->token,
-                "Incompatible types in assignment expression.");
-        }
-
-        this->value = std::make_unique<CastExpr>(
+    auto cast_result = CastExpr::tryCast(
+        std::move(this->value),
+        this->target->result_type.value(),
+        ctx);
+    if (!cast_result.has_value()) {
+        throw ParserError(
             this->token,
-            std::move(this->value),
-            this->target->result_type.value());
-        this->value->resolveType(ctx);
+            "Incompatible types in assignment expression.");
     }
+    this->value = std::move(cast_result.value());
 
     // The result type of an assignment expression is the target's type
     this->result_type = this->target->result_type;
@@ -319,23 +307,14 @@ void IfStmt::resolveType(CompileContext &ctx) {
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    if (this->condition->result_type == booleanType)
-        return;
-
-    // If not, find a cast
-    auto castOp = ctx.typeRegistry.getCastOp(
-        this->condition->result_type.value(), booleanType);
-    if (!castOp.has_value()) {
+    auto cast_result = CastExpr::tryCast(
+        std::move(this->condition), booleanType, ctx);
+    if (!cast_result.has_value()) {
         throw ParserError(
             this->token,
             "If statement condition should coerce to boolean type.");
     }
-
-    this->condition = std::make_unique<CastExpr>(
-        this->token,
-        std::move(this->condition),
-        booleanType);
-    this->condition->resolveType(ctx);
+    this->condition = std::move(cast_result.value());
 }
 
 void IfStmt::compile(CompileContext &ctx) {
@@ -406,23 +385,14 @@ void WhileStmt::resolveType(CompileContext &ctx) {
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    if (this->condition->result_type == booleanType)
-        return;
-
-    // If not, find a cast
-    auto castOp = ctx.typeRegistry.getCastOp(
-        this->condition->result_type.value(), booleanType);
-    if (!castOp.has_value()) {
+    auto cast_result = CastExpr::tryCast(
+        std::move(this->condition), booleanType, ctx);
+    if (!cast_result.has_value()) {
         throw ParserError(
             this->token,
             "While statement condition should coerce to boolean type.");
     }
-
-    this->condition = std::make_unique<CastExpr>(
-        this->token,
-        std::move(this->condition),
-        booleanType);
-    this->condition->resolveType(ctx);
+    this->condition = std::move(cast_result.value());
 }
 
 void WhileStmt::compile(CompileContext &ctx) {
@@ -486,21 +456,14 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
         assert(std::holds_alternative<FunctionType>(function_type_data));
         TypeID return_type = std::get<FunctionType>(function_type_data).return_type;
 
-        if (return_type != this->return_expr->result_type) {
-            // Cast
-            auto cast_op = ctx.typeRegistry.getCastOp(
-                return_type, this->return_expr->result_type.value());
-
-            if (!cast_op)
-                throw ParserError(
-                    this->return_expr->token,
-                    "Return type doesn't match with function declaration");
-
-            this->return_expr = std::make_unique<CastExpr>(
-                this->return_expr->token, std::move(this->return_expr),
-                return_type);
-            this->return_expr->resolveType(ctx);
+        auto cast_result = CastExpr::tryCast(
+            std::move(this->return_expr), return_type, ctx);
+        if (!cast_result.has_value()) {
+            throw ParserError(
+                this->token,
+                "Return type doesn't match with function declaration");
         }
+        this->return_expr = std::move(cast_result.value());
     }
 
     // Get the pop count from the context

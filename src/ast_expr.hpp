@@ -57,6 +57,13 @@ struct CastExpr : public ASTNode {
     OpCode cast_op;
     TypeID target_type;
 
+    static std::optional<ASTNodePtr>
+    tryCast(ASTNodePtr operand, TypeID target_type, CompileContext &ctx);
+
+    static std::optional<std::pair<ASTNodePtr, ASTNodePtr>>
+    tryCommonCast(ASTNodePtr left, ASTNodePtr right,
+                  CompileContext &ctx);
+
     CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;

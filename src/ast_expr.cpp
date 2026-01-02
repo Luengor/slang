@@ -382,6 +382,68 @@ CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
       operand(std::move(operand)), target_type(target_type) {
 }
 
+std::optional<ASTNodePtr> CastExpr::tryCast(ASTNodePtr operand,
+                                            TypeID target_type,
+                                            CompileContext &ctx) {
+    assert(operand->result_type.has_value() && "Operand type must be resolved");
+    if (operand->result_type.value() == target_type) {
+        // No cast needed
+        return std::make_optional<ASTNodePtr>(std::move(operand));
+    }
+
+    auto castOp = ctx.typeRegistry.getCastOp(
+        operand->result_type.value(), target_type);
+
+    if (!castOp.has_value()) return std::nullopt;
+    auto castExpr = std::make_unique<CastExpr>(
+        operand->token,
+        std::move(operand),
+        target_type);
+    castExpr->resolveType(ctx);
+    return std::make_optional<ASTNodePtr>(std::move(castExpr));
+}
+
+std::optional<std::pair<ASTNodePtr, ASTNodePtr>>
+CastExpr::tryCommonCast(ASTNodePtr left, ASTNodePtr right,
+                        CompileContext &ctx) {
+    assert(left->result_type.has_value() && "Left type must be resolved");
+    assert(right->result_type.has_value() && "Right type must be resolved");
+
+    // If types are already the same, no casts needed
+    if (left->result_type.value() == right->result_type.value()) {
+        return std::make_optional<std::pair<ASTNodePtr, ASTNodePtr>>(
+            std::make_pair(std::move(left), std::move(right)));
+    }
+
+    // Try casting left to right's type
+    auto leftCastOp = ctx.typeRegistry.getCastOp(
+        left->result_type.value(), right->result_type.value());
+    if (leftCastOp.has_value()) {
+        auto castedLeft = std::make_unique<CastExpr>(
+            left->token,
+            std::move(left),
+            right->result_type.value());
+        castedLeft->resolveType(ctx);
+        return std::make_optional<std::pair<ASTNodePtr, ASTNodePtr>>(
+            std::make_pair(std::move(castedLeft), std::move(right)));
+    }
+
+    // Try casting right to left's type
+    auto rightCastOp = ctx.typeRegistry.getCastOp(
+        right->result_type.value(), left->result_type.value());
+    if (rightCastOp.has_value()) {
+        auto castedRight = std::make_unique<CastExpr>(
+            right->token,
+            std::move(right),
+            left->result_type.value());
+        castedRight->resolveType(ctx);
+        return std::make_optional<std::pair<ASTNodePtr, ASTNodePtr>>(
+            std::make_pair(std::move(left), std::move(castedRight)));
+    }
+
+    return std::nullopt;
+}
+
 void CastExpr::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
@@ -678,32 +740,33 @@ void TernaryExpr::resolveType(CompileContext &ctx) {
 
     // It must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    if (this->condition->result_type != booleanType) {
-        // Cast
-        auto castOp = ctx.typeRegistry.getCastOp(
-            this->condition->result_type.value(), booleanType);
-        if (!castOp.has_value()) {
-            throw ParserError(
-                this->token,
-                "Ternary condition should coerce to boolean type.");
-        }
-        this->condition = std::make_unique<CastExpr>(
+    auto cast_result = CastExpr::tryCast(
+        std::move(this->condition), booleanType, ctx);
+
+    if (!cast_result.has_value()) {
+        throw ParserError(
             this->token,
-            std::move(this->condition),
-            booleanType);
-        this->condition->resolveType(ctx);
+            "Ternary condition should coerce to boolean type.");
     }
+    this->condition = std::move(cast_result.value());
 
     // Resolve then and else branch types
     this->then_branch->resolveType(ctx);
     this->else_branch->resolveType(ctx);
 
-    // They should be of the same type
-    if (this->then_branch->result_type != this->else_branch->result_type) {
+    // Make them common type if necessary
+    auto common_cast = CastExpr::tryCommonCast(
+        std::move(this->then_branch),
+        std::move(this->else_branch),
+        ctx);
+    if (!common_cast.has_value()) {
         throw ParserError(
             this->token,
-            "Ternary branches must have the same type.");
+            "Incompatible types in ternary expression branches.");
     }
+
+    this->then_branch = std::move(common_cast.value().first);
+    this->else_branch = std::move(common_cast.value().second);
 
     // Set result type
     this->result_type = this->then_branch->result_type;
@@ -865,21 +928,16 @@ void CallExpr::resolveType(CompileContext &ctx) {
     // Check the arguments one by one
     for (unsigned i = 0; i < this->arguments.size(); i++) {
         this->arguments[i]->resolveType(ctx);
-        const auto &from_type = this->arguments[i]->result_type.value();
-        const auto &target_type = function_type.param_types[i];
-        if (from_type == target_type)
-            continue;
 
-        // If they are not the same, try to cast
-        auto cast_op = ctx.typeRegistry.getCastOp(from_type, target_type);
-        if (cast_op == std::nullopt)
+        auto cast_result = CastExpr::tryCast(
+            std::move(this->arguments[i]),
+            function_type.param_types[i],
+            ctx);
+        if (!cast_result.has_value())
             throw ParserError(
                 this->arguments[i]->token,
                 std::format("Incompatible type for argument {} in call", i + 1));
-
-        this->arguments[i] = std::make_unique<CastExpr>(
-            arguments[i]->token, std::move(arguments[i]), target_type);
-        this->arguments[i]->resolveType(ctx);
+        this->arguments[i] = std::move(cast_result.value());
     }
 
     // Everything ok
