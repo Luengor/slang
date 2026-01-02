@@ -482,7 +482,7 @@ void ReturnStmt::compile(CompileContext &ctx) {
 
     // Move that value to the return slot (the "" local) 
     ctx.function->chunk.write(OpCode::Move, this->token.line);
-    ctx.function->chunk.write(0); // Return slot is always local 0
+    ctx.function->chunk.writeWord(0); // Return slot is always local 0
 
     // Clean up the stack and return
     // Pop all locals in reverse order (except the return and self slots)

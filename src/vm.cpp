@@ -263,7 +263,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Move: {
-                const uint8_t slot = READ_BYTE();
+                const uint8_t slot = READ_UWORD();
                 frame_stack[slot] = this->stack.back();
                 this->stack.pop_back();
                 break;
