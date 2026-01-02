@@ -39,7 +39,7 @@ int Chunk::objectInstruction(const char *name, int offset) {
 int Chunk::localInstruction(const char *name, int offset) {
     const auto local_i = (this->code[offset + 1] << 8) |
                          this->code[offset + 2];
-    std::print("{:16s} {:4d} -> Local {:d}\n", name, offset, local_i);
+    std::print("{:16s} {:4d}\n", name, local_i);
     return offset + 3;
 }
 
