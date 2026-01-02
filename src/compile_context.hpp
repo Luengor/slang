@@ -55,6 +55,9 @@ struct CompileContext {
     // Enters a new scope
     void enterScope();
 
+    // Gets the variables needed to be popped when exiting the current scope
+    PopCount getPopCount();
+
     // Exits the current scope and returns the number of locals to pop
     PopCount exitScope();
 

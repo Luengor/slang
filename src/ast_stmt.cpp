@@ -503,15 +503,9 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
         }
     }
 
-    // Exit the scope
-    // (this to save the locals to pop)
-    // (there is no issue doing this here since after return nothing else is
-    // compiled)
-    this->pop = ctx.exitScope();
+    // Get the pop count from the context
+    this->pop = ctx.getPopCount();
     assert(this->pop.total >= 2); // At least the return slot and self slot
-
-    // we need to re-enter the scope tho
-    ctx.enterScope();
 }
 
 void ReturnStmt::compile(CompileContext &ctx) {

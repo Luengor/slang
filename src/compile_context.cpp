@@ -46,6 +46,21 @@ NameResolution CompileContext::resolveName(const std::string &name) {
 
 void CompileContext::enterScope() { this->scope_depth++; }
 
+PopCount CompileContext::getPopCount() {
+    PopCount pop_count;
+
+    for (auto it = this->locals.rbegin();
+         it != this->locals.rend() && it->depth > (this->scope_depth - 1); ++it) {
+        // Remove local variables from this scope and count how many to pop
+        if (this->typeRegistry.isObject(it->type)) {
+            pop_count.objects.push_back(pop_count.total);
+        }
+        pop_count.total++;
+    }
+
+    return pop_count;
+}
+
 PopCount CompileContext::exitScope() {
     this->scope_depth--;
 
