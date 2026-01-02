@@ -167,10 +167,11 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Name the function after its line number for now
     fn_ctx->function->name = "<fn@" + std::to_string(this->token.line) + ">";
 
-    // Add a local for the function itself (for recursion)
-    // We will also use this slot to store the return value 
-    // noneType until we resolve the function type
+    // Add 2 locals:
+    //   1. return slot (at index 0). named "" to make it unaccessible
+    //   2. self slot (at index 1). named "self" to allow recursion
     fn_ctx->enterScope(); // Enter a scope to disallow shadowing
+    const int return_local = fn_ctx->addLocal("", ctx.typeRegistry.noneType());
     const int self_local = fn_ctx->addLocal("self", ctx.typeRegistry.noneType());
 
     // Resolve argument types
@@ -191,6 +192,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function->type_id = this->result_type.value();
 
     // Update the locals to have the correct types
+    fn_ctx->locals[return_local].type = return_type_id;
     fn_ctx->locals[self_local].type = this->result_type.value();
 
     // Check if the last statement in the body is a return statement
@@ -798,6 +800,9 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx) {
+    // Empty space for the return slot
+    ctx.function->chunk.write(OpCode::False, this->token.line);
+
     // Compile the callee
     this->callee->compile(ctx);
 

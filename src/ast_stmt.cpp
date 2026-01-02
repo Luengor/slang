@@ -508,7 +508,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
     // (there is no issue doing this here since after return nothing else is
     // compiled)
     this->pop = ctx.exitScope();
-    assert(this->pop.total >= 1); // At least the return slot
+    assert(this->pop.total >= 2); // At least the return slot and self slot
 
     // we need to re-enter the scope tho
     ctx.enterScope();
@@ -523,20 +523,14 @@ void ReturnStmt::compile(CompileContext &ctx) {
         ctx.function->chunk.write(OpCode::False, this->token.line);
     }
 
-    // Get the "return slot" (still with the function) and release it
-    // we dont use GetLocalObject because we don't want to retain here
-    ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
-    ctx.function->chunk.writeWord(0); // Return slot is always local 0
-    ctx.function->chunk.write(OpCode::Release, this->token.line);
-
     // Move that value to the return slot (the "" local) 
     ctx.function->chunk.write(OpCode::Move, this->token.line);
     ctx.function->chunk.write(0); // Return slot is always local 0
 
     // Clean up the stack and return
-    // Pop all locals in reverse order (except the return slot)
+    // Pop all locals in reverse order (except the return and self slots)
     unsigned j = 0;
-    for (int i = 0; i < this->pop.total - 1; i++) {
+    for (int i = 0; i < this->pop.total - 2; i++) {
         if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
             ctx.function->chunk.write(OpCode::Release);
             j++;

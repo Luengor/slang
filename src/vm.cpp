@@ -80,9 +80,15 @@ InterpretResult VM::run() {
                     return InterpretResult::Ok;
                 } else {
                     // The function should have cleaned up its own stack
-                    // The stack should be: [... previous stack ...][return value]
-                    // We also need to release the function object we are in
+                    // The stack should be: [... previous stack ...][return value][function]
+                    // We release the function object
+                    this->stack.back().object->release();
+                    this->stack.pop_back();
+
+                    // Release the function we are returning from
                     this->call_frames.back().function->release();
+
+                    // Pop the call frame
                     this->call_frames.pop_back();
 
                     break;
@@ -98,8 +104,9 @@ InterpretResult VM::run() {
                     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
                     function->retain(); // retain the function to release later
                     // -1 for the function itself
+                    // -1 for the return value slot
                     this->call_frames.push_back(
-                        CallFrame(function, this->stack.size() - arg_count - 1));
+                        CallFrame(function, this->stack.size() - arg_count - 2));
                 } else {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);
@@ -111,7 +118,7 @@ InterpretResult VM::run() {
 
                     // Pop the arguments and the function itself
                     // The native IS responsible for releasing any objects arguments
-                    this->stack.resize(this->stack.size() - arg_count - 1);
+                    this->stack.resize(this->stack.size() - arg_count - 2);
 
                     // Push the result onto the stack
                     this->stack.push_back(result);
