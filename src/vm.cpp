@@ -113,15 +113,17 @@ InterpretResult VM::run() {
 
                     // Call the native function
                     Value result = native_function->function_ptr(
-                        &this->stack[this->stack.size() - arg_count],
+                        arg_count > 0
+                            ? &this->stack[this->stack.size() - arg_count]
+                            : nullptr,
                         arg_count);
 
                     // Pop the arguments and the function itself
                     // The native IS responsible for releasing any objects arguments
-                    this->stack.resize(this->stack.size() - arg_count - 2);
+                    this->stack.resize(this->stack.size() - arg_count - 1);
 
                     // Push the result onto the stack
-                    this->stack.push_back(result);
+                    this->stack.back() = result;
 
                     // Release the native function object
                     native_function->release();
