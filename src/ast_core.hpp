@@ -13,6 +13,7 @@ enum class ASTNodeType {
     UnaryExpr,
     CastExpr,
     BinaryExpr,
+    TernaryExpr,
     LogicExpr,
     ExprStmt,
     BlockStmt,

@@ -90,8 +90,11 @@ class Parser {
     // expression -> assignment 
     std::unique_ptr<ASTNode> expression();
 
-    // assignment  -> IDENTIFIER "=" assignment | logicOr
+    // assignment  -> IDENTIFIER "=" assignment | ternary 
     std::unique_ptr<ASTNode> assignment();
+
+    // ternary -> logicOr ( "?" expression ":" ternary )?
+    std::unique_ptr<ASTNode> ternary();
 
     // logicOr -> logicAnd ( "or" logicAnd )*
     std::unique_ptr<ASTNode> logicOr();

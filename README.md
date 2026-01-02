@@ -30,7 +30,8 @@ exprStmt    -> expression ";"
 #### Expression rules
 ```
 expression  -> assignment
-assignment  -> IDENTIFIER "=" assignment | logicOr
+assignment  -> IDENTIFIER "=" assignment | ternary 
+ternary     -> logicOr ( "?" expression ":" ternary )?
 logicOr     -> logicAnd ( "or" logicAnd )*
 logicAnd    -> equality ( "and" equality )*
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
@@ -56,5 +57,6 @@ From highest to lowest:
 6. Equality: `==`, `!=`
 7. Logic AND: `and`
 8. Logic OR: `or`
+9. Ternary: `? :`
 7. Assignment: `=`
 

@@ -10,7 +10,7 @@ struct Token {
         LeftBrace, RightBrace,
         Minus, Plus, Slash, Star,
         Greater, Less, Semicolon,
-        Equal, Comma,
+        Equal, Comma, Question, Colon,
 
         // Two-character tokens.
         EqualEqual, BangEqual,

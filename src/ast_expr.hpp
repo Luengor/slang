@@ -77,6 +77,16 @@ struct BinaryExpr : public ASTNode {
     void compileComparison(CompileContext &ctx);
 };
 
+struct TernaryExpr : public ASTNode {
+    ASTNodePtr condition, then_branch, else_branch;
+
+    TernaryExpr(const Token &token, ASTNodePtr condition,
+                ASTNodePtr then_branch, ASTNodePtr else_branch);
+    void resolveType(CompileContext &ctx) override;
+    void compile(CompileContext &ctx) override;
+    void print(int indent = 0) override;
+};
+
 struct LogicExpr : public ASTNode {
     ASTNodePtr left, right;
 

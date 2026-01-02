@@ -314,7 +314,7 @@ std::unique_ptr<ASTNode> Parser::expression() {
 }
 
 std::unique_ptr<ASTNode> Parser::assignment() {
-    std::unique_ptr<ASTNode> expr = this->logicOr();
+    std::unique_ptr<ASTNode> expr = this->ternary();
 
     if (this->match({Token::Type::Equal})) {
         Token equals = this->previous();
@@ -327,6 +327,22 @@ std::unique_ptr<ASTNode> Parser::assignment() {
 
         return std::make_unique<AssignExpr>(
             equals, std::move(expr), std::move(value));
+    }
+
+    return expr;
+}
+
+std::unique_ptr<ASTNode> Parser::ternary() {
+    std::unique_ptr<ASTNode> expr = this->logicOr();
+
+    if (this->match({Token::Type::Question})) {
+        Token questionToken = this->previous();
+        std::unique_ptr<ASTNode> thenExpr = this->expression();
+        this->consume(Token::Type::Colon, "Expected ':' in ternary expression.");
+        std::unique_ptr<ASTNode> elseExpr = this->expression();
+
+        return std::make_unique<TernaryExpr>(
+            questionToken, std::move(expr), std::move(thenExpr), std::move(elseExpr));
     }
 
     return expr;

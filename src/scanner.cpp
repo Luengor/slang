@@ -73,6 +73,7 @@ Token Scanner::scanToken() {
         case '/': return this->makeToken(Token::Slash);
         case ',': return this->makeToken(Token::Comma);
         case ';': return this->makeToken(Token::Semicolon);
+        case ':': return this->makeToken(Token::Colon);
         case '>':
             if (this->peek() == '=') {
                 this->current++;
@@ -91,6 +92,7 @@ Token Scanner::scanToken() {
                 return this->makeToken(Token::EqualEqual);
             }
             return this->makeToken(Token::Equal);
+        case '?': return this->makeToken(Token::Question);
         case '!':
             if (this->peek() == '=') {
                 this->current++;

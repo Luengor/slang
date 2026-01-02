@@ -663,6 +663,92 @@ void BinaryExpr::print(int indent) {
     this->right->print(indent + 1);
 }
 
+// TernaryExpr Implementation
+TernaryExpr::TernaryExpr(const Token &token, ASTNodePtr condition,
+                                         ASTNodePtr then_branch,
+                                         ASTNodePtr else_branch)
+    : ASTNode(ASTNodeType::TernaryExpr, token), condition(std::move(condition)),
+      then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
+
+void TernaryExpr::resolveType(CompileContext &ctx) {
+    ResolveGuard;
+
+    // Resolve condition type first
+    this->condition->resolveType(ctx);
+
+    // It must be boolean
+    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    if (this->condition->result_type != booleanType) {
+        // Cast
+        auto castOp = ctx.typeRegistry.getCastOp(
+            this->condition->result_type.value(), booleanType);
+        if (!castOp.has_value()) {
+            throw ParserError(
+                this->token,
+                "Ternary condition should coerce to boolean type.");
+        }
+        this->condition = std::make_unique<CastExpr>(
+            this->token,
+            std::move(this->condition),
+            booleanType);
+        this->condition->resolveType(ctx);
+    }
+
+    // Resolve then and else branch types
+    this->then_branch->resolveType(ctx);
+    this->else_branch->resolveType(ctx);
+
+    // They should be of the same type
+    if (this->then_branch->result_type != this->else_branch->result_type) {
+        throw ParserError(
+            this->token,
+            "Ternary branches must have the same type.");
+    }
+
+    // Set result type
+    this->result_type = this->then_branch->result_type;
+}
+
+void TernaryExpr::compile(CompileContext &ctx) {
+    // Compile condition first
+    this->condition->compile(ctx);
+
+    // Jump if false to else branch
+    ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
+    const int16_t jmp_to_else_pos = ctx.function->chunk.writeWord(0xFFFF);
+
+    // Compile then branch
+    this->then_branch->compile(ctx);
+
+    // Jump to after else branch
+    ctx.function->chunk.write(OpCode::Jmp, this->token.line);
+    const int16_t jmp_after_else_pos = ctx.function->chunk.writeWord(0xFFFF);
+
+    // Patch jump to else branch
+    const int16_t else_pos =
+        static_cast<int16_t>(ctx.function->chunk.currentOffset());
+    const int16_t offset_to_else = else_pos - (jmp_to_else_pos + 2);
+    ctx.function->chunk.patchWord(jmp_to_else_pos, offset_to_else);
+
+    // Compile else branch
+    this->else_branch->compile(ctx);
+
+    // Patch jump to after else branch
+    const int16_t after_else_pos =
+        static_cast<int16_t>(ctx.function->chunk.currentOffset());
+    const int16_t offset_to_after_else =
+        after_else_pos - (jmp_after_else_pos + 2);
+    ctx.function->chunk.patchWord(jmp_after_else_pos, offset_to_after_else);
+}
+
+void TernaryExpr::print(int indent) {
+    for (int i = 0; i < indent; i++) std::cout << "  ";
+    std::cout << "TernaryExpr(? : )\n";
+    this->condition->print(indent + 1);
+    this->then_branch->print(indent + 1);
+    this->else_branch->print(indent + 1);
+}
+
 // LogicExpr
 LogicExpr::LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right)
     : ASTNode(ASTNodeType::LogicExpr, token), left(std::move(left)),
