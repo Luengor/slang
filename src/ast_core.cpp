@@ -5,10 +5,6 @@
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
     : type(type), token(token) {}
 
-void ASTNode::resolveNames(CompileContext &_) {
-    // Default implementation does nothing
-}
-
 std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     // Create compile context
     TypeRegistry typeRegistry;
@@ -21,9 +17,6 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     
     CompileContext ctx(typeRegistry, nativeRegistry);
     ctx.function = function.get();
-
-    // Resolve names
-    root->resolveNames(ctx);
 
     // Perform type resolution
     root->resolveType(ctx);

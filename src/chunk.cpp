@@ -24,6 +24,14 @@ void Chunk::disassembleAb(const char *name, uint32_t instruction) const {
     std::println("{:<16} {:4d} {:4d}", name, A, b);
 }
 
+void Chunk::disassembleabc(const char *name, uint32_t instruction) const {
+    uint8_t a = GET_abc_a(instruction);
+    uint8_t b = GET_abc_b(instruction);
+    uint8_t c = GET_abc_c(instruction);
+
+    std::println("{:<16} {:4d} {:4d} {:4d}", name, a, b, c);
+}
+
 void Chunk::disassembleInstruction(int offset) {
     std::print("{:04d} ", offset);
 
@@ -50,36 +58,81 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::NegateF:
             return this->disassembleAB("OP_NEGATE_F", this->code[offset]);
 
-        case OpCode::Call:
-            std::println("OP_CALL");
-            break;
-
         case OpCode::AddF:
-            std::println("OP_ADDF");
-            break;
+            return this->disassembleabc("OP_ADDF", this->code[offset]);
+
         case OpCode::AddI:
-            std::println("OP_ADDI");
-            break;
+            return this->disassembleabc("OP_ADDI", this->code[offset]);
+
 
         case OpCode::SubtractF:
-            std::println("OP_SUBTRACTF");
-            break;
+            return this->disassembleabc("OP_SUBTRACTF", this->code[offset]);
+
         case OpCode::SubtractI:
-            std::println("OP_SUBTRACTI");
-            break;
+            return this->disassembleabc("OP_SUBTRACTI", this->code[offset]);
+
 
         case OpCode::MultiplyF:
-            std::println("OP_MULTIPLYF");
-            break;
+            return this->disassembleabc("OP_MULTIPLYF", this->code[offset]);
+
         case OpCode::MultiplyI:
-            std::println("OP_MULTIPLYI");
-            break;
+            return this->disassembleabc("OP_MULTIPLYI", this->code[offset]);
+
 
         case OpCode::DivideF:
-            std::println("OP_DIVIDEF");
-            break;
+            return this->disassembleabc("OP_DIVIDEF", this->code[offset]);
+
         case OpCode::DivideI:
-            std::println("OP_DIVIDEI");
+            return this->disassembleabc("OP_DIVIDEI", this->code[offset]);
+
+
+        case OpCode::EqI:
+            return this->disassembleabc("OP_EQI", this->code[offset]);
+
+        case OpCode::NeI:
+            return this->disassembleabc("OP_NEI", this->code[offset]);
+
+        case OpCode::EqF:
+            return this->disassembleabc("OP_EQF", this->code[offset]);
+
+        case OpCode::NeF:
+            return this->disassembleabc("OP_NEF", this->code[offset]);
+
+        case OpCode::EqB:
+            return this->disassembleabc("OP_EQB", this->code[offset]);
+
+        case OpCode::NeB:
+            return this->disassembleabc("OP_NEB", this->code[offset]);
+
+
+        case OpCode::GtI:
+            return this->disassembleabc("OP_GTI", this->code[offset]);
+
+        case OpCode::LtI:
+            return this->disassembleabc("OP_LTI", this->code[offset]);
+
+        case OpCode::GeI:
+            return this->disassembleabc("OP_GEI", this->code[offset]);
+
+        case OpCode::LeI:
+            return this->disassembleabc("OP_LEI", this->code[offset]);
+
+        case OpCode::GtF:
+            return this->disassembleabc("OP_GTF", this->code[offset]);
+
+        case OpCode::LtF:
+            return this->disassembleabc("OP_LTF", this->code[offset]);
+
+        case OpCode::GeF:
+            return this->disassembleabc("OP_GEF", this->code[offset]);
+
+        case OpCode::LeF:
+            return this->disassembleabc("OP_LEF", this->code[offset]);
+
+
+
+        case OpCode::Call:
+            std::println("OP_CALL");
             break;
 
         case OpCode::Object:
@@ -112,50 +165,6 @@ void Chunk::disassembleInstruction(int offset) {
             break;
         case OpCode::B2Str:
             std::println("OP_B2STR");
-            break;
-
-        case OpCode::EqI:
-            std::println("OP_EQI");
-            break;
-        case OpCode::NeI:
-            std::println("OP_NEI");
-            break;
-        case OpCode::EqF:
-            std::println("OP_EQF");
-            break;
-        case OpCode::NeF:
-            std::println("OP_NEF");
-            break;
-        case OpCode::EqB:
-            std::println("OP_EQB");
-            break;
-        case OpCode::NeB:
-            std::println("OP_NEB");
-            break;
-
-        case OpCode::GtI:
-            std::println("OP_GTI");
-            break;
-        case OpCode::LtI:
-            std::println("OP_LTI");
-            break;
-        case OpCode::GeI:
-            std::println("OP_GEI");
-            break;
-        case OpCode::LeI:
-            std::println("OP_LEI");
-            break;
-        case OpCode::GtF:
-            std::println("OP_GTF");
-            break;
-        case OpCode::LtF:
-            std::println("OP_LTF");
-            break;
-        case OpCode::GeF:
-            std::println("OP_GEF");
-            break;
-        case OpCode::LeF:
-            std::println("OP_LEF");
             break;
 
         case OpCode::True:

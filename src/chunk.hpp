@@ -10,19 +10,14 @@ enum class OpCode : uint8_t {
     Not,
     NegateI, NegateF,
 
+    AddI, SubtractI, MultiplyI, DivideI,
+    AddF, SubtractF, MultiplyF, DivideF, 
 
-    Call, Object,
-    AddF, AddI,
-    SubtractF, SubtractI,
-    MultiplyF, MultiplyI,
-    DivideF, DivideI,
-
-    EqI, NeI,
-    EqF, NeF,
+    EqI, NeI, GtI, LtI, GeI, LeI,
+    EqF, NeF, GtF, LtF, GeF, LeF,
     EqB, NeB,
 
-    GtI, LtI, GeI, LeI,
-    GtF, LtF, GeF, LeF,
+    Call, Object,
 
     I2F, F2I,
     I2B, B2I,
@@ -49,6 +44,7 @@ class Chunk {
 
     void disassembleAb(const char *name, uint32_t instruction) const;
     void disassembleAB(const char *name, uint32_t instruction) const;
+    void disassembleabc(const char *name, uint32_t instruction) const;
     void disassembleInstruction(int offset);
 
 public:

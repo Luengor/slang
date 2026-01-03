@@ -43,9 +43,6 @@ struct ASTNode {
     ASTNode(ASTNodeType type, const Token &token);
     virtual ~ASTNode() = default;
 
-    // Resolve names in this AST node
-    virtual void resolveNames(CompileContext &ctx);
-
     // Resolve the type of this AST node
     // After this is called, result_type should be set
     virtual void resolveType(CompileContext &ctx) = 0;

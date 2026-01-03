@@ -47,7 +47,6 @@ struct UnaryExpr : public ASTNode {
     ASTNodePtr operand;
 
     UnaryExpr(const Token &token, ASTNodePtr operand);
-    void resolveNames(CompileContext &ctx) override;
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx) override;
     void print(int indent = 0) override;

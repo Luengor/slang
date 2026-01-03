@@ -41,6 +41,17 @@ InterpretResult VM::run() {
 #define frame this->call_frames.back()
 #define registers (this->registers.data() + frame.stack_base)
 
+#define BINARY_EXPR_2(op, from_field, to_field) { \
+    const auto left_r = GET_abc_a(instruction); \
+    const auto right_r = GET_abc_b(instruction); \
+    const auto target_r = GET_abc_c(instruction); \
+    registers[target_r].to_field = \
+        registers[left_r].from_field op registers[right_r].from_field; \
+    break; \
+}
+
+#define BINARY_EXPR(op, type_field) BINARY_EXPR_2(op, type_field, type_field)
+
 #ifdef DEBUG_PRINT
     std::print("\n=== VM Execution Start ===\n");
 #endif
@@ -106,6 +117,32 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::AddI: BINARY_EXPR(+, fixed);
+            case OpCode::SubtractI: BINARY_EXPR(-, fixed);
+            case OpCode::MultiplyI: BINARY_EXPR(*, fixed);
+            case OpCode::DivideI: BINARY_EXPR(/, fixed);
+
+            case OpCode::AddF: BINARY_EXPR(+, floating);
+            case OpCode::SubtractF: BINARY_EXPR(-, floating);
+            case OpCode::MultiplyF: BINARY_EXPR(*, floating);
+            case OpCode::DivideF: BINARY_EXPR(/, floating);
+
+            case OpCode::EqI: BINARY_EXPR_2(==, fixed, boolean);
+            case OpCode::NeI: BINARY_EXPR_2(!=, fixed, boolean);
+            case OpCode::GtI: BINARY_EXPR_2(>, fixed, boolean);
+            case OpCode::GeI: BINARY_EXPR_2(>=, fixed, boolean);
+            case OpCode::LtI: BINARY_EXPR_2(<, fixed, boolean);
+            case OpCode::LeI: BINARY_EXPR_2(<=, fixed, boolean);
+
+            case OpCode::EqF: BINARY_EXPR_2(==, floating, boolean);
+            case OpCode::NeF: BINARY_EXPR_2(!=, floating, boolean);
+            case OpCode::GtF: BINARY_EXPR_2(>, floating, boolean);
+            case OpCode::GeF: BINARY_EXPR_2(>=, floating, boolean);
+            case OpCode::LtF: BINARY_EXPR_2(<, floating, boolean);
+            case OpCode::LeF: BINARY_EXPR_2(<=, floating, boolean);
+
+            case OpCode::EqB: BINARY_EXPR_2(==, boolean, boolean);
+            case OpCode::NeB: BINARY_EXPR_2(!=, boolean, boolean);
 
             case OpCode::Call: {
                 TODO;
@@ -152,15 +189,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::AddF: TODO;
-            case OpCode::AddI: TODO;
-            case OpCode::SubtractF: TODO;
-            case OpCode::SubtractI: TODO;
-            case OpCode::MultiplyF: TODO;
-            case OpCode::MultiplyI: TODO;
-            case OpCode::DivideF: TODO;
-            case OpCode::DivideI: TODO;
-
             case OpCode::I2F: TODO; 
             case OpCode::F2I: TODO; 
             case OpCode::I2B: TODO; 
@@ -191,22 +219,6 @@ InterpretResult VM::run() {
                 // this->stack.back().object = strObj;
                 break;
             }
-
-            case OpCode::EqI: TODO; 
-            case OpCode::NeI: TODO; 
-            case OpCode::EqF: TODO; 
-            case OpCode::NeF: TODO; 
-            case OpCode::EqB: TODO; 
-            case OpCode::NeB: TODO; 
-
-            case OpCode::GtI: TODO; 
-            case OpCode::LtI: TODO; 
-            case OpCode::GeI: TODO; 
-            case OpCode::LeI: TODO; 
-            case OpCode::GtF: TODO; 
-            case OpCode::LtF: TODO; 
-            case OpCode::GeF: TODO; 
-            case OpCode::LeF: TODO; 
 
             case OpCode::True: {
                 TODO;

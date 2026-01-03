@@ -77,6 +77,28 @@ From highest to lowest:
 | 2| Not         | OpAB  | B <- !A                                             |
 | 3| NegateI     | OpAB  | B <- -A                                             |
 | 4| NegateF     | OpAB  | B <- -A                                             |
+| 5| AddI        | Opabc | c <- a + b                                          |
+| 6| SubI        | Opabc | c <- a - b                                          |
+| 7| MulI        | Opabc | c <- a * b                                          |
+| 8| DivI        | Opabc | c <- a // b                                         |
+| 9| AddF        | Opabc | c <- a + b                                          |
+|10| SubF        | Opabc | c <- a - b                                          |
+|11| MulF        | Opabc | c <- a * b                                          |
+|12| DivF        | Opabc | c <- a / b                                          |
+|13| EqI         | Opabc | c <- a == b                                         |
+|14| NeqI        | Opabc | c <- a != b                                         |
+|15| GtI         | Opabc | c <- a > b                                          |
+|16| GeI         | Opabc | c <- a >= b                                         |
+|16| LtI         | Opabc | c <- a < b                                          |
+|17| LeI         | Opabc | c <- a <= b                                         |
+|19| EqF         | Opabc | c <- a == b                                         |
+|20| NeqF        | Opabc | c <- a != b                                         |
+|21| GtF         | Opabc | c <- a > b                                          |
+|22| GeF         | Opabc | c <- a >= b                                         |
+|22| LtF         | Opabc | c <- a < b                                          |
+|23| LeF         | Opabc | c <- a <= b                                         |
+|24| EqB         | Opabc | c <- a == b                                         |
+|25| NeqB        | Opabc | c <- a != b                                         |
 
 | I| Ins         | Op    |                                                     |
 

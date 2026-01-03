@@ -302,11 +302,6 @@ void VariableNode::print(int indent) {
 UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpr, token), operand(std::move(operand)) {}
 
-void UnaryExpr::resolveNames(CompileContext &ctx) {
-    // Resolve names in the operand
-    this->operand->resolveNames(ctx);
-}
-
 void UnaryExpr::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
@@ -580,10 +575,16 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void BinaryExpr::compile(CompileContext &ctx) {/*
+void BinaryExpr::compile(CompileContext &ctx) {
     // Compile left and right operands first
     this->left->compile(ctx);
     this->right->compile(ctx);
+
+    // Take the register of the left operand as the result register
+    this->result_register = this->left->result_register;
+
+    // Free the right operand's register
+    ctx.freeRegister(this->right->result_register);
 
     // Compile the appropriate binary operation
     switch (this->token.type) {
@@ -609,9 +610,15 @@ void BinaryExpr::compile(CompileContext &ctx) {/*
                 "Unsupported binary operator during compilation.");
             break;
     }
-*/}
+}
 
-void BinaryExpr::compileArithmetic(CompileContext &ctx) {/*
+#define write(op)                                                              \
+    ctx.function->chunk.write_abc(op, this->result_register,                   \
+                                  this->right->result_register,                \
+                                  this->result_register, this->token.line);    \
+    break;
+
+void BinaryExpr::compileArithmetic(CompileContext &ctx) {
     const TypeID floatingType =
         ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
 
@@ -628,17 +635,16 @@ void BinaryExpr::compileArithmetic(CompileContext &ctx) {/*
 
     switch (this->token.type) {
         case Token::Type::Plus:
-            ctx.function->chunk.write(IorF(Add), this->token.line);
-            break;
+            write(IorF(Add));
+
         case Token::Type::Minus:
-            ctx.function->chunk.write(IorF(Subtract), this->token.line);
-            break;
+            write(IorF(Subtract));
+
         case Token::Type::Star:
-            ctx.function->chunk.write(IorF(Multiply), this->token.line);
-            break;
+            write(IorF(Multiply));
+
         case Token::Type::Slash:
-            ctx.function->chunk.write(IorF(Divide), this->token.line);
-            break;
+            write(IorF(Divide));
 
         default:
             throw ParserError(
@@ -647,9 +653,9 @@ void BinaryExpr::compileArithmetic(CompileContext &ctx) {/*
     }
 
 #undef IorF
-*/}
+}
 
-void BinaryExpr::compileEquality(CompileContext &ctx) {/*
+void BinaryExpr::compileEquality(CompileContext &ctx) {
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
@@ -668,16 +674,13 @@ void BinaryExpr::compileEquality(CompileContext &ctx) {/*
 
     switch (prim_type.kind) {
         case PrimitiveKind::Fixed:
-            ctx.function->chunk.write(EqOrNe(I), this->token.line);
-            break;
+            write(EqOrNe(I));
 
         case PrimitiveKind::Floating:
-            ctx.function->chunk.write(EqOrNe(F), this->token.line);
-            break;
+            write(EqOrNe(F));
 
         case PrimitiveKind::Boolean:
-            ctx.function->chunk.write(EqOrNe(B), this->token.line);
-            break;
+            write(EqOrNe(B));
 
         default:
             throw ParserError(
@@ -686,9 +689,9 @@ void BinaryExpr::compileEquality(CompileContext &ctx) {/*
             break;
     }
 #undef EqOrNe
-*/}
+}
 
-void BinaryExpr::compileComparison(CompileContext &ctx) {/*
+void BinaryExpr::compileComparison(CompileContext &ctx) {
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
@@ -712,17 +715,17 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {/*
 
     switch (this->token.type) {
         case Token::Type::Greater:
-            ctx.function->chunk.write(IorF(Gt), this->token.line);
-            break;
+            write(IorF(Gt));
+
         case Token::Type::GreaterEqual:
-            ctx.function->chunk.write(IorF(Ge), this->token.line);
-            break;
+            write(IorF(Ge));
+
         case Token::Type::Less:
-            ctx.function->chunk.write(IorF(Lt), this->token.line);
-            break;
+            write(IorF(Lt));
+
         case Token::Type::LessEqual:
-            ctx.function->chunk.write(IorF(Le), this->token.line);;
-            break;
+            write(IorF(Le));
+
         default:
             throw ParserError(
                 this->token,
@@ -730,7 +733,9 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {/*
             break;
     }
 #undef IorF
-*/}
+}
+
+#undef write
 
 void BinaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
