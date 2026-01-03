@@ -1,5 +1,6 @@
 #include "ast_stmt.hpp"
 #include "ast_expr.hpp"
+#include "native.hpp"
 #include "error.hpp"
 #include "object.hpp"
 #include <cassert>
@@ -75,7 +76,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
     // Enter a new scope
-    ctx.enterScope();
+    ctx.nameTable.enterScope();
 
     // Resolve types for all statements
     bool plain_return = false;
@@ -94,37 +95,37 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     }
 
     // Exit the scope
-    this->pop = ctx.exitScope();
+    ctx.nameTable.exitScope();
 
-    // For now, block statements have no result type
-    // Maybe in the future we can have the last statement's type?
+    // Block statements have no result type
     this->result_type = ctx.typeRegistry.noneType();
 }
 
 void BlockStmt::compile(CompileContext &ctx) {
+    // Enter a new scope
+    ctx.nameTable.enterScope();
+
     // Compile all statements in the block
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
     }
 
-    /*
-    // Pop local variables declared in this block
-    // We can skip this if there is a return statement at the end
-    if (!this->statements.empty() &&
-        this->statements.back()->type == ASTNodeType::ReturnStmt) {
-        return;
-    }
+    // Get all local variables declared in this block
+    auto names_in_scope = ctx.nameTable.getNamesInScope(
+            ctx.nameTable.getCurrentDepth());
 
-    unsigned j = 0;
-    for (int i = 0; i < this->pop.total; i++) {
-        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
-            ctx.function->chunk.write(OpCode::Release);
-            j++;
-        } else {
-            ctx.function->chunk.write(OpCode::Pop);
+    // Pop local variables declared in this block
+    for (auto entryID : names_in_scope) {
+        const auto &entry = ctx.nameTable.getEntry(entryID);
+        if (entry.register_index != -1) {
+            // Free the register
+            ctx.freeRegister(entry.register_index);
         }
-    }
-*/}
+    };
+
+    // Exit the scope
+    ctx.nameTable.exitScope();
+}
 
 void BlockStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -143,10 +144,10 @@ VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
-    // Resolve the name first to ensure it isn't a native function
-    auto nameResolution = ctx.resolveName(this->token.lexeme);
-    if (nameResolution.has_value() &&
-        std::holds_alternative<NativeFunctionObj *>(nameResolution.value())) {
+    // Check if its a native function
+    auto nativeFn = ctx.nativeRegistry.getNativeFunction(
+        this->token.lexeme);
+    if (nativeFn != nullptr) {
         throw ParserError(
             this->token,
             "Variable name conflicts with a native function name.");
@@ -196,30 +197,38 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
         }
     }
 
-    // Push the variable to the locals
-    int local = ctx.addLocal(this->token.lexeme, this->result_type.value());
-    if (local == -1) {
+    // Add a new local
+    auto entry_id = ctx.nameTable.addName(
+        this->token.lexeme,
+        this->result_type.value());
+    if (!entry_id.has_value()) {
         throw ParserError(
             this->token,
             "Variable with the same name already declared in this scope.");
     }
+
+    this->entry_id = entry_id.value();
 }
 
-void VarDeclStmt::compile(CompileContext &ctx) {/*
+void VarDeclStmt::compile(CompileContext &ctx) {
+    // Get the local entry
+    auto &entry = ctx.nameTable.getEntry(this->entry_id);
+
+    // Allocate a register for it
+    entry.register_index = ctx.allocateRegister();
+
     // Compile the initializer if present
     if (this->initializer) {
         this->initializer->compile(ctx);
-    } else {
-        // Default initializer
-        // for now, push false and good luck if it's not a boolean :)
-        Value defaultValue {.boolean = false};
-        const auto constant = ctx.function->chunk.addConstant(defaultValue);
-        ctx.function->chunk.write(OpCode::Constant, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(constant));
-    }
 
-    // Nothing more to do, we pray now
-*/}
+        // Copy the initializer value into the local variable's register
+        ctx.function->chunk.write_AB(
+            OpCode::Copy, this->initializer->result_register, entry.register_index);
+
+        // Free the initializer's result register
+        ctx.freeRegister(this->initializer->result_register);
+    }
+}
 
 void VarDeclStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -259,33 +268,32 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->target->result_type;
 }
 
-void AssignExpr::compile(CompileContext &ctx) {/*
-    // Compile the value
+void AssignExpr::compile(CompileContext &ctx) {
+    // Compile the value and get its result register
     this->value->compile(ctx);
+    const int value_register = this->value->result_register;
 
-    // The variable is only compiled on read, so we don't do it now
-    // We get the local index from the target variable node
+    // Get the variable node from the target
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
 
     // Ensure it's a valid assignment target
-    if (varNode == nullptr ||
-        !std::holds_alternative<int>(varNode->resolution.value())) {
+    if (!std::holds_alternative<EntryID>(varNode->resolution)) {
         throw ParserError(this->token,
                           "Invalid assignment target during compilation.");
     }
 
-    const int local_index =
-        std::get<int>(varNode->resolution.value());
+    // Get its register
+    const auto local_entry = std::get<EntryID>(varNode->resolution);
+    const int local_register =
+        ctx.nameTable.getEntry(local_entry).register_index;
 
     // Store the local variable
-    if (ctx.typeRegistry.isObject(this->target->result_type.value())) {
-        ctx.function->chunk.write(OpCode::SetLocalObject, this->token.line);
-    } else {
-        ctx.function->chunk.write(OpCode::SetLocal, this->token.line);
-    }
+    ctx.function->chunk.write_AB(OpCode::Copy, value_register, local_register,
+                                 this->token.line);
 
-    ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
-*/}
+    // The result register of the assignment expression is the value's register
+    this->result_register = value_register;
+}
 
 void AssignExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -445,7 +453,7 @@ ReturnStmt::ReturnStmt(const Token &token, ASTNodePtr return_expr)
     : ASTNode(ASTNodeType::ReturnStmt, token),
       return_expr(std::move(return_expr)) {};
 
-void ReturnStmt::resolveType(CompileContext &ctx) {
+void ReturnStmt::resolveType(CompileContext &ctx) { /*
     ResolveGuard;
 
     // Ensure this is happening in a function
@@ -479,7 +487,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
     // Get the pop count from the context
     this->pop = ctx.getPopCount();
     assert(this->pop.total >= 2); // At least the return slot and self slot
-}
+*/}
 
 void ReturnStmt::compile(CompileContext &ctx) {/*
     // If there is expression, compile that

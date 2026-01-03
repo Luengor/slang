@@ -1,5 +1,6 @@
 #include "ast_expr.hpp"
 #include "ast_stmt.hpp"
+#include "compile_context.hpp"
 #include "error.hpp"
 #include "native.hpp"
 #include "object.hpp"
@@ -155,7 +156,7 @@ FunctionNode::FunctionNode(const Token &token,
     : ASTNode(ASTNodeType::Function, token), arguments(std::move(arguments)),
       return_type(std::move(return_type)), body(std::move(body)) {}
 
-void FunctionNode::resolveType(CompileContext &ctx) {
+void FunctionNode::resolveType(CompileContext &ctx) { /*
     ResolveGuard;
 
     // Nefarious things here
@@ -170,9 +171,10 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Add 2 locals:
     //   1. return slot (at index 0). named "" to make it unaccessible
     //   2. self slot (at index 1). named "self" to allow recursion
-    fn_ctx->enterScope(); // Enter a scope to disallow shadowing
-    const int return_local = fn_ctx->addLocal("", ctx.typeRegistry.noneType());
-    const int self_local = fn_ctx->addLocal("self", ctx.typeRegistry.noneType());
+    const EntryID return_entry =
+        fn_ctx->nameTable.addName("", ctx.typeRegistry.noneType(), 1).value();
+    const EntryID self_entry =
+        fn_ctx->nameTable.addName("self", ctx.typeRegistry.noneType(), 1).value();
 
     // Resolve argument types
     std::vector<TypeID> param_types;
@@ -192,8 +194,8 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function->type_id = this->result_type.value();
 
     // Update the locals to have the correct types
-    fn_ctx->locals[return_local].type = return_type_id;
-    fn_ctx->locals[self_local].type = this->result_type.value();
+    fn_ctx->nameTable.getEntry(return_entry).type = return_type_id;
+    fn_ctx->nameTable.getEntry(self_entry).type = this->result_type.value();
 
     // Check if the last statement in the body is a return statement
     assert(this->body->type == ASTNodeType::BlockStmt);
@@ -213,7 +215,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
 
     // Resolve type of the body
     this->body->resolveType(*fn_ctx);
-}
+*/}
 
 void FunctionNode::compile(CompileContext &ctx) {/*
     // Use the function's own compile context
@@ -253,44 +255,57 @@ VariableNode::VariableNode(const Token &token, const std::string &name)
 void VariableNode::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
-    // Resolve the name
-    this->resolution = ctx.resolveName(this->name);
-    if (!this->resolution)
+    /// Resolve the name
+    // Check if it is a native function first
+    auto nativeFn =
+        ctx.nativeRegistry.getNativeFunction(this->name);
+    if (nativeFn != nullptr) {
+        this->resolution = nativeFn;
+        this->result_type = nativeFn->type_id;
+        return;
+    }
+
+    // If not, resolve as a variable
+    auto entry = ctx.nameTable.findEntryInScope(this->name);
+    if (!entry.has_value()) {
         throw ParserError(this->token,
                           "Undefined variable: " + this->name);
+    }
 
-    this->result_type = std::visit(
-        overloaded{
-            [&](int local_index) { return ctx.locals[local_index].type; },
-            [&](NativeFunctionObj *native_fn) { return native_fn->type_id; }},
-        this->resolution.value());
+    this->resolution = entry.value();
+    this->result_type = ctx.nameTable.getEntry(entry.value()).type;
 }
 
-void VariableNode::compile(CompileContext &ctx) {/*
-    assert(this->resolution.has_value());
+void VariableNode::compile(CompileContext &ctx) {
+    // Get a register for the result
+    this->result_register = ctx.allocateRegister();
 
+    // Compile based on the resolution type
     std::visit(overloaded{
-        [&](int local_index) {
-            // Load the variable from the local slot
-            if (ctx.typeRegistry.isObject(this->result_type.value())) {
-                ctx.function->chunk.write(OpCode::GetLocalObject, this->token.line);
-            } else {
-                ctx.function->chunk.write(OpCode::GetLocal, this->token.line);
-            }
-            ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
+        [&](EntryID local_index) {
+            // Get the local
+            const auto &entry = ctx.nameTable.getEntry(local_index);
+            assert(entry.register_index != -1 &&
+                   "Local variable must have a valid register index");
+
+            // Copy the local variable into the result register
+            ctx.function->chunk.write_AB(
+                OpCode::GetLocal, this->result_register,
+                static_cast<uint8_t>(entry.register_index), this->token.line);
         },
         [&](NativeFunctionObj *native_fn) {
-            // Retain the native function to pass it to the chunk
-            native_fn->retain();
+            assert(false);
+            // // Retain the native function to pass it to the chunk
+            // native_fn->retain();
 
-            // Load the native function as a constant
-            const auto constant =
-                ctx.function->chunk.addObjectConstant(native_fn);
-            ctx.function->chunk.write(OpCode::Object, this->token.line);
-            ctx.function->chunk.write(static_cast<uint8_t>(constant));
+            // // Load the native function as a constant
+            // const auto constant =
+            //     ctx.function->chunk.addObjectConstant(native_fn);
+            // ctx.function->chunk.write(OpCode::Object, this->token.line);
+            // ctx.function->chunk.write(static_cast<uint8_t>(constant));
         }
-    }, this->resolution.value());
-*/}
+    }, this->resolution);
+}
 
 void VariableNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";

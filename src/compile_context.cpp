@@ -1,10 +1,95 @@
 #include "compile_context.hpp"
 #include "native.hpp"
+#include <algorithm>
+
+std::optional<EntryID> NameTable::addName(const std::string &name, TypeID type,
+                                          int depth) {
+    depth = (depth == -1) ? this->current_depth : depth;
+
+    // Check if another entry exists with the same name at the same depth
+    for (const auto &id : this->in_scope) {
+        if (this->entries[id].name == name &&
+            this->entries[id].depth == depth) {
+            return std::nullopt; // Indicate error: duplicate name
+        }
+    }
+
+    // Add the new entry
+    EntryID id = this->entries.size();
+    this->entries.push_back(NameEntry{name, type, depth});
+    this->in_scope.push_back(id);
+    return id;
+}
+
+std::optional<EntryID> NameTable::findEntryInScope(const std::string &name) {
+    // Search in reverse order to find the most recent entry
+    for (auto it = this->in_scope.rbegin(); it != this->in_scope.rend(); ++it) {
+        const NameEntry &entry = this->entries[*it];
+        if (entry.name == name) {
+            return *it;
+        }
+    }
+
+    return std::nullopt; // Not found
+}
+
+std::vector<EntryID> NameTable::getNamesInScope(int depth) {
+    auto result = this->in_scope;
+    if (depth > 0) {
+        result.erase(
+            std::remove_if(
+                result.begin(), result.end(),
+                [this, depth](EntryID id) {
+                    return this->entries[id].depth < depth;
+                }),
+            result.end());
+    }
+
+    return result;
+}
+
+NameEntry &NameTable::getEntry(EntryID id) {
+    return this->entries[id];
+}
+
+void NameTable::enterScope() { this->current_depth++; }
+
+void NameTable::exitScope(bool pop) {
+    if (pop) {
+        // Remove all entries at the given depth
+        this->in_scope.erase(
+            std::remove_if(
+                this->in_scope.begin(), this->in_scope.end(),
+                [this](EntryID id) {
+                    return this->entries[id].depth >= this->current_depth;
+                }),
+            this->in_scope.end());
+    }
+
+    this->current_depth--;
+}
+
+void NameTable::clearScope() {
+    this->in_scope.clear();
+    this->current_depth = 0;
+}
+
+void NameTable::putInScope(EntryID id) {
+    this->in_scope.push_back(id);
+}
+
+int NameTable::getCurrentDepth() const {
+    return this->current_depth;
+}
 
 CompileContext::CompileContext(TypeRegistry &typeRegistry,
-                               NativeRegistry &nativeRegistry,
-                               CompileContext *next)
-    : typeRegistry(typeRegistry), nativeRegistry(nativeRegistry), next(next) {}
+                               NativeRegistry &nativeRegistry)
+    : typeRegistry(typeRegistry), nativeRegistry(nativeRegistry) {}
+
+CompileContext::CompileContext(CompileContext &parent) :
+    typeRegistry(parent.typeRegistry),
+    nativeRegistry(parent.nativeRegistry),
+    next(&parent) {}
 
 int CompileContext::allocateRegister() {
     // Get a register from the stack if any are free
@@ -22,80 +107,3 @@ void CompileContext::freeRegister(int reg) {
     this->free_registers.push_back(reg);
 }
 
-int CompileContext::addLocal(const std::string &name, TypeID type) {
-    // Check if there are any existing locals with the same name
-    // defined in the same scope
-    for (auto it = this->locals.rbegin(); it != this->locals.rend(); ++it) {
-        if (it->name == name && it->depth == this->scope_depth) {
-            return -1; // Indicate error: duplicate local
-        }
-    }
-
-    this->locals.push_back(
-        Local{.name = name, .type = type, .depth = this->scope_depth});
-    return static_cast<int>(this->locals.size() - 1);
-}
-
-int CompileContext::findLocal(const std::string &name) {
-    // Search for the local variable in reverse order (most recent first)
-    for (auto it = this->locals.rbegin(); it != this->locals.rend(); ++it) {
-        if (it->name == name) {
-            return std::distance(it, this->locals.rend()) - 1;
-        }
-    }
-
-    return -1; // Not found
-}
-
-NameResolution CompileContext::resolveName(const std::string &name) {
-    // First, try to find a local variable
-    int local_index = this->findLocal(name);
-    if (local_index != -1) {
-        return local_index;
-    }
-
-    // If not found, try to find a native function
-    NativeFunctionObj *native_fn =
-        this->nativeRegistry.getNativeFunction(name);
-    if (native_fn != nullptr) {
-        return native_fn;
-    }
-
-    // Not found
-    return std::nullopt;
-}
-
-void CompileContext::enterScope() { this->scope_depth++; }
-
-PopCount CompileContext::getPopCount() {
-    PopCount pop_count;
-
-    for (auto it = this->locals.rbegin();
-         it != this->locals.rend() && it->depth > (this->scope_depth - 1); ++it) {
-        // Remove local variables from this scope and count how many to pop
-        if (this->typeRegistry.isObject(it->type)) {
-            pop_count.objects.push_back(pop_count.total);
-        }
-        pop_count.total++;
-    }
-
-    return pop_count;
-}
-
-PopCount CompileContext::exitScope() {
-    this->scope_depth--;
-
-    PopCount pop_count;
-
-    for (auto it = this->locals.rbegin();
-         it != this->locals.rend() && it->depth > this->scope_depth; ++it) {
-        // Remove local variables from this scope and count how many to pop
-        if (this->typeRegistry.isObject(it->type)) {
-            pop_count.objects.push_back(pop_count.total);
-        }
-        this->locals.pop_back();
-        pop_count.total++;
-    }
-
-    return pop_count;
-}

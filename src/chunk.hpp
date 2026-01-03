@@ -17,6 +17,8 @@ enum class OpCode : uint8_t {
     EqF, NeF, GtF, LtF, GeF, LeF,
     EqB, NeB,
 
+    Copy,
+
     Call, Object,
 
     I2F, F2I,

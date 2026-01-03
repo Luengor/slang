@@ -99,6 +99,7 @@ From highest to lowest:
 |23| LeF         | Opabc | c <- a <= b                                         |
 |24| EqB         | Opabc | c <- a == b                                         |
 |25| NeqB        | Opabc | c <- a != b                                         |
+|26| Copy        | OpAB  | b <- a                                              |
 
 | I| Ins         | Op    |                                                     |
 

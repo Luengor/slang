@@ -144,6 +144,13 @@ InterpretResult VM::run() {
             case OpCode::EqB: BINARY_EXPR_2(==, boolean, boolean);
             case OpCode::NeB: BINARY_EXPR_2(!=, boolean, boolean);
 
+            case OpCode::Copy: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r] = registers[from_r];
+                break;
+            }
+
             case OpCode::Call: {
                 TODO;
                 // const uint8_t arg_count = READ_BYTE();

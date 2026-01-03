@@ -33,9 +33,11 @@ struct FunctionNode : public ASTNode {
     void print(int indent = 0) override;
 };
 
+struct NativeFunctionObj;
+
 struct VariableNode : public ASTNode {
     std::string name;
-    NameResolution resolution;
+    std::variant<EntryID, NativeFunctionObj *> resolution;
 
     VariableNode(const Token &token, const std::string &name);
     void resolveType(CompileContext &ctx) override;

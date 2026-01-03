@@ -5,6 +5,7 @@
 // ((but I have to draw the line somewhere))
 
 #include "ast_core.hpp"
+#include "compile_context.hpp"
 
 struct ExprStmt : public ASTNode {
     ASTNodePtr expression;
@@ -17,7 +18,6 @@ struct ExprStmt : public ASTNode {
 
 struct BlockStmt : public ASTNode {
     std::vector<ASTNodePtr> statements;
-    PopCount pop;
 
     BlockStmt(const Token &token, std::vector<ASTNodePtr> statements);
     void resolveType(CompileContext &ctx) override;
@@ -28,6 +28,7 @@ struct BlockStmt : public ASTNode {
 struct VarDeclStmt : public ASTNode {
     ASTNodePtr type_expr;
     ASTNodePtr initializer;
+    EntryID entry_id;
 
     VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
                 ASTNodePtr initializer);
@@ -70,7 +71,6 @@ struct AssignExpr : public ASTNode {
 
 struct ReturnStmt : public ASTNode {
     ASTNodePtr return_expr;
-    PopCount pop;
 
     ReturnStmt(const Token &token, ASTNodePtr return_expr);
     void resolveType(CompileContext &ctx) override;

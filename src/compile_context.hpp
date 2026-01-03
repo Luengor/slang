@@ -4,28 +4,40 @@
 #include <string>
 #include <vector>
 
-// Represents a local variable in the compile context
-struct Local {
-    // The name of the local variable
-    std::string name;
-
-    // The type of the local variable
-    TypeID type;
-
-    // The scope depth where the local variable was declared
-    int depth;
-};
-
-struct PopCount {
-    int total = 0;
-    std::vector<int> objects = {};
-};
-
 struct FunctionObj;
 struct NativeFunctionObj;
 struct NativeRegistry;
 
-using NameResolution = std::optional<std::variant<int, NativeFunctionObj *>>;
+using EntryID = size_t;
+
+struct NameEntry {
+    std::string name;
+    TypeID type;
+    int depth;
+    int register_index = -1;
+};
+
+class NameTable {
+    std::vector<NameEntry> entries;
+    std::vector<EntryID> in_scope;
+    int current_depth = 0;
+
+  public:
+    std::optional<EntryID> addName(const std::string &name, TypeID type,
+                                   int depth = -1);
+    std::optional<EntryID> findEntryInScope(const std::string &name);
+
+    std::vector<EntryID> getNamesInScope(int depth = 0);
+
+    NameEntry &getEntry(EntryID id);
+
+    void enterScope();
+    void exitScope(bool pop = true);
+    void clearScope();
+
+    void putInScope(EntryID id);
+    int getCurrentDepth() const;
+};
 
 struct CompileContext {
     // The current function being compiled
@@ -37,17 +49,15 @@ struct CompileContext {
     // The native function registry
     NativeRegistry &nativeRegistry;
 
-    // The current scope depth
-    int scope_depth = 0;
-    // The list of local variables currently in scope
-    std::vector<Local> locals = {};
+    // The name table 
+    NameTable nameTable;
 
     // The parent compile context.
     // If this value is nullptr, this is the top-level context.
     CompileContext *next = nullptr;
 
-    CompileContext(TypeRegistry &typeRegistry, NativeRegistry &nativeRegistry,
-                   CompileContext *next = nullptr);
+    CompileContext(TypeRegistry &typeRegistry, NativeRegistry &nativeRegistry);
+    CompileContext(CompileContext &parent);
 
     // Allocate a new register
     int allocateRegister();
@@ -55,26 +65,8 @@ struct CompileContext {
     // Free a previously allocated register
     void freeRegister(int reg);
 
-    // Adds a local variable to the current scope
-    int addLocal(const std::string &name, TypeID type);
-
-    // Resolves a name to either a local variable index or a native function
-    NameResolution resolveName(const std::string &name);
-
-    // Enters a new scope
-    void enterScope();
-
-    // Gets the variables needed to be popped when exiting the current scope
-    PopCount getPopCount();
-
-    // Exits the current scope and returns the number of locals to pop
-    PopCount exitScope();
-
 private:
     std::vector<int> free_registers;
     int max_registers = 0;
-
-    // Finds a local variable by name and returns its index, or -1 if not found
-    int findLocal(const std::string &name);
 };
 

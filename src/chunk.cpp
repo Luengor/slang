@@ -129,7 +129,8 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::LeF:
             return this->disassembleabc("OP_LEF", this->code[offset]);
 
-
+        case OpCode::Copy:
+            return this->disassembleAB("OP_COPY", this->code[offset]);
 
         case OpCode::Call:
             std::println("OP_CALL");

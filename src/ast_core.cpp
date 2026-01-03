@@ -1,6 +1,7 @@
 #include "ast_core.hpp"
 #include "native.hpp"
 #include "object.hpp"
+#include <cassert>
 
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
     : type(type), token(token) {}
@@ -20,6 +21,9 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
 
     // Perform type resolution
     root->resolveType(ctx);
+
+    // There should be nothing in the current names
+    assert(ctx.nameTable.getNamesInScope().empty());
 
     // Compile the AST
     root->compile(ctx);
