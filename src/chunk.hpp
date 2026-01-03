@@ -40,18 +40,12 @@ class Chunk {
     friend class VM;
     friend struct CallFrame;
 
-    std::vector<uint8_t> code;
+    std::vector<uint32_t> code;
     std::vector<int> lines;
     ValueArray constants = {};
     std::vector<Object *> object_constants = {};
 
-    int simpleInstruction(const char *name, int offset);
-    int simpleArgInstruction(const char *name, int offset, int arg);
-    int constantInstruction(const char *name, int offset);
-    int objectInstruction(const char *name, int offset);
-    int localInstruction(const char *name, int offset);
-    int jumpInstruction(const char *name, int offset);
-    int disassebleInstruction(int offset);
+    void disassebleInstruction(int offset);
 
 public:
 
@@ -62,21 +56,17 @@ public:
     Chunk(Chunk &&) = default;
     Chunk &operator=(Chunk &&) = default;
 
-    // Write a byte to the chunk and return its offset
-    unsigned write(uint8_t byte, int line = -1);
+    unsigned write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line = -1);
+    unsigned write_sA(OpCode op, int16_t A, int line = -1);
+    unsigned write_A(OpCode op, uint16_t A, int line = -1);
+    unsigned write_AB(OpCode op, uint16_t A, uint16_t B,
+                      int line = -1);
+    unsigned write_Ab(OpCode op, uint16_t A, uint8_t b,
+                      int line = -1);
 
-    // Write a word to the chunk and return its offset
-    unsigned writeWord(uint16_t word, int line = -1);
-
-    // Patch a word at the given offset
-    void patchWord(unsigned offset, uint16_t word);
+    void patch_sA(unsigned offset, int16_t A);
 
     unsigned currentOffset() const;
-
-    template <typename T>
-    inline void write(T data, int line = -1) {
-        this->write(static_cast<uint8_t>(data), line);
-    }
 
     // Adds a constant to the constants ValueArray
     int addConstant(Value value);
@@ -88,4 +78,20 @@ public:
     void disassemble(const std::string &header);
 };
 
+// any -> [OpCode:8] [..]
+#define GET_op(ins) ((OpCode)(ins >> 24))
+// abc -> [OpCode:8] [A:8] [B:8] [C:8]
+#define GET_abc_a(ins) ((ins >> 16) & 0xFF)
+#define GET_abc_b(ins) ((ins >> 8) & 0xFF)
+#define GET_abc_c(ins) (ins & 0xFF)
+// Sa -> [OpCode:8] [Unused:8] [A:16]
+#define GET_sA_a(ins) ((int16_t)(ins & 0xFFFF))
+// A -> [OpCode:8] [Unused:8] [A:16]
+#define GET_A_a(ins) ((uint16_t)(ins & 0xFFFF))
+// AB -> [OpCode:8] [A:12] [B:12]
+#define GET_AB_a(ins) ((uint16_t)((ins >> 12) & 0x0FFF))
+#define GET_AB_b(ins) ((uint16_t)(ins & 0x0FFF))
+// Ab -> [OpCode:8] [A:16] [b:8]
+#define GET_Ab_a(ins) ((uint16_t)((ins >> 8) & 0xFFFF))
+#define GET_Ab_b(ins) ((uint8_t)(ins & 0xFF))
 

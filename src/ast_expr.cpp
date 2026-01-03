@@ -80,7 +80,7 @@ void LiteralNode::resolveType(CompileContext &ctx) {
     }
 }
 
-void LiteralNode::compile(CompileContext &ctx) {
+void LiteralNode::compile(CompileContext &ctx) {/*
     if (ctx.typeRegistry.isObject(this->result_type.value())) {
         // Object constant
         const auto constant =
@@ -94,7 +94,7 @@ void LiteralNode::compile(CompileContext &ctx) {
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
     ctx.function->chunk.write(OpCode::Constant, this->token.line);
     ctx.function->chunk.write(static_cast<uint8_t>(constant));
-}
+*/}
 
 void LiteralNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -215,7 +215,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->body->resolveType(*fn_ctx);
 }
 
-void FunctionNode::compile(CompileContext &ctx) {
+void FunctionNode::compile(CompileContext &ctx) {/*
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
@@ -232,7 +232,7 @@ void FunctionNode::compile(CompileContext &ctx) {
         ctx.function->chunk.addObjectConstant(fn_ctx.function);
     ctx.function->chunk.write(OpCode::Object, this->token.line);
     ctx.function->chunk.write(static_cast<uint8_t>(constant));
-}
+*/}
 
 void FunctionNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -266,7 +266,7 @@ void VariableNode::resolveType(CompileContext &ctx) {
         this->resolution.value());
 }
 
-void VariableNode::compile(CompileContext &ctx) {
+void VariableNode::compile(CompileContext &ctx) {/*
     assert(this->resolution.has_value());
 
     std::visit(overloaded{
@@ -290,7 +290,7 @@ void VariableNode::compile(CompileContext &ctx) {
             ctx.function->chunk.write(static_cast<uint8_t>(constant));
         }
     }, this->resolution.value());
-}
+*/}
 
 void VariableNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -343,7 +343,7 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void UnaryExpr::compile(CompileContext &ctx) {
+void UnaryExpr::compile(CompileContext &ctx) {/*
     // Compile the operand first
     this->operand->compile(ctx);
 
@@ -368,7 +368,7 @@ void UnaryExpr::compile(CompileContext &ctx) {
                 "Unsupported unary operator during compilation.");
             break;
     }
-}
+*/}
 
 void UnaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -466,13 +466,13 @@ void CastExpr::resolveType(CompileContext &ctx) {
     this->cast_op = castOp.value();
 }
 
-void CastExpr::compile(CompileContext &ctx) {
+void CastExpr::compile(CompileContext &ctx) {/*
     // Compile the operand first
     this->operand->compile(ctx);
 
     // Write the cast operation
     ctx.function->chunk.write(this->cast_op, this->operand->token.line);
-}
+*/}
 
 void CastExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -566,7 +566,7 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void BinaryExpr::compile(CompileContext &ctx) {
+void BinaryExpr::compile(CompileContext &ctx) {/*
     // Compile left and right operands first
     this->left->compile(ctx);
     this->right->compile(ctx);
@@ -595,9 +595,9 @@ void BinaryExpr::compile(CompileContext &ctx) {
                 "Unsupported binary operator during compilation.");
             break;
     }
-}
+*/}
 
-void BinaryExpr::compileArithmetic(CompileContext &ctx) {
+void BinaryExpr::compileArithmetic(CompileContext &ctx) {/*
     const TypeID floatingType =
         ctx.typeRegistry.getPrimitive(PrimitiveKind::Floating);
 
@@ -633,9 +633,9 @@ void BinaryExpr::compileArithmetic(CompileContext &ctx) {
     }
 
 #undef IorF
-}
+*/}
 
-void BinaryExpr::compileEquality(CompileContext &ctx) {
+void BinaryExpr::compileEquality(CompileContext &ctx) {/*
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
@@ -672,9 +672,9 @@ void BinaryExpr::compileEquality(CompileContext &ctx) {
             break;
     }
 #undef EqOrNe
-}
+*/}
 
-void BinaryExpr::compileComparison(CompileContext &ctx) {
+void BinaryExpr::compileComparison(CompileContext &ctx) {/*
     const auto type_data =
         ctx.typeRegistry.getTypeData(this->left->result_type.value());
 
@@ -716,7 +716,7 @@ void BinaryExpr::compileComparison(CompileContext &ctx) {
             break;
     }
 #undef IorF
-}
+*/}
 
 void BinaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -772,7 +772,7 @@ void TernaryExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->then_branch->result_type;
 }
 
-void TernaryExpr::compile(CompileContext &ctx) {
+void TernaryExpr::compile(CompileContext &ctx) {/*
     // Compile condition first
     this->condition->compile(ctx);
 
@@ -802,7 +802,7 @@ void TernaryExpr::compile(CompileContext &ctx) {
     const int16_t offset_to_after_else =
         after_else_pos - (jmp_after_else_pos + 2);
     ctx.function->chunk.patchWord(jmp_after_else_pos, offset_to_after_else);
-}
+*/}
 
 void TernaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -837,15 +837,15 @@ void LogicExpr::resolveType(CompileContext &ctx) {
     this->result_type = booleanType;
 }
 
-void LogicExpr::compile(CompileContext &ctx) {
+void LogicExpr::compile(CompileContext &ctx) {/*
     if (this->token.type == Token::Type::And) {
         return compileAnd(ctx);
     } else if (this->token.type == Token::Type::Or) {
         return compileOr(ctx);
     }
-}
+*/}
 
-void LogicExpr::compileAnd(CompileContext &ctx) {
+void LogicExpr::compileAnd(CompileContext &ctx) {/*
     // Compile first operand
     this->left->compile(ctx);
 
@@ -864,9 +864,9 @@ void LogicExpr::compileAnd(CompileContext &ctx) {
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset = after_pos - (jmp_pos + 2);
     ctx.function->chunk.patchWord(jmp_pos, offset);
-}
+*/}
 
-void LogicExpr::compileOr(CompileContext &ctx) {
+void LogicExpr::compileOr(CompileContext &ctx) {/*
     // Compile first operand
     this->left->compile(ctx);
 
@@ -884,7 +884,7 @@ void LogicExpr::compileOr(CompileContext &ctx) {
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset = after_pos - (jmp_pos + 2);
     ctx.function->chunk.patchWord(jmp_pos, offset);
-}
+*/}
 
 void LogicExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -943,7 +943,7 @@ void CallExpr::resolveType(CompileContext &ctx) {
     // Everything ok
 }
 
-void CallExpr::compile(CompileContext &ctx) {
+void CallExpr::compile(CompileContext &ctx) {/*
     // Empty space for the return slot
     ctx.function->chunk.write(OpCode::False, this->token.line);
 
@@ -957,7 +957,7 @@ void CallExpr::compile(CompileContext &ctx) {
     // Emit call
     ctx.function->chunk.write(OpCode::Call, this->token.line);
     ctx.function->chunk.write(this->arguments.size());
-}
+*/}
 
 void CallExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";

@@ -10,47 +10,7 @@ Chunk::~Chunk() {
     }
 }
 
-int Chunk::simpleInstruction(const char *name, int offset) {
-    std::print("{:16s}\n", name);
-    return offset+1;
-}
-
-int Chunk::simpleArgInstruction(const char *name, int offset, int arg) {
-    std::print("{:16s}\n", name);
-    return offset + 1 + arg;
-}
-
-int Chunk::constantInstruction(const char *name, int offset) {
-    const auto constant_i = this->code[offset + 1];
-    const auto constant = this->constants[constant_i];
-    std::print("{:16s} {:4d} -> {:g} | {:d} | {}\n", name, constant_i,
-               constant.floating, constant.fixed, constant.boolean);
-    return offset + 2;
-}
-
-int Chunk::objectInstruction(const char *name, int offset) {
-    const auto object_i = this->code[offset + 1];
-    const Object *object = this->object_constants[object_i];
-    std::print("{:16s} {:4d} -> Object@{} {}\n", name, object_i,
-               static_cast<const void *>(object), object->toString());
-    return offset + 2;
-}
-
-int Chunk::localInstruction(const char *name, int offset) {
-    const auto local_i = (this->code[offset + 1] << 8) |
-                         this->code[offset + 2];
-    std::print("{:16s} {:4d}\n", name, local_i);
-    return offset + 3;
-}
-
-int Chunk::jumpInstruction(const char *name, int offset) {
-    const int16_t jump = static_cast<uint16_t>((this->code[offset + 1] << 8) |
-                                                this->code[offset + 2]);
-    std::print("{:16s} {:4d} -> {:04d}\n", name, offset, offset + 3 + jump);
-    return offset + 3;
-}
-
-int Chunk::disassebleInstruction(int offset) {
+void Chunk::disassebleInstruction(int offset) {
     std::print("{:04d} ", offset);
 
     if (offset > 0 && this->lines[offset - 1] == this->lines[offset])
@@ -58,107 +18,241 @@ int Chunk::disassebleInstruction(int offset) {
     else
         std::print("{:4d} ", this->lines[offset]);
 
-    OpCode instruction = static_cast<OpCode>(this->code[offset]);
+    OpCode instruction = GET_op(this->code[offset]); 
     switch (instruction) {
         case OpCode::Return:
-            return simpleInstruction("OP_RETURN", offset);
+            std::print("OP_RETURN");
+            break;
 
-        case OpCode::Call: return simpleArgInstruction("OP_CALL", offset, 1);
+        case OpCode::Call:
+            std::print("OP_CALL");
+            break;
 
-        case OpCode::NegateF: return simpleInstruction("OP_NEGATEF", offset);
-        case OpCode::NegateI: return simpleInstruction("OP_NEGATEI", offset);
+        case OpCode::NegateF:
+            std::print("OP_NEGATEF");
+            break;
+        case OpCode::NegateI:
+            std::print("OP_NEGATEI");
+            break;
 
-        case OpCode::AddF: return simpleInstruction("OP_ADDF", offset);
-        case OpCode::AddI: return simpleInstruction("OP_ADDI", offset);
+        case OpCode::AddF:
+            std::print("OP_ADDF");
+            break;
+        case OpCode::AddI:
+            std::print("OP_ADDI");
+            break;
 
-        case OpCode::SubtractF: return simpleInstruction("OP_SUBTRACTF", offset);
-        case OpCode::SubtractI: return simpleInstruction("OP_SUBTRACTI", offset);
+        case OpCode::SubtractF:
+            std::print("OP_SUBTRACTF");
+            break;
+        case OpCode::SubtractI:
+            std::print("OP_SUBTRACTI");
+            break;
 
-        case OpCode::MultiplyF: return simpleInstruction("OP_MULTIPLYF", offset);
-        case OpCode::MultiplyI: return simpleInstruction("OP_MULTIPLYI", offset);
+        case OpCode::MultiplyF:
+            std::print("OP_MULTIPLYF");
+            break;
+        case OpCode::MultiplyI:
+            std::print("OP_MULTIPLYI");
+            break;
 
-        case OpCode::DivideF: return simpleInstruction("OP_DIVIDEF", offset);
-        case OpCode::DivideI: return simpleInstruction("OP_DIVIDEI", offset);
+        case OpCode::DivideF:
+            std::print("OP_DIVIDEF");
+            break;
+        case OpCode::DivideI:
+            std::print("OP_DIVIDEI");
+            break;
 
-        case OpCode::Constant: return constantInstruction("OP_CONSTANT", offset);
-        case OpCode::Object: return objectInstruction("OP_OBJECT", offset);
+        case OpCode::Constant:
+            std::print("OP_CONSTANT");
+            break;
+        case OpCode::Object:
+            std::print("OP_OBJECT");
+            break;
 
-        case OpCode::Not: return simpleInstruction("OP_NOT", offset);
+        case OpCode::Not:
+            std::print("OP_NOT");
+            break;
 
-        case OpCode::I2F: return simpleInstruction("OP_I2F", offset);
-        case OpCode::F2I: return simpleInstruction("OP_F2I", offset);
-        case OpCode::I2B: return simpleInstruction("OP_I2B", offset);
-        case OpCode::B2I: return simpleInstruction("OP_B2I", offset);
-        case OpCode::F2B: return simpleInstruction("OP_F2B", offset);
-        case OpCode::B2F: return simpleInstruction("OP_B2F", offset);
-        case OpCode::I2Str: return simpleInstruction("OP_I2STR", offset);
-        case OpCode::F2Str: return simpleInstruction("OP_F2STR", offset);
-        case OpCode::B2Str: return simpleInstruction("OP_B2STR", offset);
+        case OpCode::I2F:
+            std::print("OP_I2F");
+            break;
+        case OpCode::F2I:
+            std::print("OP_F2I");
+            break;
+        case OpCode::I2B:
+            std::print("OP_I2B");
+            break;
+        case OpCode::B2I:
+            std::print("OP_B2I");
+            break;
+        case OpCode::F2B:
+            std::print("OP_F2B");
+            break;
+        case OpCode::B2F:
+            std::print("OP_B2F");
+            break;
+        case OpCode::I2Str:
+            std::print("OP_I2STR");
+            break;
+        case OpCode::F2Str:
+            std::print("OP_F2STR");
+            break;
+        case OpCode::B2Str:
+            std::print("OP_B2STR");
+            break;
 
-        case OpCode::EqI: return simpleInstruction("OP_EQI", offset);
-        case OpCode::NeI: return simpleInstruction("OP_NEI", offset);
-        case OpCode::EqF: return simpleInstruction("OP_EQF", offset);
-        case OpCode::NeF: return simpleInstruction("OP_NEF", offset);
-        case OpCode::EqB: return simpleInstruction("OP_EQB", offset);
-        case OpCode::NeB: return simpleInstruction("OP_NEB", offset);
+        case OpCode::EqI:
+            std::print("OP_EQI");
+            break;
+        case OpCode::NeI:
+            std::print("OP_NEI");
+            break;
+        case OpCode::EqF:
+            std::print("OP_EQF");
+            break;
+        case OpCode::NeF:
+            std::print("OP_NEF");
+            break;
+        case OpCode::EqB:
+            std::print("OP_EQB");
+            break;
+        case OpCode::NeB:
+            std::print("OP_NEB");
+            break;
 
-        case OpCode::GtI: return simpleInstruction("OP_GTI", offset);
-        case OpCode::LtI: return simpleInstruction("OP_LTI", offset);
-        case OpCode::GeI: return simpleInstruction("OP_GEI", offset);
-        case OpCode::LeI: return simpleInstruction("OP_LEI", offset);
-        case OpCode::GtF: return simpleInstruction("OP_GTF", offset);
-        case OpCode::LtF: return simpleInstruction("OP_LTF", offset);
-        case OpCode::GeF: return simpleInstruction("OP_GEF", offset);
-        case OpCode::LeF: return simpleInstruction("OP_LEF", offset);
+        case OpCode::GtI:
+            std::print("OP_GTI");
+            break;
+        case OpCode::LtI:
+            std::print("OP_LTI");
+            break;
+        case OpCode::GeI:
+            std::print("OP_GEI");
+            break;
+        case OpCode::LeI:
+            std::print("OP_LEI");
+            break;
+        case OpCode::GtF:
+            std::print("OP_GTF");
+            break;
+        case OpCode::LtF:
+            std::print("OP_LTF");
+            break;
+        case OpCode::GeF:
+            std::print("OP_GEF");
+            break;
+        case OpCode::LeF:
+            std::print("OP_LEF");
+            break;
 
-        case OpCode::True: return simpleInstruction("OP_TRUE", offset);
-        case OpCode::False: return simpleInstruction("OP_FALSE", offset);
-        case OpCode::Pop: return simpleInstruction("OP_POP", offset);
-        case OpCode::Retain: return simpleInstruction("OP_RETAIN", offset);
-        case OpCode::Release: return simpleInstruction("OP_RELEASE", offset);
+        case OpCode::True:
+            std::print("OP_TRUE");
+            break;
+        case OpCode::False:
+            std::print("OP_FALSE");
+            break;
+        case OpCode::Pop:
+            std::print("OP_POP");
+            break;
+        case OpCode::Retain:
+            std::print("OP_RETAIN");
+            break;
+        case OpCode::Release:
+            std::print("OP_RELEASE");
+            break;
 
-        case OpCode::Jmp: return jumpInstruction("OP_JMP", offset);
-        case OpCode::JmpIfFalse: return jumpInstruction("OP_JNT", offset);
-        case OpCode::JmpIfTrue: return jumpInstruction("OP_JIT", offset);
-        case OpCode::JmpIfFalsePop: return jumpInstruction("OP_JNT_POP", offset);
+        case OpCode::Jmp:
+            std::print("OP_JMP");
+            break;
+        case OpCode::JmpIfFalse:
+            std::print("OP_JNT");
+            break;
+        case OpCode::JmpIfTrue:
+            std::print("OP_JIT");
+            break;
+        case OpCode::JmpIfFalsePop:
+            std::print("OP_JNT_POP");
+            break;
 
-        case OpCode::Move: return localInstruction("OP_MOVE", offset);
-        case OpCode::GetLocal: return localInstruction("OP_GETLOCAL", offset);
-        case OpCode::SetLocal: return localInstruction("OP_SETLOCAL", offset);
+        case OpCode::Move:
+            std::print("OP_MOVE");
+            break;
+        case OpCode::GetLocal:
+            std::print("OP_GETLOCAL");
+            break;
+        case OpCode::SetLocal:
+            std::print("OP_SETLOCAL");
+            break;
         case OpCode::GetLocalObject:
-            return localInstruction("OP_GETLOCAL_OBJ", offset);
+            std::print("OP_GETLOCAL_OBJ");
+            break;
         case OpCode::SetLocalObject:
-            return localInstruction("OP_SETLOCAL_OBJ", offset);
+            std::print("OP_SETLOCAL_OBJ");
+            break;
 
         default:
             std::print("Unknown opcode {}\n",
                        static_cast<uint8_t>(instruction));
-            return offset + 1;
+            break;
     }
 }
 
-unsigned Chunk::write(uint8_t byte, int line) {
-    if (line == -1)
-        line = this->lines.empty() ? 0 : this->lines.back();
+#define FIX_LINE line = line == -1 ? this->lines.empty() ? 0 : this->lines.back() : line;
 
-    this->code.push_back(byte);
+// abc -> [OpCode:8] [A:8] [B:8] [C:8]
+unsigned Chunk::write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line) {
+    FIX_LINE;
+    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
+                           (a << 16) | (b << 8) | c;
+    this->code.push_back(instruction);
     this->lines.push_back(line);
-
     return this->code.size() - 1;
 }
 
-unsigned Chunk::writeWord(uint16_t word, int line) {
-    this->write(static_cast<uint8_t>((word >> 8) & 0xFF), line);
-    this->write(static_cast<uint8_t>(word & 0xFF), line);
-
-    return this->code.size() - 2;
+// Sa -> [OpCode:8] [Unused:8] [A:16]
+unsigned Chunk::write_sA(OpCode op, int16_t A, int line) {
+    FIX_LINE;
+    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
+                           (static_cast<uint16_t>(A) & 0xFFFF);
+    this->code.push_back(instruction);
+    this->lines.push_back(line);
+    return this->code.size() - 1;
 }
 
-void Chunk::patchWord(unsigned offset, uint16_t word) {
-    assert(offset + 1 < this->code.size());
+unsigned Chunk::write_A(OpCode op, uint16_t A, int line) {
+    FIX_LINE;
+    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
+                           (static_cast<uint16_t>(A) & 0xFFFF);
+    this->code.push_back(instruction);
+    this->lines.push_back(line);
+    return this->code.size() - 1;
+}
 
-    this->code[offset] = static_cast<uint8_t>((word >> 8) & 0xFF);
-    this->code[offset + 1] = static_cast<uint8_t>(word & 0xFF);
+// A and B are both 12 bits
+unsigned Chunk::write_AB(OpCode op, uint16_t A, uint16_t B, int line) {
+    FIX_LINE;
+    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
+                           ((A & 0x0FFF) << 12) | (B & 0x0FFF);
+    this->code.push_back(instruction);
+    this->lines.push_back(line);
+    return this->code.size() - 1;
+}
+
+unsigned Chunk::write_Ab(OpCode op, uint16_t A, uint8_t b, int line) {
+    FIX_LINE;
+    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
+                           ((A & 0x0FFFF) << 8) | (b & 0x00FF);
+    this->code.push_back(instruction);
+    this->lines.push_back(line);
+    return this->code.size() - 1;
+}
+
+void Chunk::patch_sA(unsigned offset, int16_t A) {
+    assert(offset < this->code.size());
+    uint32_t instruction = this->code[offset];
+    instruction = (instruction & 0xFFFF0000) | (static_cast<uint16_t>(A) & 0xFFFF);
+    this->code[offset] = instruction;
 }
 
 unsigned Chunk::currentOffset() const {
@@ -178,8 +272,8 @@ int Chunk::addObjectConstant(Object *obj) {
 void Chunk::disassemble(const std::string &header) {
     std::print("== {} ==\n", header);
 
-    for (uint i = 0; i < this->code.size(); ) {
-        i = disassebleInstruction(i);
+    for (uint i = 0; i < this->code.size(); i++) {
+        this->disassebleInstruction(i);
     }
 }
 

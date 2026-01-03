@@ -26,10 +26,10 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     // Perform type resolution
     root->resolveType(ctx);
 
-    // Compile the AST
-    root->compile(ctx);
+    // // Compile the AST
+    // root->compile(ctx);
 
-    function->chunk.write(OpCode::Return);
+    function->chunk.write_abc(OpCode::Return, 0, 0, 0, root->token.line);
 
     return function;
 }

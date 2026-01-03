@@ -33,6 +33,7 @@ InterpretResult VM::interpret(const std::string &source) {
         CallFrame(function.get(), 0, 0));
 
     // Run the code 
+    this->ip = 0;
     return this->run();
 }
 
@@ -53,8 +54,7 @@ InterpretResult VM::run() {
 #endif
 
         const uint32_t instruction = frame.function->chunk.code[this->ip++];
-        // [OpCode] [24 bit]
-        const OpCode op = static_cast<OpCode>(instruction >> 24);
+        const OpCode op = GET_op(instruction);
         switch (op) {
             case OpCode::Return: {
                 if (this->call_frames.size() == 1) {

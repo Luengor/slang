@@ -27,7 +27,7 @@ void ExprStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void ExprStmt::compile(CompileContext &ctx) {
+void ExprStmt::compile(CompileContext &ctx) {/*
     // If there is no expression, nothing to compile
     if (!this->expression) {
         return;
@@ -42,7 +42,7 @@ void ExprStmt::compile(CompileContext &ctx) {
     } else {
         ctx.function->chunk.write(OpCode::Pop, this->token.line);
     }
-}
+*/}
 
 void ExprStmt::print(int indent) {
     if (!this->expression) {
@@ -92,7 +92,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void BlockStmt::compile(CompileContext &ctx) {
+void BlockStmt::compile(CompileContext &ctx) {/*
     // Compile all statements in the block
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
@@ -114,7 +114,7 @@ void BlockStmt::compile(CompileContext &ctx) {
             ctx.function->chunk.write(OpCode::Pop);
         }
     }
-}
+*/}
 
 void BlockStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -195,7 +195,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
     }
 }
 
-void VarDeclStmt::compile(CompileContext &ctx) {
+void VarDeclStmt::compile(CompileContext &ctx) {/*
     // Compile the initializer if present
     if (this->initializer) {
         this->initializer->compile(ctx);
@@ -209,7 +209,7 @@ void VarDeclStmt::compile(CompileContext &ctx) {
     }
 
     // Nothing more to do, we pray now
-}
+*/}
 
 void VarDeclStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -249,7 +249,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->target->result_type;
 }
 
-void AssignExpr::compile(CompileContext &ctx) {
+void AssignExpr::compile(CompileContext &ctx) {/*
     // Compile the value
     this->value->compile(ctx);
 
@@ -275,7 +275,7 @@ void AssignExpr::compile(CompileContext &ctx) {
     }
 
     ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
-}
+*/}
 
 void AssignExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -317,7 +317,7 @@ void IfStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void IfStmt::compile(CompileContext &ctx) {
+void IfStmt::compile(CompileContext &ctx) {/*
     // Compile the condition first
     this->condition->compile(ctx);
 
@@ -355,7 +355,7 @@ void IfStmt::compile(CompileContext &ctx) {
     const int16_t offset_to_after_else =
         static_cast<int16_t>(after_else_addr - (else_jump + 2));
     ctx.function->chunk.patchWord(else_jump, offset_to_after_else);
-}
+*/}
 
 void IfStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -395,7 +395,7 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void WhileStmt::compile(CompileContext &ctx) {
+void WhileStmt::compile(CompileContext &ctx) {/*
     // Mark the beggining of the condition
     const auto before_condition = ctx.function->chunk.currentOffset();
 
@@ -421,7 +421,7 @@ void WhileStmt::compile(CompileContext &ctx) {
     const int16_t offset_to_end =
         static_cast<int16_t>(final_addr - (jump_to_patch + 2));
     ctx.function->chunk.patchWord(jump_to_patch, offset_to_end);
-}
+*/}
 
 void WhileStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -471,7 +471,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
     assert(this->pop.total >= 2); // At least the return slot and self slot
 }
 
-void ReturnStmt::compile(CompileContext &ctx) {
+void ReturnStmt::compile(CompileContext &ctx) {/*
     // If there is expression, compile that
     if (this->return_expr)
         this->return_expr->compile(ctx);
@@ -498,7 +498,7 @@ void ReturnStmt::compile(CompileContext &ctx) {
 
     // Finally, return
     ctx.function->chunk.write(OpCode::Return);
-}
+*/}
 
 void ReturnStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
