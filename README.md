@@ -60,3 +60,21 @@ From highest to lowest:
 9. Ternary: `? :`
 7. Assignment: `=`
 
+## Instruction Set
+### Instruction Shapes
+ - `Op`: `[opcode:8] [unused:24]`
+ - `Opabc`: `[opcode:8] [a:8] [b:8] [c:8]`
+ - `OpA`: `[opcode:8] [unused:8] [a:16]`
+ - `OpsA`: `[opcode:8] [unused:8] [a:16]`
+ - `OpAB`: `[opcode:8] [a:12] [b:12]`
+ - `OpAb`: `[opcode:8] [a:16] [b:8]`
+
+### Instruction Reference
+| I| Instruction | Shape | Description                                         |
+|--|-------------|-------|-----------------------------------------------------|
+| 0| Return      | Op    | Return from a function                              |
+| 1| Constant    | OpAb  | Load constant A into register b                     |
+
+| I| Ins         | Op    |                                                     |
+
+

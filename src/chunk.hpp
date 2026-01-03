@@ -6,8 +6,8 @@
 #include <vector>
 
 enum class OpCode : uint8_t {
-    Return, Call,
-    Constant, Object,
+    Return, Constant,
+    Call, Object,
     NegateF, NegateI,
     AddF, AddI,
     SubtractF, SubtractI,
@@ -45,7 +45,8 @@ class Chunk {
     ValueArray constants = {};
     std::vector<Object *> object_constants = {};
 
-    void disassebleInstruction(int offset);
+    void disassembleAb(const char *name, uint32_t instruction) const;
+    void disassembleInstruction(int offset);
 
 public:
 

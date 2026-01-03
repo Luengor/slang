@@ -80,21 +80,26 @@ void LiteralNode::resolveType(CompileContext &ctx) {
     }
 }
 
-void LiteralNode::compile(CompileContext &ctx) {/*
+void LiteralNode::compile(CompileContext &ctx) {
     if (ctx.typeRegistry.isObject(this->result_type.value())) {
-        // Object constant
-        const auto constant =
-            ctx.function->chunk.addObjectConstant(this->value.second.object);
-        ctx.function->chunk.write(OpCode::Object, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(constant));
-        return;
+        // // Object constant
+        // const auto constant =
+        //     ctx.function->chunk.addObjectConstant(this->value.second.object);
+        // ctx.function->chunk.write(OpCode::Object, this->token.line);
+        // ctx.function->chunk.write(static_cast<uint8_t>(constant));
+        // return;
     }
 
-    // Primitive constant
+    // Allocate a register for the result
+    this->result_register = ctx.allocateRegister();
+
+    // Add a constant to the chunk
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
-    ctx.function->chunk.write(OpCode::Constant, this->token.line);
-    ctx.function->chunk.write(static_cast<uint8_t>(constant));
-*/}
+
+    // Write the constant load instruction
+    ctx.function->chunk.write_Ab(OpCode::Constant, constant,
+                                 this->result_register);
+}
 
 void LiteralNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
@@ -154,14 +159,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
     // Nefarious things here
-    CompileContext *fn_ctx = new CompileContext{
-        .function = new FunctionObj(),
-        .typeRegistry = ctx.typeRegistry,
-        .nativeRegistry = ctx.nativeRegistry,
-        .scope_depth = 0,
-        .locals = {},
-        .next = &ctx,
-    };
+    CompileContext *fn_ctx =
+        new CompileContext(ctx.typeRegistry, ctx.nativeRegistry, &ctx);
+    fn_ctx->function = new FunctionObj();
     this->fn_ctx.reset(fn_ctx);
 
     // Name the function after its line number for now
@@ -301,6 +301,11 @@ void VariableNode::print(int indent) {
 // UnaryExpr Implementation
 UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpr, token), operand(std::move(operand)) {}
+
+void UnaryExpr::resolveNames(CompileContext &ctx) {
+    // Resolve names in the operand
+    this->operand->resolveNames(ctx);
+}
 
 void UnaryExpr::resolveType(CompileContext &ctx) {
     ResolveGuard;

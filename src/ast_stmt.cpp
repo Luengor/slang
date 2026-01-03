@@ -27,7 +27,10 @@ void ExprStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void ExprStmt::compile(CompileContext &ctx) {/*
+void ExprStmt::compile(CompileContext &ctx) {
+    // There is no result register for expression statements
+    this->expression->result_register = -1;
+
     // If there is no expression, nothing to compile
     if (!this->expression) {
         return;
@@ -36,6 +39,12 @@ void ExprStmt::compile(CompileContext &ctx) {/*
     // Compile the expression
     this->expression->compile(ctx);
 
+    // Mark its register as free
+    if (this->expression->result_register != -1) {
+        ctx.freeRegister(this->expression->result_register);
+    }
+
+/*
     // Pop the result off the stack since it's not used
     if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
         ctx.function->chunk.write(OpCode::Release, this->token.line);
@@ -92,12 +101,13 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void BlockStmt::compile(CompileContext &ctx) {/*
+void BlockStmt::compile(CompileContext &ctx) {
     // Compile all statements in the block
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
     }
 
+    /*
     // Pop local variables declared in this block
     // We can skip this if there is a return statement at the end
     if (!this->statements.empty() &&

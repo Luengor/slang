@@ -38,10 +38,13 @@ struct ASTNode {
     // The result type of this node or nullopt if not yet resolved
     // (for anything non-returning, it will be 'none' type)
     std::optional<TypeID> result_type = std::nullopt;
-    unsigned int result_register = 0;
+    int result_register = -1;
 
     ASTNode(ASTNodeType type, const Token &token);
     virtual ~ASTNode() = default;
+
+    // Resolve names in this AST node
+    virtual void resolveNames(CompileContext &ctx);
 
     // Resolve the type of this AST node
     // After this is called, result_type should be set

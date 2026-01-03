@@ -77,6 +77,14 @@ InterpretResult VM::run() {
                 }
             }
 
+            case OpCode::Constant: {
+                const auto constant_index = GET_Ab_a(instruction);
+                const auto target_register = GET_Ab_b(instruction);
+                registers[target_register] =
+                    frame.function->chunk.constants[constant_index];
+                break;
+            }
+
             case OpCode::Call: {
                 TODO;
                 // const uint8_t arg_count = READ_BYTE();
@@ -111,13 +119,6 @@ InterpretResult VM::run() {
                 //     // Release the native function object
                 //     native_function->release();
                 // }
-                break;
-            }
-
-            case OpCode::Constant: {
-                TODO;
-                // const auto constant = READ_CONSTANT();
-                // this->stack.push_back(constant);
                 break;
             }
 

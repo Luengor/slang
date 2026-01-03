@@ -46,6 +46,15 @@ struct CompileContext {
     // If this value is nullptr, this is the top-level context.
     CompileContext *next = nullptr;
 
+    CompileContext(TypeRegistry &typeRegistry, NativeRegistry &nativeRegistry,
+                   CompileContext *next = nullptr);
+
+    // Allocate a new register
+    int allocateRegister();
+
+    // Free a previously allocated register
+    void freeRegister(int reg);
+
     // Adds a local variable to the current scope
     int addLocal(const std::string &name, TypeID type);
 
@@ -62,6 +71,9 @@ struct CompileContext {
     PopCount exitScope();
 
 private:
+    std::vector<int> free_registers;
+    int max_registers = 0;
+
     // Finds a local variable by name and returns its index, or -1 if not found
     int findLocal(const std::string &name);
 };

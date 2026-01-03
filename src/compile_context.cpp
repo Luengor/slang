@@ -1,6 +1,27 @@
 #include "compile_context.hpp"
 #include "native.hpp"
 
+CompileContext::CompileContext(TypeRegistry &typeRegistry,
+                               NativeRegistry &nativeRegistry,
+                               CompileContext *next)
+    : typeRegistry(typeRegistry), nativeRegistry(nativeRegistry), next(next) {}
+
+int CompileContext::allocateRegister() {
+    // Get a register from the stack if any are free
+    if (!this->free_registers.empty()) {
+        int reg = this->free_registers.back();
+        this->free_registers.pop_back();
+        return reg;
+    }
+
+    // Otherwise, allocate a new register
+    return this->max_registers++;
+}
+
+void CompileContext::freeRegister(int reg) {
+    this->free_registers.push_back(reg);
+}
+
 int CompileContext::addLocal(const std::string &name, TypeID type) {
     // Check if there are any existing locals with the same name
     // defined in the same scope
