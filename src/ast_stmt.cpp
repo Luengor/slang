@@ -28,7 +28,7 @@ void ExprStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void ExprStmt::compile(CompileContext &ctx) {
+void ExprStmt::compile(CompileContext &ctx, int reg) {
     // There is no result register for expression statements
     this->expression->result_register = -1;
 
@@ -38,7 +38,7 @@ void ExprStmt::compile(CompileContext &ctx) {
     }
 
     // Compile the expression
-    this->expression->compile(ctx);
+    this->expression->compile(ctx, reg);
 
     // Mark its register as free
     if (this->expression->result_register != -1) {
@@ -101,7 +101,9 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.noneType();
 }
 
-void BlockStmt::compile(CompileContext &ctx) {
+void BlockStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
     // Enter a new scope
     ctx.nameTable.enterScope();
 
@@ -210,7 +212,9 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
     this->entry_id = entry_id.value();
 }
 
-void VarDeclStmt::compile(CompileContext &ctx) {
+void VarDeclStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
     // Get the local entry
     auto &entry = ctx.nameTable.getEntry(this->entry_id);
 
@@ -218,16 +222,8 @@ void VarDeclStmt::compile(CompileContext &ctx) {
     entry.register_index = ctx.allocateRegister();
 
     // Compile the initializer if present
-    if (this->initializer) {
-        this->initializer->compile(ctx);
-
-        // Copy the initializer value into the local variable's register
-        ctx.function->chunk.write_AB(
-            OpCode::Copy, this->initializer->result_register, entry.register_index);
-
-        // Free the initializer's result register
-        ctx.freeRegister(this->initializer->result_register);
-    }
+    if (this->initializer)
+        this->initializer->compile(ctx, this->result_register);
 }
 
 void VarDeclStmt::print(int indent) {
@@ -268,11 +264,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->target->result_type;
 }
 
-void AssignExpr::compile(CompileContext &ctx) {
-    // Compile the value and get its result register
-    this->value->compile(ctx);
-    const int value_register = this->value->result_register;
-
+void AssignExpr::compile(CompileContext &ctx, int reg) {
     // Get the variable node from the target
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
 
@@ -287,12 +279,19 @@ void AssignExpr::compile(CompileContext &ctx) {
     const int local_register =
         ctx.nameTable.getEntry(local_entry).register_index;
 
+    // Get a register for the result if needed
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
+    // Compile the value and get its result register
+    this->value->compile(ctx, this->result_register);
+    const int value_register = this->value->result_register;
+
     // Store the local variable
     ctx.function->chunk.write_AB(OpCode::Copy, value_register, local_register,
                                  this->token.line);
 
-    // The result register of the assignment expression is the value's register
-    this->result_register = value_register;
+    // Mark the value register as free if it was allocated
+    ctx.freeRegister(value_register);
 }
 
 void AssignExpr::print(int indent) {
@@ -335,9 +334,9 @@ void IfStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void IfStmt::compile(CompileContext &ctx) {/*
+void IfStmt::compile(CompileContext &ctx, int reg) {/*
     // Compile the condition first
-    this->condition->compile(ctx);
+    this->condition->compile(ctx, int reg);
 
     // Insert jump if false, take note of the jump address and insert dummy
     ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
@@ -345,7 +344,7 @@ void IfStmt::compile(CompileContext &ctx) {/*
         ctx.function->chunk.writeWord(0xFFFF); // Placeholder
 
     // Compile then branch
-    this->then_branch->compile(ctx);
+    this->then_branch->compile(ctx, int reg);
     
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
@@ -366,7 +365,7 @@ void IfStmt::compile(CompileContext &ctx) {/*
         return;
 
     // Compile else branch
-    this->else_branch->compile(ctx);
+    this->else_branch->compile(ctx, int reg);
 
     // Patch else jump
     const unsigned after_else_addr = ctx.function->chunk.currentOffset();
@@ -413,19 +412,19 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void WhileStmt::compile(CompileContext &ctx) {/*
+void WhileStmt::compile(CompileContext &ctx, int reg) {/*
     // Mark the beggining of the condition
     const auto before_condition = ctx.function->chunk.currentOffset();
 
     // Compile the condition
-    this->condition->compile(ctx);
+    this->condition->compile(ctx, int reg);
 
     // Insert jump to end of loop if condition is false
     ctx.function->chunk.write(OpCode::JmpIfFalsePop);
     const auto jump_to_patch = ctx.function->chunk.writeWord(0xFFFF);
 
     // Compile body
-    this->body->compile(ctx);
+    this->body->compile(ctx, int reg);
 
     // Insert jump to condition
     ctx.function->chunk.write(OpCode::Jmp);
@@ -489,10 +488,10 @@ void ReturnStmt::resolveType(CompileContext &ctx) { /*
     assert(this->pop.total >= 2); // At least the return slot and self slot
 */}
 
-void ReturnStmt::compile(CompileContext &ctx) {/*
+void ReturnStmt::compile(CompileContext &ctx, int reg) {/*
     // If there is expression, compile that
     if (this->return_expr)
-        this->return_expr->compile(ctx);
+        this->return_expr->compile(ctx, int reg);
     else {
         // If not, put something to return 
         ctx.function->chunk.write(OpCode::False, this->token.line);

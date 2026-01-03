@@ -40,7 +40,7 @@ void PrimitiveTypeNode::resolveType(CompileContext &ctx) {
     this->result_type = ctx.typeRegistry.getPrimitive(kind);
 }
 
-void PrimitiveTypeNode::compile(CompileContext &_) {
+void PrimitiveTypeNode::compile(CompileContext &_, int reg) {
     throw ParserError(
         this->token,
         "PrimitiveTypeNode should not be compiled.");
@@ -78,7 +78,7 @@ void FunctionTypeNode::resolveType(CompileContext &ctx) {
         param_type_ids, return_type_id);
 }
 
-void FunctionTypeNode::compile(CompileContext &_) {
+void FunctionTypeNode::compile(CompileContext &_, int reg) {
     throw ParserError(
         this->token,
         "FunctionTypeNode should not be compiled.");

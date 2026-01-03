@@ -81,7 +81,7 @@ void LiteralNode::resolveType(CompileContext &ctx) {
     }
 }
 
-void LiteralNode::compile(CompileContext &ctx) {
+void LiteralNode::compile(CompileContext &ctx, int reg) {
     if (ctx.typeRegistry.isObject(this->result_type.value())) {
         // // Object constant
         // const auto constant =
@@ -92,14 +92,14 @@ void LiteralNode::compile(CompileContext &ctx) {
     }
 
     // Allocate a register for the result
-    this->result_register = ctx.allocateRegister();
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
 
     // Add a constant to the chunk
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
 
     // Write the constant load instruction
     ctx.function->chunk.write_Ab(OpCode::Constant, constant,
-                                 this->result_register);
+                                 this->result_register, this->token.line);
 }
 
 void LiteralNode::print(int indent) {
@@ -217,11 +217,11 @@ void FunctionNode::resolveType(CompileContext &ctx) { /*
     this->body->resolveType(*fn_ctx);
 */}
 
-void FunctionNode::compile(CompileContext &ctx) {/*
+void FunctionNode::compile(CompileContext &ctx, int reg) {/*
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
-    this->body->compile(fn_ctx);
+    this->body->compile(fn_ctx, int reg);
 
 #ifdef DEBUG_PRINT
     // Debug: print the compiled function bytecode
@@ -276,9 +276,9 @@ void VariableNode::resolveType(CompileContext &ctx) {
     this->result_type = ctx.nameTable.getEntry(entry.value()).type;
 }
 
-void VariableNode::compile(CompileContext &ctx) {
+void VariableNode::compile(CompileContext &ctx, int reg) {
     // Get a register for the result
-    this->result_register = ctx.allocateRegister();
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
 
     // Compile based on the resolution type
     std::visit(overloaded{
@@ -358,12 +358,12 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void UnaryExpr::compile(CompileContext &ctx) {
-    // Compile the operand first
-    this->operand->compile(ctx);
+void UnaryExpr::compile(CompileContext &ctx, int reg) {
+    // Get a register for the result
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
 
-    // We will use its result register
-    this->result_register = this->operand->result_register;
+    // Compile the operand first
+    this->operand->compile(ctx, this->result_register);
 
     // Compile the appropriate unary operation
     switch (this->token.type) {
@@ -490,9 +490,9 @@ void CastExpr::resolveType(CompileContext &ctx) {
     this->cast_op = castOp.value();
 }
 
-void CastExpr::compile(CompileContext &ctx) {/*
+void CastExpr::compile(CompileContext &ctx, int reg) {/*
     // Compile the operand first
-    this->operand->compile(ctx);
+    this->operand->compile(ctx, int reg);
 
     // Write the cast operation
     ctx.function->chunk.write(this->cast_op, this->operand->token.line);
@@ -590,13 +590,13 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void BinaryExpr::compile(CompileContext &ctx) {
-    // Compile left and right operands first
-    this->left->compile(ctx);
-    this->right->compile(ctx);
+void BinaryExpr::compile(CompileContext &ctx, int reg) {
+    // Get a register for the result
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
 
-    // Take the register of the left operand as the result register
-    this->result_register = this->left->result_register;
+    // Compile left and right operands first
+    this->left->compile(ctx, this->result_register);
+    this->right->compile(ctx);
 
     // Free the right operand's register
     ctx.freeRegister(this->right->result_register);
@@ -806,16 +806,16 @@ void TernaryExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->then_branch->result_type;
 }
 
-void TernaryExpr::compile(CompileContext &ctx) {/*
+void TernaryExpr::compile(CompileContext &ctx, int reg) {/*
     // Compile condition first
-    this->condition->compile(ctx);
+    this->condition->compile(ctx, int reg);
 
     // Jump if false to else branch
     ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
     const int16_t jmp_to_else_pos = ctx.function->chunk.writeWord(0xFFFF);
 
     // Compile then branch
-    this->then_branch->compile(ctx);
+    this->then_branch->compile(ctx, int reg);
 
     // Jump to after else branch
     ctx.function->chunk.write(OpCode::Jmp, this->token.line);
@@ -828,7 +828,7 @@ void TernaryExpr::compile(CompileContext &ctx) {/*
     ctx.function->chunk.patchWord(jmp_to_else_pos, offset_to_else);
 
     // Compile else branch
-    this->else_branch->compile(ctx);
+    this->else_branch->compile(ctx, int reg);
 
     // Patch jump to after else branch
     const int16_t after_else_pos =
@@ -871,7 +871,7 @@ void LogicExpr::resolveType(CompileContext &ctx) {
     this->result_type = booleanType;
 }
 
-void LogicExpr::compile(CompileContext &ctx) {/*
+void LogicExpr::compile(CompileContext &ctx, int reg) {/*
     if (this->token.type == Token::Type::And) {
         return compileAnd(ctx);
     } else if (this->token.type == Token::Type::Or) {
@@ -881,7 +881,7 @@ void LogicExpr::compile(CompileContext &ctx) {/*
 
 void LogicExpr::compileAnd(CompileContext &ctx) {/*
     // Compile first operand
-    this->left->compile(ctx);
+    this->left->compile(ctx, int reg);
 
     // If that operand is false, we can skip the second operand
     // note that this jump does NOT pop the value
@@ -892,7 +892,7 @@ void LogicExpr::compileAnd(CompileContext &ctx) {/*
     ctx.function->chunk.write(OpCode::Pop, this->token.line);
 
     // Compile second operand
-    this->right->compile(ctx);
+    this->right->compile(ctx, int reg);
 
     // Patch the jump position
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
@@ -902,7 +902,7 @@ void LogicExpr::compileAnd(CompileContext &ctx) {/*
 
 void LogicExpr::compileOr(CompileContext &ctx) {/*
     // Compile first operand
-    this->left->compile(ctx);
+    this->left->compile(ctx, int reg);
 
     // If its true, we can skip evaluating the second operand
     ctx.function->chunk.write(OpCode::JmpIfTrue, this->token.line);
@@ -912,7 +912,7 @@ void LogicExpr::compileOr(CompileContext &ctx) {/*
     ctx.function->chunk.write(OpCode::Pop, this->token.line);
 
     // Compile second operand
-    this->right->compile(ctx);
+    this->right->compile(ctx, int reg);
 
     // Patch the jump position
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
@@ -977,16 +977,16 @@ void CallExpr::resolveType(CompileContext &ctx) {
     // Everything ok
 }
 
-void CallExpr::compile(CompileContext &ctx) {/*
+void CallExpr::compile(CompileContext &ctx, int reg) {/*
     // Empty space for the return slot
     ctx.function->chunk.write(OpCode::False, this->token.line);
 
     // Compile the callee
-    this->callee->compile(ctx);
+    this->callee->compile(ctx, int reg);
 
     // Compile the arguments
     for (auto &arg : this->arguments)
-        arg->compile(ctx);
+        arg->compile(ctx, int reg);
 
     // Emit call
     ctx.function->chunk.write(OpCode::Call, this->token.line);

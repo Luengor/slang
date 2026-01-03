@@ -48,7 +48,7 @@ struct ASTNode {
     virtual void resolveType(CompileContext &ctx) = 0;
 
     // Compile this AST node into the given compile context
-    virtual void compile(CompileContext &ctx) = 0;
+    virtual void compile(CompileContext &ctx, int reg = -1) = 0;
 
     // Print the AST node for debugging
     virtual void print(int indent = 0) = 0;
