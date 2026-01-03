@@ -7,13 +7,15 @@
 
 enum class OpCode : uint8_t {
     Return, Constant,
+    Not,
+    NegateI, NegateF,
+
+
     Call, Object,
-    NegateF, NegateI,
     AddF, AddI,
     SubtractF, SubtractI,
     MultiplyF, MultiplyI,
     DivideF, DivideI,
-    Not,
 
     EqI, NeI,
     EqF, NeF,
@@ -46,6 +48,7 @@ class Chunk {
     std::vector<Object *> object_constants = {};
 
     void disassembleAb(const char *name, uint32_t instruction) const;
+    void disassembleAB(const char *name, uint32_t instruction) const;
     void disassembleInstruction(int offset);
 
 public:

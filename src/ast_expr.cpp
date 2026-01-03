@@ -348,23 +348,32 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
     }
 }
 
-void UnaryExpr::compile(CompileContext &ctx) {/*
+void UnaryExpr::compile(CompileContext &ctx) {
     // Compile the operand first
     this->operand->compile(ctx);
+
+    // We will use its result register
+    this->result_register = this->operand->result_register;
 
     // Compile the appropriate unary operation
     switch (this->token.type) {
         case Token::Type::Minus:
             if (this->result_type ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
-                ctx.function->chunk.write(OpCode::NegateI, this->token.line);
+                ctx.function->chunk.write_AB(
+                    OpCode::NegateI, this->result_register,
+                    this->result_register, this->token.line);
             } else {
-                ctx.function->chunk.write(OpCode::NegateF, this->token.line);
+                ctx.function->chunk.write_AB(
+                    OpCode::NegateF, this->result_register,
+                    this->result_register, this->token.line);
             }
             break;
 
         case Token::Type::Not:
-            ctx.function->chunk.write(OpCode::Not, this->token.line);
+            ctx.function->chunk.write_AB(
+                OpCode::Not, this->result_register,
+                this->result_register, this->token.line);
             break;
 
         default:
@@ -373,7 +382,7 @@ void UnaryExpr::compile(CompileContext &ctx) {/*
                 "Unsupported unary operator during compilation.");
             break;
     }
-*/}
+}
 
 void UnaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";

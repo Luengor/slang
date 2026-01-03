@@ -10,6 +10,13 @@ Chunk::~Chunk() {
     }
 }
 
+void Chunk::disassembleAB(const char *name, uint32_t instruction) const {
+    uint16_t A = GET_AB_a(instruction);
+    uint8_t B = GET_AB_b(instruction);
+
+    std::println("{:<16} {:4d} {:4d}", name, A, B);
+}
+
 void Chunk::disassembleAb(const char *name, uint32_t instruction) const {
     uint16_t A = GET_Ab_a(instruction);
     uint8_t b = GET_Ab_b(instruction);
@@ -34,15 +41,17 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::Constant:
             return this->disassembleAb("OP_CONSTANT", this->code[offset]);
 
-        case OpCode::Call:
-            std::println("OP_CALL");
-            break;
+        case OpCode::Not:
+            return this->disassembleAB("OP_NOT", this->code[offset]);
+
+        case OpCode::NegateI:
+            return this->disassembleAB("OP_NEGATE_I", this->code[offset]);
 
         case OpCode::NegateF:
-            std::println("OP_NEGATEF");
-            break;
-        case OpCode::NegateI:
-            std::println("OP_NEGATEI");
+            return this->disassembleAB("OP_NEGATE_F", this->code[offset]);
+
+        case OpCode::Call:
+            std::println("OP_CALL");
             break;
 
         case OpCode::AddF:
@@ -75,10 +84,6 @@ void Chunk::disassembleInstruction(int offset) {
 
         case OpCode::Object:
             std::println("OP_OBJECT");
-            break;
-
-        case OpCode::Not:
-            std::println("OP_NOT");
             break;
 
         case OpCode::I2F:

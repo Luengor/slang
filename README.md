@@ -73,7 +73,10 @@ From highest to lowest:
 | I| Instruction | Shape | Description                                         |
 |--|-------------|-------|-----------------------------------------------------|
 | 0| Return      | Op    | Return from a function                              |
-| 1| Constant    | OpAb  | Load constant A into register b                     |
+| 1| Constant    | OpAb  | b <- constants\[A\]                                 |
+| 2| Not         | OpAB  | B <- !A                                             |
+| 3| NegateI     | OpAB  | B <- -A                                             |
+| 4| NegateF     | OpAB  | B <- -A                                             |
 
 | I| Ins         | Op    |                                                     |
 

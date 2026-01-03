@@ -85,6 +85,28 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::Not: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].boolean = !registers[from_r].boolean;
+                break;
+            }
+
+            case OpCode::NegateI: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].fixed = -registers[from_r].fixed;
+                break;
+            }
+
+            case OpCode::NegateF: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].floating = -registers[from_r].floating;
+                break;
+            }
+
+
             case OpCode::Call: {
                 TODO;
                 // const uint8_t arg_count = READ_BYTE();
@@ -130,18 +152,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::NegateF: {
-                TODO;
-                // this->stack.back().floating = -this->stack.back().floating;
-                break;
-            }
-
-            case OpCode::NegateI: {
-                TODO;
-                // this->stack.back().fixed = -this->stack.back().fixed;
-                break;
-            }
-
             case OpCode::AddF: TODO;
             case OpCode::AddI: TODO;
             case OpCode::SubtractF: TODO;
@@ -150,12 +160,6 @@ InterpretResult VM::run() {
             case OpCode::MultiplyI: TODO;
             case OpCode::DivideF: TODO;
             case OpCode::DivideI: TODO;
-
-            case OpCode::Not: {
-                TODO;
-                // this->stack.back().boolean = !this->stack.back().boolean;
-                break;
-            }
 
             case OpCode::I2F: TODO; 
             case OpCode::F2I: TODO; 
