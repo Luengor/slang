@@ -19,15 +19,14 @@ enum class OpCode : uint8_t {
 
     Copy,
 
+    Jmp, JmpIfFalse, JmpIfTrue,
+
     Call, Object,
 
     I2F, F2I,
     I2B, B2I,
     F2B, B2F,
     I2Str, F2Str, B2Str,
-
-    Jmp, JmpIfFalse, JmpIfFalsePop,
-    JmpIfTrue,
 
     True, False,
     Pop, Retain, Release,
@@ -45,6 +44,7 @@ class Chunk {
     std::vector<Object *> object_constants = {};
 
     void disassembleAb(const char *name, uint32_t instruction) const;
+    void disassemblesAb(const char *name, uint32_t instruction) const;
     void disassembleAB(const char *name, uint32_t instruction) const;
     void disassembleabc(const char *name, uint32_t instruction) const;
     void disassembleInstruction(int offset);
@@ -59,8 +59,7 @@ public:
     Chunk &operator=(Chunk &&) = default;
 
     unsigned write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line = -1);
-    unsigned write_sA(OpCode op, int16_t A, int line = -1);
-    unsigned write_A(OpCode op, uint16_t A, int line = -1);
+    unsigned write_sAb(OpCode op, int16_t A, uint8_t b, int line = -1);
     unsigned write_AB(OpCode op, uint16_t A, uint16_t B,
                       int line = -1);
     unsigned write_Ab(OpCode op, uint16_t A, uint8_t b,
@@ -86,14 +85,13 @@ public:
 #define GET_abc_a(ins) ((ins >> 16) & 0xFF)
 #define GET_abc_b(ins) ((ins >> 8) & 0xFF)
 #define GET_abc_c(ins) (ins & 0xFF)
-// Sa -> [OpCode:8] [Unused:8] [A:16]
-#define GET_sA_a(ins) ((int16_t)(ins & 0xFFFF))
-// A -> [OpCode:8] [Unused:8] [A:16]
-#define GET_A_a(ins) ((uint16_t)(ins & 0xFFFF))
 // AB -> [OpCode:8] [A:12] [B:12]
 #define GET_AB_a(ins) ((uint16_t)((ins >> 12) & 0x0FFF))
 #define GET_AB_b(ins) ((uint16_t)(ins & 0x0FFF))
 // Ab -> [OpCode:8] [A:16] [b:8]
 #define GET_Ab_a(ins) ((uint16_t)((ins >> 8) & 0xFFFF))
 #define GET_Ab_b(ins) ((uint8_t)(ins & 0xFF))
+// Sa -> [OpCode:8] [sA:16] [b:8]
+#define GET_sAb_a(ins) ((int16_t)((ins >> 8) & 0xFFFF))
+#define GET_sAb_b(ins) ((uint8_t)(ins & 0xFF))
 

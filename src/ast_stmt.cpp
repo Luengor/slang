@@ -334,45 +334,48 @@ void IfStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void IfStmt::compile(CompileContext &ctx, int reg) {/*
+void IfStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
     // Compile the condition first
-    this->condition->compile(ctx, int reg);
+    this->condition->compile(ctx);
+
+    // Inmediately free the condition register
+    const auto cond_reg = this->condition->result_register;
+    ctx.freeRegister(cond_reg);
 
     // Insert jump if false, take note of the jump address and insert dummy
-    ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
-    const auto if_jump =
-        ctx.function->chunk.writeWord(0xFFFF); // Placeholder
+    const auto if_jump = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfFalse, 0xFFFF, cond_reg, this->token.line);
 
     // Compile then branch
-    this->then_branch->compile(ctx, int reg);
+    this->then_branch->compile(ctx);
     
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch) {
-        ctx.function->chunk.write(OpCode::Jmp);
-        else_jump =
-            ctx.function->chunk.writeWord(0xFFFF); // Placeholder
+        else_jump = ctx.function->chunk.write_sAb(OpCode::Jmp, 0xFFFF, 0);
     }
 
     // Patch first jump
     const unsigned after_then_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_then =
-        static_cast<int16_t>(after_then_addr - (if_jump + 2));
-    ctx.function->chunk.patchWord(if_jump, offset_to_after_then);
+        static_cast<int16_t>(after_then_addr - if_jump - 1);
+    ctx.function->chunk.patch_sA(if_jump, offset_to_after_then);
 
     // If there is no else branch, we're done
     if (!this->else_branch)
         return;
 
     // Compile else branch
-    this->else_branch->compile(ctx, int reg);
+    this->else_branch->compile(ctx);
 
     // Patch else jump
     const unsigned after_else_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_else =
-        static_cast<int16_t>(after_else_addr - (else_jump + 2));
-    ctx.function->chunk.patchWord(else_jump, offset_to_after_else);
-*/}
+        static_cast<int16_t>(after_else_addr - else_jump - 1);
+    ctx.function->chunk.patch_sA(else_jump, offset_to_after_else);
+}
 
 void IfStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";

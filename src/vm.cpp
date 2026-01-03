@@ -151,6 +151,30 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::Jmp: {
+                const auto offset = GET_sAb_a(instruction);
+                this->ip += offset;
+                break;
+            }
+
+            case OpCode::JmpIfFalse: {
+                const auto reg = GET_sAb_b(instruction);
+                if (!registers[reg].boolean) {
+                    const auto offset = GET_sAb_a(instruction);
+                    this->ip += offset;
+                }
+                break;
+            }
+
+            case OpCode::JmpIfTrue: {
+                const auto reg = GET_sAb_b(instruction);
+                if (registers[reg].boolean) {
+                    const auto offset = GET_sAb_a(instruction);
+                    this->ip += offset;
+                }
+                break;
+            }
+
             case OpCode::Call: {
                 TODO;
                 // const uint8_t arg_count = READ_BYTE();
@@ -289,43 +313,6 @@ InterpretResult VM::run() {
                 // const uint8_t slot = READ_UWORD();
                 // frame_stack[slot] = this->stack.back();
                 // this->stack.pop_back();
-                break;
-            }
-
-            case OpCode::Jmp: {
-                TODO;
-                // const int16_t offset = READ_WORD();
-                // frame.ip += offset;
-                break;
-            }
-
-            case OpCode::JmpIfFalse: {
-                TODO;
-                // const int16_t offset = READ_WORD();
-                // if (!this->stack.back().boolean) {
-                //     frame.ip += offset;
-                // }
-                // // no pop!
-                break;
-            }
-
-            case OpCode::JmpIfTrue: {
-                TODO;
-                // const int16_t offset = READ_WORD();
-                // if (this->stack.back().boolean) {
-                //     frame.ip += offset;
-                // }
-                // // no pop!
-                break;
-            }
-
-            case OpCode::JmpIfFalsePop: {
-                TODO;
-                // const int16_t offset = READ_WORD();
-                // if (!this->stack.back().boolean) {
-                //     frame.ip += offset;
-                // }
-                // this->stack.pop_back(); // pop!
                 break;
             }
 

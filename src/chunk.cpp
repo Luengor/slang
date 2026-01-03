@@ -24,6 +24,13 @@ void Chunk::disassembleAb(const char *name, uint32_t instruction) const {
     std::println("{:<16} {:4d} {:4d}", name, A, b);
 }
 
+void Chunk::disassemblesAb(const char *name, uint32_t instruction) const {
+    int16_t A = GET_Ab_a(instruction);
+    uint8_t b = GET_Ab_b(instruction);
+
+    std::println("{:<16} {:4d} {:4d}", name, A, b);
+}
+
 void Chunk::disassembleabc(const char *name, uint32_t instruction) const {
     uint8_t a = GET_abc_a(instruction);
     uint8_t b = GET_abc_b(instruction);
@@ -132,6 +139,15 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::Copy:
             return this->disassembleAB("OP_COPY", this->code[offset]);
 
+        case OpCode::Jmp:
+            return this->disassemblesAb("OP_JMP", this->code[offset]);
+
+        case OpCode::JmpIfFalse:
+            return this->disassemblesAb("OP_JIF", this->code[offset]);
+
+        case OpCode::JmpIfTrue:
+            return this->disassemblesAb("OP_JIT", this->code[offset]);
+
         case OpCode::Call:
             std::println("OP_CALL");
             break;
@@ -184,19 +200,6 @@ void Chunk::disassembleInstruction(int offset) {
             std::println("OP_RELEASE");
             break;
 
-        case OpCode::Jmp:
-            std::println("OP_JMP");
-            break;
-        case OpCode::JmpIfFalse:
-            std::println("OP_JNT");
-            break;
-        case OpCode::JmpIfTrue:
-            std::println("OP_JIT");
-            break;
-        case OpCode::JmpIfFalsePop:
-            std::println("OP_JNT_POP");
-            break;
-
         case OpCode::Move:
             std::println("OP_MOVE");
             break;
@@ -233,19 +236,11 @@ unsigned Chunk::write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line) 
 }
 
 // Sa -> [OpCode:8] [Unused:8] [A:16]
-unsigned Chunk::write_sA(OpCode op, int16_t A, int line) {
+unsigned Chunk::write_sAb(OpCode op, int16_t A, uint8_t b, int line) {
     FIX_LINE;
     uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           (static_cast<uint16_t>(A) & 0xFFFF);
-    this->code.push_back(instruction);
-    this->lines.push_back(line);
-    return this->code.size() - 1;
-}
-
-unsigned Chunk::write_A(OpCode op, uint16_t A, int line) {
-    FIX_LINE;
-    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           (static_cast<uint16_t>(A) & 0xFFFF);
+                           (static_cast<uint16_t>(A) & 0xFFFF) << 8 |
+                           (b & 0xFF);
     this->code.push_back(instruction);
     this->lines.push_back(line);
     return this->code.size() - 1;
@@ -273,7 +268,8 @@ unsigned Chunk::write_Ab(OpCode op, uint16_t A, uint8_t b, int line) {
 void Chunk::patch_sA(unsigned offset, int16_t A) {
     assert(offset < this->code.size());
     uint32_t instruction = this->code[offset];
-    instruction = (instruction & 0xFFFF0000) | (static_cast<uint16_t>(A) & 0xFFFF);
+    instruction =
+        (instruction & 0xFF0000FF) | ((static_cast<uint16_t>(A) & 0xFFFF) << 8);
     this->code[offset] = instruction;
 }
 

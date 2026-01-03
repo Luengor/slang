@@ -100,6 +100,9 @@ From highest to lowest:
 |24| EqB         | Opabc | c <- a == b                                         |
 |25| NeqB        | Opabc | c <- a != b                                         |
 |26| Copy        | OpAB  | b <- a                                              |
+|27| Jmp         | OpA   | pc <- pc + a                                        |
+|28| JmpIfFalse  | OpAb  | pc <- !b ? pc + a : pc                              |
+|28| JmpIfTrue   | OpAb  | pc <-  b ? pc + a : pc                              |
 
 | I| Ins         | Op    |                                                     |
 
