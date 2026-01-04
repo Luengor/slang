@@ -40,6 +40,7 @@ class Chunk {
     ValueArray constants = {};
     std::vector<Object *> object_constants = {};
 
+    void disassembleJump(const char *name, unsigned address, bool show_reg) const;
     void disassembleAb(const char *name, uint32_t instruction) const;
     void disassemblesAb(const char *name, uint32_t instruction) const;
     void disassembleAB(const char *name, uint32_t instruction) const;

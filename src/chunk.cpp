@@ -10,6 +10,21 @@ Chunk::~Chunk() {
     }
 }
 
+void Chunk::disassembleJump(const char *name, unsigned address, bool show_reg) const {
+    const auto instruction = this->code[address];
+    int16_t A = GET_Ab_a(instruction);
+    uint8_t b = GET_Ab_b(instruction);
+
+    int16_t jump_target = static_cast<int16_t>(address + 1 + A);
+
+    if (show_reg) {
+        std::println("{:<16} {:4d} {:4d}? -> {:04d}", name, A, b, jump_target);
+    } else {
+        std::println("{:<16} {:4d} -> {:04d}", name, A, jump_target);
+    }
+}
+
+
 void Chunk::disassembleAB(const char *name, uint32_t instruction) const {
     uint16_t A = GET_AB_a(instruction);
     uint8_t B = GET_AB_b(instruction);
@@ -140,13 +155,13 @@ void Chunk::disassembleInstruction(int offset) {
             return this->disassembleAB("OP_COPY", this->code[offset]);
 
         case OpCode::Jmp:
-            return this->disassemblesAb("OP_JMP", this->code[offset]);
+            return this->disassembleJump("OP_JMP", offset, false);
 
         case OpCode::JmpIfFalse:
-            return this->disassemblesAb("OP_JIF", this->code[offset]);
+            return this->disassembleJump("OP_JIF", offset, true);
 
         case OpCode::JmpIfTrue:
-            return this->disassemblesAb("OP_JIT", this->code[offset]);
+            return this->disassembleJump("OP_JIT", offset, true);
 
         case OpCode::Call:
             std::println("OP_CALL");
