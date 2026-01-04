@@ -21,11 +21,12 @@ enum class OpCode : uint8_t {
 
     Jmp, JmpIfFalse, JmpIfTrue,
 
-    Call, Object,
-
     I2F, F2I,
     I2B, B2I,
     F2B, B2F,
+
+    Call, Object,
+
     I2Str, F2Str, B2Str,
 
     Retain, Release,

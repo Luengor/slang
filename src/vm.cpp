@@ -52,6 +52,14 @@ InterpretResult VM::run() {
 
 #define BINARY_EXPR(op, type_field) BINARY_EXPR_2(op, type_field, type_field)
 
+#define CAST_EXPR(from_field, to_field) { \
+    const auto from_r = GET_AB_a(instruction); \
+    const auto to_r = GET_AB_b(instruction); \
+    registers[to_r].to_field = static_cast<decltype(registers[to_r].to_field)>( \
+        registers[from_r].from_field); \
+    break; \
+}
+
 #ifdef DEBUG_PRINT
     std::print("\n=== VM Execution Start ===\n");
 #endif
@@ -175,6 +183,13 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::I2F: CAST_EXPR(fixed, floating);
+            case OpCode::F2I: CAST_EXPR(floating, fixed);
+            case OpCode::I2B: CAST_EXPR(fixed, boolean);
+            case OpCode::B2I: CAST_EXPR(boolean, fixed);
+            case OpCode::F2B: CAST_EXPR(floating, boolean);
+            case OpCode::B2F: CAST_EXPR(boolean, floating);
+
             case OpCode::Call: {
                 TODO;
                 // const uint8_t arg_count = READ_BYTE();
@@ -219,13 +234,6 @@ InterpretResult VM::run() {
                 // this->stack.push_back({.object = object});
                 break;
             }
-
-            case OpCode::I2F: TODO; 
-            case OpCode::F2I: TODO; 
-            case OpCode::I2B: TODO; 
-            case OpCode::B2I: TODO; 
-            case OpCode::F2B: TODO; 
-            case OpCode::B2F: TODO; 
 
             case OpCode::I2Str: {
                 TODO;

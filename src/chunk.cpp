@@ -163,31 +163,30 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::JmpIfTrue:
             return this->disassembleJump("OP_JIT", offset, true);
 
+        case OpCode::I2F:
+            return this->disassembleAB("OP_I2F", this->code[offset]);
+
+        case OpCode::F2I:
+            return this->disassembleAB("OP_F2I", this->code[offset]);
+
+        case OpCode::I2B:
+            return this->disassembleAB("OP_I2B", this->code[offset]);
+
+        case OpCode::B2I:
+            return this->disassembleAB("OP_B2I", this->code[offset]);
+
+        case OpCode::F2B:
+            return this->disassembleAB("OP_F2B", this->code[offset]);
+
+        case OpCode::B2F:
+            return this->disassembleAB("OP_B2F", this->code[offset]);
+
         case OpCode::Call:
             std::println("OP_CALL");
             break;
 
         case OpCode::Object:
             std::println("OP_OBJECT");
-            break;
-
-        case OpCode::I2F:
-            std::println("OP_I2F");
-            break;
-        case OpCode::F2I:
-            std::println("OP_F2I");
-            break;
-        case OpCode::I2B:
-            std::println("OP_I2B");
-            break;
-        case OpCode::B2I:
-            std::println("OP_B2I");
-            break;
-        case OpCode::F2B:
-            std::println("OP_F2B");
-            break;
-        case OpCode::B2F:
-            std::println("OP_B2F");
             break;
         case OpCode::I2Str:
             std::println("OP_I2STR");

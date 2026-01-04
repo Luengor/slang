@@ -490,13 +490,17 @@ void CastExpr::resolveType(CompileContext &ctx) {
     this->cast_op = castOp.value();
 }
 
-void CastExpr::compile(CompileContext &ctx, int reg) {/*
+void CastExpr::compile(CompileContext &ctx, int reg) {
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
     // Compile the operand first
-    this->operand->compile(ctx, int reg);
+    this->operand->compile(ctx, this->result_register);
 
     // Write the cast operation
-    ctx.function->chunk.write(this->cast_op, this->operand->token.line);
-*/}
+    ctx.function->chunk.write_AB(
+        this->cast_op, this->result_register,
+        this->result_register, this->token.line);
+}
 
 void CastExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
