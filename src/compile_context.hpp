@@ -14,7 +14,9 @@ struct NameEntry {
     std::string name;
     TypeID type;
     int depth;
+    int line_declared = -1;
     int register_index = -1;
+    int reads = 0, writes = 0;
 };
 
 class NameTable {
@@ -23,7 +25,7 @@ class NameTable {
     int current_depth = 0;
 
   public:
-    std::optional<EntryID> addName(const std::string &name, TypeID type,
+    std::optional<EntryID> addName(const std::string &name, int line, TypeID type,
                                    int depth = -1);
     std::optional<EntryID> findEntryInScope(const std::string &name);
 
@@ -37,6 +39,8 @@ class NameTable {
 
     void putInScope(EntryID id);
     int getCurrentDepth() const;
+
+    void printTable() const;
 };
 
 struct CompileContext {

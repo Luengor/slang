@@ -29,6 +29,8 @@ void ExprStmt::resolveType(CompileContext &ctx) {
 }
 
 void ExprStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
     // There is no result register for expression statements
     this->expression->result_register = -1;
 
@@ -38,7 +40,7 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
     }
 
     // Compile the expression
-    this->expression->compile(ctx, reg);
+    this->expression->compile(ctx);
 
     // Mark its register as free
     if (this->expression->result_register != -1) {
@@ -201,7 +203,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 
     // Add a new local
     auto entry_id = ctx.nameTable.addName(
-        this->token.lexeme,
+        this->token.lexeme, this->token.line,
         this->result_type.value());
     if (!entry_id.has_value()) {
         throw ParserError(
@@ -215,15 +217,20 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
 
+    // This is a pure statement, no result register
+    this->result_register = -1;
+
     // Get the local entry
     auto &entry = ctx.nameTable.getEntry(this->entry_id);
 
-    // Allocate a register for it
+    // Allocate a register for it and put it in current scope
+    assert(entry.register_index == -1);
     entry.register_index = ctx.allocateRegister();
+    ctx.nameTable.putInScope(this->entry_id);
 
     // Compile the initializer if present
     if (this->initializer)
-        this->initializer->compile(ctx, this->result_register);
+        this->initializer->compile(ctx, entry.register_index);
 }
 
 void VarDeclStmt::print(int indent) {

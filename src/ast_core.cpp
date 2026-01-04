@@ -30,5 +30,10 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
 
     function->chunk.write_abc(OpCode::Return, 0, 0, 0);
 
+#ifdef DEBUG_PRINT
+    // Print the name table
+    ctx.nameTable.printTable();
+#endif
+
     return function;
 }

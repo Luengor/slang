@@ -1,9 +1,10 @@
 #include "compile_context.hpp"
 #include "native.hpp"
 #include <algorithm>
+#include <print>
 
-std::optional<EntryID> NameTable::addName(const std::string &name, TypeID type,
-                                          int depth) {
+std::optional<EntryID> NameTable::addName(const std::string &name, int line,
+                                          TypeID type, int depth) {
     depth = (depth == -1) ? this->current_depth : depth;
 
     // Check if another entry exists with the same name at the same depth
@@ -16,7 +17,7 @@ std::optional<EntryID> NameTable::addName(const std::string &name, TypeID type,
 
     // Add the new entry
     EntryID id = this->entries.size();
-    this->entries.push_back(NameEntry{name, type, depth});
+    this->entries.push_back(NameEntry{name, type, depth, line});
     this->in_scope.push_back(id);
     return id;
 }
@@ -81,6 +82,27 @@ void NameTable::putInScope(EntryID id) {
 int NameTable::getCurrentDepth() const {
     return this->current_depth;
 }
+
+void NameTable::printTable() const {
+    std::println("Name Table:");
+
+    // Print header
+    std::println(" Line | Name           | Type | Depth | Reg | Reads | Writes");
+    std::println("------|----------------|------|-------|-----|-------|---------");
+
+    for (size_t i = 0; i < this->entries.size(); i++) {
+        const auto &entry = this->entries[i];
+        std::println("{:>5} | {:<14} | {:<4} | {:>5} | {:>3} | {:>5} | {:>6}",
+                     entry.line_declared,
+                     entry.name,
+                     entry.type,
+                     entry.depth,
+                     entry.register_index,
+                     entry.reads,
+                     entry.writes);
+    }
+}
+
 
 CompileContext::CompileContext(TypeRegistry &typeRegistry,
                                NativeRegistry &nativeRegistry)
