@@ -61,7 +61,7 @@ InterpretResult VM::run() {
         // // Print current stack size
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base, this->stack.size());
         // Print the current instruction
-        // frame.function->chunk.disassebleInstruction(static_cast<int>(this->ip - frame.function->chunk.code.data()));
+        frame.function->chunk.disassembleInstruction(this->ip);
 #endif
 
         const uint32_t instruction = frame.function->chunk.code[this->ip++];
