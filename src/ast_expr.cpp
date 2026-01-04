@@ -290,7 +290,7 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
 
             // Copy the local variable into the result register
             ctx.function->chunk.write_AB(
-                OpCode::GetLocal, this->result_register,
+                OpCode::Copy, this->result_register,
                 static_cast<uint8_t>(entry.register_index), this->token.line);
         },
         [&](NativeFunctionObj *native_fn) {

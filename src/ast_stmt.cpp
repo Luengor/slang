@@ -415,33 +415,35 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void WhileStmt::compile(CompileContext &ctx, int reg) {/*
+void WhileStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
     // Mark the beggining of the condition
     const auto before_condition = ctx.function->chunk.currentOffset();
 
     // Compile the condition
-    this->condition->compile(ctx, int reg);
+    this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    ctx.function->chunk.write(OpCode::JmpIfFalsePop);
-    const auto jump_to_patch = ctx.function->chunk.writeWord(0xFFFF);
+    const auto jump_to_patch = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfFalse, 0xFFFF, this->condition->result_register,
+        this->token.line);
 
     // Compile body
-    this->body->compile(ctx, int reg);
+    this->body->compile(ctx);
 
     // Insert jump to condition
-    ctx.function->chunk.write(OpCode::Jmp);
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
-        static_cast<int16_t>(ctx.function->chunk.currentOffset() + 2);
-    ctx.function->chunk.writeWord(before_offset);
+        static_cast<int16_t>(ctx.function->chunk.currentOffset()) - 1;
+    ctx.function->chunk.write_sAb(OpCode::Jmp, before_offset, 0);
 
     // Patch first jump
     const unsigned final_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_end =
-        static_cast<int16_t>(final_addr - (jump_to_patch + 2));
-    ctx.function->chunk.patchWord(jump_to_patch, offset_to_end);
-*/}
+        static_cast<int16_t>(final_addr - jump_to_patch - 1);
+    ctx.function->chunk.patch_sA(jump_to_patch, offset_to_end);
+}
 
 void WhileStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
