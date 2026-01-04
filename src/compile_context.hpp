@@ -16,7 +16,6 @@ struct NameEntry {
     int depth;
     int line_declared = -1;
     int register_index = -1;
-    int reads = 0, writes = 0;
 };
 
 class NameTable {

@@ -87,19 +87,17 @@ void NameTable::printTable() const {
     std::println("Name Table:");
 
     // Print header
-    std::println(" Line | Name           | Type | Depth | Reg | Reads | Writes");
-    std::println("------|----------------|------|-------|-----|-------|---------");
+    std::println(" Line | Name           | Type | Depth | Reg ");
+    std::println("------|----------------|------|-------|-----");
 
     for (size_t i = 0; i < this->entries.size(); i++) {
         const auto &entry = this->entries[i];
-        std::println("{:>5} | {:<14} | {:<4} | {:>5} | {:>3} | {:>5} | {:>6}",
+        std::println("{:>5} | {:<14} | {:<4} | {:>5} | {:>3} ",
                      entry.line_declared,
                      entry.name,
                      entry.type,
                      entry.depth,
-                     entry.register_index,
-                     entry.reads,
-                     entry.writes);
+                     entry.register_index);
     }
 }
 
