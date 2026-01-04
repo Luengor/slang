@@ -184,36 +184,11 @@ void Chunk::disassembleInstruction(int offset) {
             std::println("OP_B2STR");
             break;
 
-        case OpCode::True:
-            std::println("OP_TRUE");
-            break;
-        case OpCode::False:
-            std::println("OP_FALSE");
-            break;
-        case OpCode::Pop:
-            std::println("OP_POP");
-            break;
         case OpCode::Retain:
             std::println("OP_RETAIN");
             break;
         case OpCode::Release:
             std::println("OP_RELEASE");
-            break;
-
-        case OpCode::Move:
-            std::println("OP_MOVE");
-            break;
-        case OpCode::GetLocal:
-            std::println("OP_GETLOCAL");
-            break;
-        case OpCode::SetLocal:
-            std::println("OP_SETLOCAL");
-            break;
-        case OpCode::GetLocalObject:
-            std::println("OP_GETLOCAL_OBJ");
-            break;
-        case OpCode::SetLocalObject:
-            std::println("OP_SETLOCAL_OBJ");
             break;
 
         default:

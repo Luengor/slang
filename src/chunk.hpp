@@ -28,10 +28,7 @@ enum class OpCode : uint8_t {
     F2B, B2F,
     I2Str, F2Str, B2Str,
 
-    True, False,
-    Pop, Retain, Release,
-    GetLocal, SetLocal, Move,
-    GetLocalObject, SetLocalObject,
+    Retain, Release,
 };
 
 class Chunk {
