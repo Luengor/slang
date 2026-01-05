@@ -215,6 +215,13 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
+    // Get register for self
+    auto entry = fn_ctx.nameTable.getEntry(this->self_entry_id);
+    entry.register_index = fn_ctx.allocateRegister();
+
+    // Put self in scope
+    fn_ctx.nameTable.putInScope(this->self_entry_id);
+
     // Compile the args to push the locals
     for (const auto &arg : this->arguments) {
         arg->compile(fn_ctx); // args don't need registers

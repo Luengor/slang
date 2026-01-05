@@ -65,8 +65,7 @@ void Chunk::disassembleInstruction(int offset) {
     OpCode instruction = GET_op(this->code[offset]); 
     switch (instruction) {
         case OpCode::Return:
-            std::println("OP_RETURN");
-            break;
+            return this->disassembleAb("OP_RETURN", this->code[offset]);
 
         case OpCode::Constant:
             return this->disassembleAb("OP_CONSTANT", this->code[offset]);

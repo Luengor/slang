@@ -79,18 +79,27 @@ InterpretResult VM::run() {
                 if (this->call_frames.size() == 1) {
                     return InterpretResult::Ok;
                 } else {
-                    TODO;
-                    // // The function should have cleaned up its own stack
-                    // // The stack should be: [... previous stack ...][return value][function]
-                    // // We release the function object
-                    // this->stack.back().object->release();
-                    // this->stack.pop_back();
+                    // Get the return value
+                    const auto return_r = GET_Ab_a(instruction);
+                    const Value return_value = registers[return_r];
 
-                    // // Release the function we are returning from
-                    // this->call_frames.back().function->release();
+                    // Free the function at 0
+                    registers[0].object->release();
 
-                    // // Pop the call frame
-                    // this->call_frames.pop_back();
+                    // Put the return value at 0 
+                    registers[0] = return_value;
+
+                    // Get the return address
+                    const uint32_t return_ip = this->call_frames.back().return_ip;
+                    
+                    // Release the function object
+                    this->call_frames.back().function->release();
+
+                    // Pop the call frame
+                    this->call_frames.pop_back();
+
+                    // Restore the instruction pointer
+                    this->ip = return_ip;
 
                     break;
                 }
@@ -103,7 +112,18 @@ InterpretResult VM::run() {
                 assert(callee.object);
                 
                 if (callee.object->type == Object::Type::Function) {
-                    TODO;
+                    FunctionObj *function =
+                        static_cast<FunctionObj *>(callee.object);
+
+                    function->retain(); // retain the function to release later
+
+                    // Put the frame starting in the callee register
+                    this->call_frames.push_back(
+                        CallFrame(function, this->ip,
+                                  frame.stack_base + callee_r));
+
+                    // Set the instruction pointer to the function's start
+                    this->ip = 0;
                 } else {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);

@@ -470,7 +470,7 @@ ReturnStmt::ReturnStmt(const Token &token, ASTNodePtr return_expr)
     : ASTNode(ASTNodeType::ReturnStmt, token),
       return_expr(std::move(return_expr)) {};
 
-void ReturnStmt::resolveType(CompileContext &ctx) { /*
+void ReturnStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
     // Ensure this is happening in a function
@@ -500,40 +500,37 @@ void ReturnStmt::resolveType(CompileContext &ctx) { /*
         }
         this->return_expr = std::move(cast_result.value());
     }
+}
 
-    // Get the pop count from the context
-    this->pop = ctx.getPopCount();
-    assert(this->pop.total >= 2); // At least the return slot and self slot
-*/}
+void ReturnStmt::compile(CompileContext &ctx, int reg) {
+    // This is a pure statement, no result register
+    assert(reg == -1);
 
-void ReturnStmt::compile(CompileContext &ctx, int reg) {/*
+    // Get a register for the return value
+    reg = ctx.allocateRegister();
+
     // If there is expression, compile that
     if (this->return_expr)
-        this->return_expr->compile(ctx, int reg);
-    else {
-        // If not, put something to return 
-        ctx.function->chunk.write(OpCode::False, this->token.line);
-    }
+        this->return_expr->compile(ctx, reg);
 
-    // Move that value to the return slot (the "" local) 
-    ctx.function->chunk.write(OpCode::Move, this->token.line);
-    ctx.function->chunk.writeWord(0); // Return slot is always local 0
+    // Get all local variables defined now
+    auto all_names = ctx.nameTable.getNamesInScope(0);
 
-    // Clean up the stack and return
-    // Pop all locals in reverse order (except the return and self slots)
-    unsigned j = 0;
-    for (int i = 0; i < this->pop.total - 2; i++) {
-        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
-            ctx.function->chunk.write(OpCode::Release);
-            j++;
-        } else {
-            ctx.function->chunk.write(OpCode::Pop);
+    // Release all object locals
+    for (auto entryID : all_names) {
+        const auto &entry = ctx.nameTable.getEntry(entryID);
+        if (entry.register_index != -1 &&
+            ctx.typeRegistry.isObject(entry.type)) {
+            ctx.function->chunk.write_Ab(
+                OpCode::Release, entry.register_index,
+                0, this->token.line);
         }
-    }
-
+    };
+    
     // Finally, return
-    ctx.function->chunk.write(OpCode::Return);
-*/}
+    ctx.function->chunk.write_Ab(
+        OpCode::Return, reg, 0, this->token.line);
+}
 
 void ReturnStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
