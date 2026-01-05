@@ -166,7 +166,12 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function = new FunctionObj();
 
     // Name the function after its line number for now
-    fn_ctx->function->name = "<fn@" + std::to_string(this->token.line) + ">";
+    this->fn_ctx->function->name =
+        "<fn@" + std::to_string(this->token.line) + ">";
+
+    // Add a self local for recursion
+    this->self_entry_id = this->fn_ctx->nameTable.addName(
+        "self", this->token.line, ctx.typeRegistry.noneType()).value();
 
     // Resolve argument types
     std::vector<TypeID> param_types;
@@ -184,6 +189,10 @@ void FunctionNode::resolveType(CompileContext &ctx) {
         param_types, return_type_id);
 
     this->fn_ctx->function->type_id = this->result_type.value();
+
+    // Update self type 
+    this->fn_ctx->nameTable.getEntry(this->self_entry_id).type =
+        this->result_type.value();
 
     // Check if the last statement in the body is a return statement
     assert(this->body->type == ASTNodeType::BlockStmt);
