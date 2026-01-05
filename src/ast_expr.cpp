@@ -162,7 +162,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Create a new compile context for the function
     this->fn_ctx = std::make_unique<CompileContext>(ctx);
 
-    // Start compiling the function
+    // Create a new function to compile into 
     this->fn_ctx->function = new FunctionObj();
 
     // Name the function after its line number for now
@@ -209,6 +209,9 @@ void FunctionNode::resolveType(CompileContext &ctx) {
 
     // Resolve type of the body
     this->body->resolveType(*fn_ctx);
+
+    // Clear the scope of fn_ctx
+    this->fn_ctx->nameTable.clearScope();
 }
 
 void FunctionNode::compile(CompileContext &ctx, int reg) {
@@ -216,8 +219,8 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     CompileContext &fn_ctx = *this->fn_ctx;
 
     // Get register for self
-    auto entry = fn_ctx.nameTable.getEntry(this->self_entry_id);
-    entry.register_index = fn_ctx.allocateRegister();
+    auto self_reg = fn_ctx.allocateRegister();
+    fn_ctx.nameTable.getEntry(this->self_entry_id).register_index = self_reg;
 
     // Put self in scope
     fn_ctx.nameTable.putInScope(this->self_entry_id);

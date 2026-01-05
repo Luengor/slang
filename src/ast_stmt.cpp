@@ -295,16 +295,17 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     // Get a register for the result if needed
     this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
 
-    // Compile the value and get its result register
+    // Compile the value into our register 
     this->value->compile(ctx, this->result_register);
-    const int value_register = this->value->result_register;
+
+    // If we are writting into an object, release the previous one first
+    ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0, this->token.line);
 
     // Store the local variable
-    ctx.function->chunk.write_AB(OpCode::Copy, value_register, local_register,
-                                 this->token.line);
+    ctx.function->chunk.write_AB(OpCode::Copy, this->result_register, local_register);
 
-    // Mark the value register as free if it was allocated
-    ctx.freeRegister(value_register);
+    // Because of the copy, we have to retain
+    ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
 }
 
 void AssignExpr::print(int indent) {

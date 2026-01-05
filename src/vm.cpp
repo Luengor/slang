@@ -83,9 +83,6 @@ InterpretResult VM::run() {
                     const auto return_r = GET_Ab_a(instruction);
                     const Value return_value = registers[return_r];
 
-                    // Free the function at 0
-                    registers[0].object->release();
-
                     // Put the return value at 0 
                     registers[0] = return_value;
 
