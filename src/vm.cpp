@@ -104,6 +104,28 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::Object: {
+                const auto object_index = GET_Ab_a(instruction);
+                const auto target_register = GET_Ab_b(instruction);
+                Object *object =
+                    frame.function->chunk.object_constants[object_index];
+                object->retain(); // A new reference for the register
+                registers[target_register].object = object;
+                break;
+            }
+
+            case OpCode::Retain: {
+                const auto reg = GET_Ab_a(instruction);
+                registers[reg].object->retain();
+                break;
+            }
+
+            case OpCode::Release: {
+                const auto reg = GET_Ab_a(instruction);
+                registers[reg].object->release();
+                break;
+            }
+
             case OpCode::Not: {
                 const auto from_r = GET_AB_a(instruction);
                 const auto to_r = GET_AB_b(instruction);
@@ -227,14 +249,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::Object: {
-                TODO;
-                // Object *object = READ_OBJECT();
-                // object->retain();
-                // this->stack.push_back({.object = object});
-                break;
-            }
-
             case OpCode::I2Str: {
                 TODO;
                 // FixedType val = this->stack.back().fixed;
@@ -259,18 +273,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::Retain: {
-                TODO;
-                // this->stack.back().object->retain();
-                break;
-            }
-
-            case OpCode::Release: {
-                TODO;
-                // this->stack.back().object->release();
-                // this->stack.pop_back();
-                break;
-            }
         }
 
     }

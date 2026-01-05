@@ -45,16 +45,15 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
     // Mark its register as free
     if (this->expression->result_register != -1) {
         ctx.freeRegister(this->expression->result_register);
-    }
 
-/*
-    // Pop the result off the stack since it's not used
-    if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
-        ctx.function->chunk.write(OpCode::Release, this->token.line);
-    } else {
-        ctx.function->chunk.write(OpCode::Pop, this->token.line);
+        // If it was an object type, release it
+        if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
+            ctx.function->chunk.write_Ab(OpCode::Release,
+                                         this->expression->result_register, 0,
+                                         this->token.line);
+        }
     }
-*/}
+}
 
 void ExprStmt::print(int indent) {
     if (!this->expression) {
@@ -124,6 +123,13 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
         if (entry.register_index != -1) {
             // Free the register
             ctx.freeRegister(entry.register_index);
+
+            // If its an object type, release it
+            if (ctx.typeRegistry.isObject(entry.type)) {
+                ctx.function->chunk.write_Ab(
+                    OpCode::Release, entry.register_index,
+                    0, this->token.line);
+            }
         }
     };
 

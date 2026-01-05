@@ -71,6 +71,15 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::Constant:
             return this->disassembleAb("OP_CONSTANT", this->code[offset]);
 
+        case OpCode::Object:
+            return this->disassembleAb("OP_OBJECT", this->code[offset]);
+
+        case OpCode::Retain:
+            return this->disassembleAb("OP_RETAIN", this->code[offset]);
+
+        case OpCode::Release:
+            return this->disassembleAb("OP_RELEASE", this->code[offset]);
+
         case OpCode::Not:
             return this->disassembleAB("OP_NOT", this->code[offset]);
 
@@ -125,7 +134,6 @@ void Chunk::disassembleInstruction(int offset) {
 
         case OpCode::NeB:
             return this->disassembleabc("OP_NEB", this->code[offset]);
-
 
         case OpCode::GtI:
             return this->disassembleabc("OP_GTI", this->code[offset]);
@@ -184,10 +192,6 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::Call:
             std::println("OP_CALL");
             break;
-
-        case OpCode::Object:
-            std::println("OP_OBJECT");
-            break;
         case OpCode::I2Str:
             std::println("OP_I2STR");
             break;
@@ -196,13 +200,6 @@ void Chunk::disassembleInstruction(int offset) {
             break;
         case OpCode::B2Str:
             std::println("OP_B2STR");
-            break;
-
-        case OpCode::Retain:
-            std::println("OP_RETAIN");
-            break;
-        case OpCode::Release:
-            std::println("OP_RELEASE");
             break;
 
         default:

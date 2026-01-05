@@ -82,17 +82,17 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 }
 
 void LiteralNode::compile(CompileContext &ctx, int reg) {
-    if (ctx.typeRegistry.isObject(this->result_type.value())) {
-        // // Object constant
-        // const auto constant =
-        //     ctx.function->chunk.addObjectConstant(this->value.second.object);
-        // ctx.function->chunk.write(OpCode::Object, this->token.line);
-        // ctx.function->chunk.write(static_cast<uint8_t>(constant));
-        // return;
-    }
-
     // Allocate a register for the result
     this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
+    if (ctx.typeRegistry.isObject(this->result_type.value())) {
+        // Object constant
+        const auto constant =
+            ctx.function->chunk.addObjectConstant(this->value.second.object);
+        ctx.function->chunk.write_Ab(OpCode::Object, constant,
+                                     this->result_register, this->token.line);
+        return;
+    }
 
     // Add a constant to the chunk
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
@@ -292,6 +292,13 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
             ctx.function->chunk.write_AB(
                 OpCode::Copy, static_cast<uint8_t>(entry.register_index),
                 this->result_register, this->token.line);
+
+            // If its an object type, retain it
+            if (ctx.typeRegistry.isObject(this->result_type.value())) {
+                ctx.function->chunk.write_Ab(
+                    OpCode::Retain, this->result_register,
+                    0, this->token.line);
+            }
         },
         [&](NativeFunctionObj *native_fn) {
             assert(false);

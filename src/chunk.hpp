@@ -6,7 +6,7 @@
 #include <vector>
 
 enum class OpCode : uint8_t {
-    Return, Constant,
+    Return, Constant, Object, 
     Not,
     NegateI, NegateF,
 
@@ -18,6 +18,7 @@ enum class OpCode : uint8_t {
     EqB, NeB,
 
     Copy,
+    Retain, Release,
 
     Jmp, JmpIfFalse, JmpIfTrue,
 
@@ -25,11 +26,9 @@ enum class OpCode : uint8_t {
     I2B, B2I,
     F2B, B2F,
 
-    Call, Object,
+    Call,
 
     I2Str, F2Str, B2Str,
-
-    Retain, Release,
 };
 
 class Chunk {
