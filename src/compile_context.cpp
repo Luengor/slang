@@ -137,3 +137,20 @@ void CompileContext::freeRegister(int reg) {
     }
 }
 
+void CompileContext::fixupRegisters() {
+    // Check if fixing is needed
+    if (this->free_registers.empty())
+        return;
+
+    // Sort free registers with biggest last
+    std::sort(this->free_registers.begin(), this->free_registers.end(),
+              std::greater<int>());
+
+    // Decrease max_registers if possible
+    while (!this->free_registers.empty() &&
+            this->free_registers.back() == this->max_registers - 1) {
+        this->free_registers.pop_back();
+        this->max_registers--;
+    }
+}
+

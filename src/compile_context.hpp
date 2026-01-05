@@ -71,6 +71,9 @@ struct CompileContext {
     // Free a previously allocated register
     void freeRegister(int reg);
 
+    // Fixup registers 
+    void fixupRegisters();
+
 private:
     std::vector<int> free_registers;
     int max_registers = 0;

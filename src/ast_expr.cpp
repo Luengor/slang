@@ -233,7 +233,8 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     this->body->compile(fn_ctx); // the body doesn't need a register
 
 #ifdef DEBUG_PRINT
-    // Debug: print the compiled function bytecode and name table
+    std::println("Compiled function at line {}", this->token.line);
+
     fn_ctx.nameTable.printTable();
 
     fn_ctx.function->chunk.disassemble(
@@ -1034,6 +1035,9 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     // Free the argument registers in reverse order
     for (int j = this->arguments.size(); j >= 0; j--)
         ctx.freeRegister(arg_registers[j]);
+
+    // Fixup registers
+    ctx.fixupRegisters();
 }
 
 void CallExpr::print(int indent) {
