@@ -305,15 +305,15 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
             }
         },
         [&](NativeFunctionObj *native_fn) {
-            assert(false);
-            // // Retain the native function to pass it to the chunk
-            // native_fn->retain();
+            // Retain the native function to pass it to the chunk
+            native_fn->retain();
 
-            // // Load the native function as a constant
-            // const auto constant =
-            //     ctx.function->chunk.addObjectConstant(native_fn);
-            // ctx.function->chunk.write(OpCode::Object, this->token.line);
-            // ctx.function->chunk.write(static_cast<uint8_t>(constant));
+            // Load the native function as a constant
+            const auto constant =
+                ctx.function->chunk.addObjectConstant(native_fn);
+            ctx.function->chunk.write_Ab(
+                OpCode::Object, constant,
+                this->result_register, this->token.line);
         }
     }, this->resolution);
 }
@@ -992,21 +992,36 @@ void CallExpr::resolveType(CompileContext &ctx) {
     // Everything ok
 }
 
-void CallExpr::compile(CompileContext &ctx, int reg) {/*
-    // Empty space for the return slot
-    ctx.function->chunk.write(OpCode::False, this->token.line);
+void CallExpr::compile(CompileContext &ctx, int reg) {
+    // Get a register for the result
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
+    // Get continous registers for the arguments and callee
+    std::vector<int> arg_registers;
+    for (size_t i = 0; i < this->arguments.size() + 1; i++)
+        arg_registers.push_back(ctx.allocateFromTop());
 
     // Compile the callee
-    this->callee->compile(ctx, int reg);
+    this->callee->compile(ctx, arg_registers[0]);
 
     // Compile the arguments
+    int i = 1;
     for (auto &arg : this->arguments)
-        arg->compile(ctx, int reg);
+        arg->compile(ctx, arg_registers[i++]);
 
     // Emit call
-    ctx.function->chunk.write(OpCode::Call, this->token.line);
-    ctx.function->chunk.write(this->arguments.size());
-*/}
+    ctx.function->chunk.write_AB(OpCode::Call, this->callee->result_register,
+                                 this->arguments.size(), this->token.line);
+
+    // The result value is now in the callee's result register, move it
+    ctx.function->chunk.write_AB(
+        OpCode::Copy, this->callee->result_register,
+        this->result_register, this->token.line);
+
+    // Free the argument registers in reverse order
+    for (int j = this->arguments.size(); j >= 0; j--)
+        ctx.freeRegister(arg_registers[j]);
+}
 
 void CallExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";

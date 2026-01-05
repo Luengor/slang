@@ -65,6 +65,9 @@ struct CompileContext {
     // Allocate a new register
     int allocateRegister();
 
+    // Allocate from top
+    int allocateFromTop();
+
     // Free a previously allocated register
     void freeRegister(int reg);
 

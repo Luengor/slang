@@ -123,7 +123,17 @@ int CompileContext::allocateRegister() {
     return this->max_registers++;
 }
 
+int CompileContext::allocateFromTop() {
+    return this->max_registers++;
+}
+
 void CompileContext::freeRegister(int reg) {
-    this->free_registers.push_back(reg);
+    if (reg == this->max_registers - 1) {
+        // If it's the last allocated register, just decrease the count
+        this->max_registers--;
+        return;
+    } else {
+        this->free_registers.push_back(reg);
+    }
 }
 

@@ -96,6 +96,68 @@ InterpretResult VM::run() {
                 }
             }
 
+            case OpCode::Call: {
+                const auto callee_r = GET_AB_a(instruction);
+                const auto arg_count = GET_AB_b(instruction);
+                const Value callee = registers[callee_r];
+                assert(callee.object);
+                
+                if (callee.object->type == Object::Type::Function) {
+                    TODO;
+                } else {
+                    NativeFunctionObj *native_function =
+                        static_cast<NativeFunctionObj *>(callee.object);
+
+                    // Call the native
+                    Value result = native_function->function_ptr(
+                        arg_count > 0
+                            ? &registers[callee_r + 1]
+                            : nullptr,
+                        arg_count);
+
+                    // Push the result onto the callee register 
+                    registers[callee_r] = result;
+
+                    // Release the native function object
+                    native_function->release();
+                }
+
+                // const uint8_t arg_count = READ_BYTE();
+                // const Value callee = this->stack[this->stack.size() - 1 - arg_count];
+                // assert(callee.object);
+
+                // if (callee.object->type == Object::Type::Function) {
+                //     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                //     function->retain(); // retain the function to release later
+                //     // -1 for the function itself
+                //     // -1 for the return value slot
+                //     this->call_frames.push_back(
+                //         CallFrame(function, this->stack.size() - arg_count - 2));
+                // } else {
+                //     NativeFunctionObj *native_function =
+                //         static_cast<NativeFunctionObj *>(callee.object);
+
+                //     // Call the native function
+                //     Value result = native_function->function_ptr(
+                //         arg_count > 0
+                //             ? &this->stack[this->stack.size() - arg_count]
+                //             : nullptr,
+                //         arg_count);
+
+                //     // Pop the arguments and the function itself
+                //     // The native IS responsible for releasing any objects arguments
+                //     this->stack.resize(this->stack.size() - arg_count - 1);
+
+                //     // Push the result onto the stack
+                //     this->stack.back() = result;
+
+                //     // Release the native function object
+                //     native_function->release();
+                // }
+                break;
+            }
+
+
             case OpCode::Constant: {
                 const auto constant_index = GET_Ab_a(instruction);
                 const auto target_register = GET_Ab_b(instruction);
@@ -211,43 +273,6 @@ InterpretResult VM::run() {
             case OpCode::B2I: CAST_EXPR(boolean, fixed);
             case OpCode::F2B: CAST_EXPR(floating, boolean);
             case OpCode::B2F: CAST_EXPR(boolean, floating);
-
-            case OpCode::Call: {
-                TODO;
-                // const uint8_t arg_count = READ_BYTE();
-                // const Value callee = this->stack[this->stack.size() - 1 - arg_count];
-                // assert(callee.object);
-
-                // if (callee.object->type == Object::Type::Function) {
-                //     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
-                //     function->retain(); // retain the function to release later
-                //     // -1 for the function itself
-                //     // -1 for the return value slot
-                //     this->call_frames.push_back(
-                //         CallFrame(function, this->stack.size() - arg_count - 2));
-                // } else {
-                //     NativeFunctionObj *native_function =
-                //         static_cast<NativeFunctionObj *>(callee.object);
-
-                //     // Call the native function
-                //     Value result = native_function->function_ptr(
-                //         arg_count > 0
-                //             ? &this->stack[this->stack.size() - arg_count]
-                //             : nullptr,
-                //         arg_count);
-
-                //     // Pop the arguments and the function itself
-                //     // The native IS responsible for releasing any objects arguments
-                //     this->stack.resize(this->stack.size() - arg_count - 1);
-
-                //     // Push the result onto the stack
-                //     this->stack.back() = result;
-
-                //     // Release the native function object
-                //     native_function->release();
-                // }
-                break;
-            }
 
             case OpCode::I2Str: {
                 TODO;
