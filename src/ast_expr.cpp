@@ -156,25 +156,17 @@ FunctionNode::FunctionNode(const Token &token,
     : ASTNode(ASTNodeType::Function, token), arguments(std::move(arguments)),
       return_type(std::move(return_type)), body(std::move(body)) {}
 
-void FunctionNode::resolveType(CompileContext &ctx) { /*
+void FunctionNode::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
-    // Nefarious things here
-    CompileContext *fn_ctx =
-        new CompileContext(ctx.typeRegistry, ctx.nativeRegistry, &ctx);
-    fn_ctx->function = new FunctionObj();
-    this->fn_ctx.reset(fn_ctx);
+    // Create a new compile context for the function
+    this->fn_ctx = std::make_unique<CompileContext>(ctx);
+
+    // Start compiling the function
+    this->fn_ctx->function = new FunctionObj();
 
     // Name the function after its line number for now
     fn_ctx->function->name = "<fn@" + std::to_string(this->token.line) + ">";
-
-    // Add 2 locals:
-    //   1. return slot (at index 0). named "" to make it unaccessible
-    //   2. self slot (at index 1). named "self" to allow recursion
-    const EntryID return_entry =
-        fn_ctx->nameTable.addName("", ctx.typeRegistry.noneType(), 1).value();
-    const EntryID self_entry =
-        fn_ctx->nameTable.addName("self", ctx.typeRegistry.noneType(), 1).value();
 
     // Resolve argument types
     std::vector<TypeID> param_types;
@@ -193,10 +185,6 @@ void FunctionNode::resolveType(CompileContext &ctx) { /*
 
     this->fn_ctx->function->type_id = this->result_type.value();
 
-    // Update the locals to have the correct types
-    fn_ctx->nameTable.getEntry(return_entry).type = return_type_id;
-    fn_ctx->nameTable.getEntry(self_entry).type = this->result_type.value();
-
     // Check if the last statement in the body is a return statement
     assert(this->body->type == ASTNodeType::BlockStmt);
     auto body_block = static_cast<BlockStmt *>(this->body.get());
@@ -210,21 +198,25 @@ void FunctionNode::resolveType(CompileContext &ctx) { /*
         ));
     }
 
-    // Manually reduce the scope depth to account for the function scope
-    fn_ctx->scope_depth--;
-
     // Resolve type of the body
     this->body->resolveType(*fn_ctx);
-*/}
+}
 
-void FunctionNode::compile(CompileContext &ctx, int reg) {/*
+void FunctionNode::compile(CompileContext &ctx, int reg) {
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
-    this->body->compile(fn_ctx, int reg);
+    // Compile the args to push the locals
+    for (const auto &arg : this->arguments) {
+        arg->compile(fn_ctx); // args don't need registers
+    }
+
+    this->body->compile(fn_ctx); // the body doesn't need a register
 
 #ifdef DEBUG_PRINT
-    // Debug: print the compiled function bytecode
+    // Debug: print the compiled function bytecode and name table
+    fn_ctx.nameTable.printTable();
+
     fn_ctx.function->chunk.disassemble(
         "Function@" + std::to_string(this->token.line));
 #endif
@@ -232,9 +224,12 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {/*
     // Add the function object as a constant to the main chunk
     const auto constant =
         ctx.function->chunk.addObjectConstant(fn_ctx.function);
-    ctx.function->chunk.write(OpCode::Object, this->token.line);
-    ctx.function->chunk.write(static_cast<uint8_t>(constant));
-*/}
+
+    // Write the object load instruction
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+    ctx.function->chunk.write_Ab(
+        OpCode::Object, constant, this->result_register, this->token.line);
+}
 
 void FunctionNode::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
