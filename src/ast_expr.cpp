@@ -821,37 +821,42 @@ void TernaryExpr::resolveType(CompileContext &ctx) {
     this->result_type = this->then_branch->result_type;
 }
 
-void TernaryExpr::compile(CompileContext &ctx, int reg) {/*
+void TernaryExpr::compile(CompileContext &ctx, int reg) {
+    // Get a register for the result
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
     // Compile condition first
-    this->condition->compile(ctx, int reg);
+    this->condition->compile(ctx, this->result_register);
 
     // Jump if false to else branch
-    ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
-    const int16_t jmp_to_else_pos = ctx.function->chunk.writeWord(0xFFFF);
-
+    const int16_t jmp_to_else_pos =
+        ctx.function->chunk.write_sAb(
+            OpCode::JmpIfFalse, 0xFFFF, this->result_register,
+            this->token.line);
+    
     // Compile then branch
-    this->then_branch->compile(ctx, int reg);
+    this->then_branch->compile(ctx, this->result_register);
 
     // Jump to after else branch
-    ctx.function->chunk.write(OpCode::Jmp, this->token.line);
-    const int16_t jmp_after_else_pos = ctx.function->chunk.writeWord(0xFFFF);
+    const int16_t jump_after_else_pos =
+        ctx.function->chunk.write_sAb(
+            OpCode::Jmp, 0xFFFF, 0, this->token.line);
 
     // Patch jump to else branch
     const int16_t else_pos =
         static_cast<int16_t>(ctx.function->chunk.currentOffset());
-    const int16_t offset_to_else = else_pos - (jmp_to_else_pos + 2);
-    ctx.function->chunk.patchWord(jmp_to_else_pos, offset_to_else);
+    const int16_t offset_to_else = else_pos - jmp_to_else_pos - 1;
+    ctx.function->chunk.patch_sA(jmp_to_else_pos, offset_to_else);
 
     // Compile else branch
-    this->else_branch->compile(ctx, int reg);
+    this->else_branch->compile(ctx, this->result_register);
 
     // Patch jump to after else branch
     const int16_t after_else_pos =
         static_cast<int16_t>(ctx.function->chunk.currentOffset());
-    const int16_t offset_to_after_else =
-        after_else_pos - (jmp_after_else_pos + 2);
-    ctx.function->chunk.patchWord(jmp_after_else_pos, offset_to_after_else);
-*/}
+    const int16_t offset_after_else = after_else_pos - jump_after_else_pos - 1;
+    ctx.function->chunk.patch_sA(jump_after_else_pos, offset_after_else);
+}
 
 void TernaryExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
