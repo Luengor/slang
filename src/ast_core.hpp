@@ -27,6 +27,14 @@ enum class ASTNodeType {
     ReturnStmt,
 };
 
+struct ResultInfo {
+    TypeID type;
+    bool is_var = false;
+    int reg = -1;
+
+    int getModRegister(CompileContext &ctx);
+};
+
 // Base class for all AST nodes
 struct ASTNode {
     // The type of this AST node
@@ -35,10 +43,8 @@ struct ASTNode {
     // "A" token associated with this node (for error reporting)
     const Token token;
 
-    // The result type of this node or nullopt if not yet resolved
-    // (for anything non-returning, it will be 'none' type)
-    std::optional<TypeID> result_type = std::nullopt;
-    int result_register = -1;
+    // The result of this node
+    std::optional<ResultInfo> result = std::nullopt;
 
     ASTNode(ASTNodeType type, const Token &token);
     virtual ~ASTNode() = default;

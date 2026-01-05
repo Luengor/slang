@@ -1,11 +1,7 @@
 #include "ast_type.hpp"
 #include "error.hpp"
 #include <iostream>
-
-#define ResolveGuard \
-    if (this->result_type.has_value()) { \
-        return; \
-    }
+#include "ast_macros.hpp"
 
 PrimitiveTypeNode::PrimitiveTypeNode(const Token &token)
     : ASTNode(ASTNodeType::PrimitiveType, token) {}
@@ -37,7 +33,7 @@ void PrimitiveTypeNode::resolveType(CompileContext &ctx) {
                 "Invalid token for PrimitiveTypeNode.");
     }
 
-    this->result_type = ctx.typeRegistry.getPrimitive(kind);
+    type(this) = ctx.typeRegistry.getPrimitive(kind);
 }
 
 void PrimitiveTypeNode::compile(CompileContext &_, int reg) {
@@ -66,15 +62,15 @@ void FunctionTypeNode::resolveType(CompileContext &ctx) {
     std::vector<TypeID> param_type_ids;
     for (auto &param_type : this->param_types) {
         param_type->resolveType(ctx);
-        param_type_ids.push_back(param_type->result_type.value());
+        param_type_ids.push_back(type(param_type));
     }
 
     // Resolve return type
     this->return_type->resolveType(ctx);
-    TypeID return_type_id = this->return_type->result_type.value();
+    TypeID return_type_id = type(this->return_type);
 
     // Get the function type ID
-    this->result_type = ctx.typeRegistry.getFunction(
+    type(this) = ctx.typeRegistry.getFunction(
         param_type_ids, return_type_id);
 }
 

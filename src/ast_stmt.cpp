@@ -6,11 +6,7 @@
 #include <cassert>
 #include <iostream>
 #include <variant>
-
-#define ResolveGuard \
-    if (this->result_type.has_value()) { \
-        return; \
-    }
+#include "ast_macros.hpp"
 
 // ExprStmt Implementation
 ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
@@ -25,14 +21,14 @@ void ExprStmt::resolveType(CompileContext &ctx) {
         this->expression->resolveType(ctx);
 
     // Expression statements have no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 }
 
 void ExprStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
 
     // There is no result register for expression statements
-    this->expression->result_register = -1;
+    reg(this->expression) = -1;
 
     // If there is no expression, nothing to compile
     if (!this->expression) {
@@ -43,13 +39,13 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
     this->expression->compile(ctx);
 
     // Mark its register as free
-    if (this->expression->result_register != -1) {
-        ctx.freeRegister(this->expression->result_register);
+    if (reg(this->expression) != -1) {
+        ctx.freeRegister(reg(this->expression));
 
         // If it was an object type, release it
-        if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
+        if (ctx.typeRegistry.isObject(type(this->expression))) {
             ctx.function->chunk.write_Ab(OpCode::Release,
-                                         this->expression->result_register, 0,
+                                         reg(this->expression), 0,
                                          this->token.line);
         }
     }
@@ -99,7 +95,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     ctx.nameTable.exitScope();
 
     // Block statements have no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 }
 
 void BlockStmt::compile(CompileContext &ctx, int reg) {
@@ -181,17 +177,17 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                 "Auto variable declaration requires an initializer.");
         }
 
-        this->result_type = this->initializer->result_type;
+        type(this) = type(initializer);
     } else {
         // Otherwise, use the declared type
-        this->result_type = this->type_expr->result_type;
+        type(this) = type(type_expr);
 
         // If there is an initializer, ensure it matches the declared type
         if (this->initializer) {
             // Cast them if necessary
             auto cast_result = CastExpr::tryCast(
                 std::move(this->initializer),
-                this->result_type.value(),
+                type(this),
                 ctx);
             if (!cast_result.has_value()) {
                 throw ParserError(
@@ -199,7 +195,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                     "Incompatible types in variable initializer.");
             }
             this->initializer = std::move(cast_result.value());
-        } else if (ctx.typeRegistry.isObject(this->result_type.value())) {
+        } else if (ctx.typeRegistry.isObject(type(this))) {
             // Object types require an initializer
             throw ParserError(
                 this->token,
@@ -210,7 +206,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
     // Add a new local
     auto entry_id = ctx.nameTable.addName(
         this->token.lexeme, this->token.line,
-        this->result_type.value());
+        type(this));
     if (!entry_id.has_value()) {
         throw ParserError(
             this->token,
@@ -224,7 +220,7 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
 
     // This is a pure statement, no result register
-    this->result_register = -1;
+    reg(this) = -1;
 
     // Get the local entry
     auto &entry = ctx.nameTable.getEntry(this->entry_id);
@@ -242,7 +238,7 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
 void VarDeclStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "VarDeclStmt(" << this->token.lexeme << " : "
-              << this->result_type.value() << ")\n";
+              << type(this) << ")\n";
     if (this->initializer) {
         this->initializer->print(indent + 1);
     }
@@ -264,7 +260,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     // Ensure the value can be assigned to the target
     auto cast_result = CastExpr::tryCast(
         std::move(this->value),
-        this->target->result_type.value(),
+        type(this->target),
         ctx);
     if (!cast_result.has_value()) {
         throw ParserError(
@@ -274,7 +270,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->value = std::move(cast_result.value());
 
     // The result type of an assignment expression is the target's type
-    this->result_type = this->target->result_type;
+    type(this) = type(target);
 }
 
 void AssignExpr::compile(CompileContext &ctx, int reg) {
@@ -293,21 +289,21 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         ctx.nameTable.getEntry(local_entry).register_index;
 
     // Get a register for the result if needed
-    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
     // Compile the value into our register 
-    this->value->compile(ctx, this->result_register);
+    this->value->compile(ctx, reg(this));
 
     // If we are writting into an object, release the previous one first
     bool is_object =
-        ctx.typeRegistry.isObject(this->target->result_type.value());
+        ctx.typeRegistry.isObject(type(this->target));
 
     if (is_object)
         ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0,
                                      this->token.line);
 
     // Store the local variable
-    ctx.function->chunk.write_AB(OpCode::Copy, this->result_register,
+    ctx.function->chunk.write_AB(OpCode::Copy, reg(this),
                                  local_register);
 
     // Because of the copy, we have to retain
@@ -341,7 +337,7 @@ void IfStmt::resolveType(CompileContext &ctx) {
     }
 
     // For now, this has no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -362,7 +358,7 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
     this->condition->compile(ctx);
 
     // Inmediately free the condition register
-    const auto cond_reg = this->condition->result_register;
+    const auto cond_reg = reg(this->condition);
     ctx.freeRegister(cond_reg);
 
     // Insert jump if false, take note of the jump address and insert dummy
@@ -422,7 +418,7 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->body->resolveType(ctx);
 
     // While statements have no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -447,7 +443,7 @@ void WhileStmt::compile(CompileContext &ctx, int reg) {
 
     // Insert jump to end of loop if condition is false
     const auto jump_to_patch = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfFalse, 0xFFFF, this->condition->result_register,
+        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
         this->token.line);
 
     // Compile body
@@ -487,7 +483,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
             "Return statement outside function");
 
     // The return type of the statement is none
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // If there is expr, compile it
     if (this->return_expr) {
