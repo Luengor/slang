@@ -886,54 +886,52 @@ void LogicExpr::resolveType(CompileContext &ctx) {
     this->result_type = booleanType;
 }
 
-void LogicExpr::compile(CompileContext &ctx, int reg) {/*
+void LogicExpr::compile(CompileContext &ctx, int reg) {
+    // Get a register for the result
+    this->result_register = reg == -1 ? ctx.allocateRegister() : reg;
+
+    // Compile based on the operator
     if (this->token.type == Token::Type::And) {
         return compileAnd(ctx);
     } else if (this->token.type == Token::Type::Or) {
         return compileOr(ctx);
     }
-*/}
+}
 
-void LogicExpr::compileAnd(CompileContext &ctx) {/*
+void LogicExpr::compileAnd(CompileContext &ctx) {
     // Compile first operand
-    this->left->compile(ctx, int reg);
+    this->left->compile(ctx, this->result_register);
 
     // If that operand is false, we can skip the second operand
-    // note that this jump does NOT pop the value
-    ctx.function->chunk.write(OpCode::JmpIfFalse, this->token.line);
-    const int16_t jmp_pos = ctx.function->chunk.writeWord(0xFFFF);
+    const int16_t jmp_pos = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfFalse, 0xFFFF, this->result_register, this->token.line);
 
-    // If its not false, we need to pop the true value
-    ctx.function->chunk.write(OpCode::Pop, this->token.line);
-
-    // Compile second operand
-    this->right->compile(ctx, int reg);
+    // Compile second operand over it
+    this->right->compile(ctx, this->result_register);
 
     // Patch the jump position
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
-    const int16_t offset = after_pos - (jmp_pos + 2);
-    ctx.function->chunk.patchWord(jmp_pos, offset);
-*/}
+    const int16_t offset = after_pos - jmp_pos - 1;
+    ctx.function->chunk.patch_sA(jmp_pos, offset);
+}
 
-void LogicExpr::compileOr(CompileContext &ctx) {/*
+void LogicExpr::compileOr(CompileContext &ctx) {
     // Compile first operand
-    this->left->compile(ctx, int reg);
+    this->left->compile(ctx, this->result_register);
 
     // If its true, we can skip evaluating the second operand
-    ctx.function->chunk.write(OpCode::JmpIfTrue, this->token.line);
-    const int16_t jmp_pos = ctx.function->chunk.writeWord(0xFFFF);
-
-    // If its not true, we need to pop the false value
-    ctx.function->chunk.write(OpCode::Pop, this->token.line);
+    const int16_t jmp_pos = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfTrue, 0xFFFF, this->result_register, this->token.line);
 
     // Compile second operand
-    this->right->compile(ctx, int reg);
+    this->right->compile(ctx, this->result_register);
 
     // Patch the jump position
-    const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
-    const int16_t offset = after_pos - (jmp_pos + 2);
-    ctx.function->chunk.patchWord(jmp_pos, offset);
-*/}
+    const int16_t after_pos =
+        static_cast<int16_t>(ctx.function->chunk.currentOffset());
+    const int16_t offset = after_pos - jmp_pos - 1;
+    ctx.function->chunk.patch_sA(jmp_pos, offset);
+}
 
 void LogicExpr::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
