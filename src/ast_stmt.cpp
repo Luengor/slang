@@ -299,13 +299,20 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     this->value->compile(ctx, this->result_register);
 
     // If we are writting into an object, release the previous one first
-    ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0, this->token.line);
+    bool is_object =
+        ctx.typeRegistry.isObject(this->target->result_type.value());
+
+    if (is_object)
+        ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0,
+                                     this->token.line);
 
     // Store the local variable
-    ctx.function->chunk.write_AB(OpCode::Copy, this->result_register, local_register);
+    ctx.function->chunk.write_AB(OpCode::Copy, this->result_register,
+                                 local_register);
 
     // Because of the copy, we have to retain
-    ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
+    if (is_object)
+        ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
 }
 
 void AssignExpr::print(int indent) {
