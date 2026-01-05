@@ -275,26 +275,29 @@ InterpretResult VM::run() {
             case OpCode::B2F: CAST_EXPR(boolean, floating);
 
             case OpCode::I2Str: {
-                TODO;
-                // FixedType val = this->stack.back().fixed;
-                // auto strObj = new StringObj(std::to_string(val));
-                // this->stack.back().object = strObj;
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                FixedType val = registers[from_r].fixed;
+                auto strObj = new StringObj(std::to_string(val));
+                registers[to_r].object = strObj;
                 break;
             }
 
             case OpCode::F2Str: {
-                TODO;
-                // FloatingType val = this->stack.back().floating;
-                // auto strObj = new StringObj(std::to_string(val));
-                // this->stack.back().object = strObj;
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                FloatingType val = registers[from_r].floating;
+                auto strObj = new StringObj(std::to_string(val));
+                registers[to_r].object = strObj;
                 break;
             }
 
             case OpCode::B2Str: {
-                TODO;
-                // bool val = this->stack.back().boolean;
-                // auto strObj = new StringObj(val ? "true" : "false");
-                // this->stack.back().object = strObj;
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                bool val = registers[from_r].boolean;
+                auto strObj = new StringObj(val ? "true" : "false");
+                registers[to_r].object = strObj;
                 break;
             }
 
