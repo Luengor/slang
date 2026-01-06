@@ -7,9 +7,12 @@
 #include <memory>
 #include <print>
 
-CallFrame::CallFrame(FunctionObj *function, size_t stack_base) {
+#define TODO \
+    throw std::runtime_error("TODO at " + std::string(__FILE__) + ":" + std::to_string(__LINE__))
+
+CallFrame::CallFrame(FunctionObj *function, uint32_t return_ip, size_t stack_base) {
     this->function = function;
-    this->ip = function->chunk.code.data();
+    this->return_ip = return_ip;
     this->stack_base = stack_base;
 }
 
@@ -27,301 +30,298 @@ InterpretResult VM::interpret(const std::string &source) {
 
     // Create the first call frame
     this->call_frames.push_back(
-        CallFrame(function.get(), 0));
+        CallFrame(function.get(), 0, 0));
 
     // Run the code 
+    this->ip = 0;
     return this->run();
 }
 
 InterpretResult VM::run() {
-#define ever ;;
 #define frame this->call_frames.back()
-#define frame_stack (this->stack.data() + frame.stack_base)
-#define READ_BYTE() (*frame.ip++)
-#define READ_UWORD()                                                           \
-    (frame.ip += 2, static_cast<uint16_t>((frame.ip[-2] << 8) | frame.ip[-1]))
-#define READ_WORD()                                                            \
-    (frame.ip += 2, static_cast<int16_t>((frame.ip[-2] << 8) | frame.ip[-1]))
-#define READ_INS() (static_cast<OpCode>(READ_BYTE()))
-#define READ_CONSTANT() (frame.function->chunk.constants[READ_BYTE()])
-#define READ_OBJECT() (frame.function->chunk.object_constants[READ_BYTE()])
+#define registers (this->registers.data() + frame.stack_base)
 
-#define BINARY_OP(op, mode)            \
-    {                            \
-        const auto b = this->stack.back(); \
-        this->stack.pop_back();  \
-        this->stack.back().mode = this->stack.back().mode op b.mode; \
-        break;                   \
-    }
+#define BINARY_EXPR_2(op, from_field, to_field) { \
+    const auto left_r = GET_abc_a(instruction); \
+    const auto right_r = GET_abc_b(instruction); \
+    const auto target_r = GET_abc_c(instruction); \
+    registers[target_r].to_field = \
+        registers[left_r].from_field op registers[right_r].from_field; \
+    break; \
+}
 
-#define CAST(from, to, real_type) \
-    {                             \
-        this->stack.back().to = static_cast<real_type>(this->stack.back().from); \
-        break;                    \
-    }
+#define BINARY_EXPR(op, type_field) BINARY_EXPR_2(op, type_field, type_field)
+
+#define CAST_EXPR(from_field, to_field) { \
+    const auto from_r = GET_AB_a(instruction); \
+    const auto to_r = GET_AB_b(instruction); \
+    registers[to_r].to_field = static_cast<decltype(registers[to_r].to_field)>( \
+        registers[from_r].from_field); \
+    break; \
+}
 
 #ifdef DEBUG_PRINT
     std::print("\n=== VM Execution Start ===\n");
 #endif
 
-    for (ever) {
+    for (;;) {
 #ifdef DEBUG_PRINT
         // // Print current stack size
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base, this->stack.size());
         // Print the current instruction
-        frame.function->chunk.disassebleInstruction(static_cast<int>(frame.ip - frame.function->chunk.code.data()));
+        frame.function->chunk.disassembleInstruction(this->ip);
 #endif
 
-        const OpCode instruction = READ_INS();
-        switch (instruction) {
+        const uint32_t instruction = frame.function->chunk.code[this->ip++];
+        const OpCode op = GET_op(instruction);
+        switch (op) {
             case OpCode::Return: {
                 if (this->call_frames.size() == 1) {
-                    assert(this->stack.size() == 0 && "Stack should be empty on return");
                     return InterpretResult::Ok;
                 } else {
-                    // The function should have cleaned up its own stack
-                    // The stack should be: [... previous stack ...][return value][function]
-                    // We release the function object
-                    this->stack.back().object->release();
-                    this->stack.pop_back();
+                    // Get the return value
+                    const auto return_r = GET_Ab_a(instruction);
+                    const Value return_value = registers[return_r];
 
-                    // Release the function we are returning from
+                    // Put the return value at 0 
+                    registers[0] = return_value;
+
+                    // Get the return address
+                    const uint32_t return_ip = this->call_frames.back().return_ip;
+                    
+                    // Release the function object
                     this->call_frames.back().function->release();
 
                     // Pop the call frame
                     this->call_frames.pop_back();
+
+                    // Restore the instruction pointer
+                    this->ip = return_ip;
 
                     break;
                 }
             }
 
             case OpCode::Call: {
-                const uint8_t arg_count = READ_BYTE();
-                const Value callee = this->stack[this->stack.size() - 1 - arg_count];
+                const auto callee_r = GET_AB_a(instruction);
+                const auto arg_count = GET_AB_b(instruction);
+                const Value callee = registers[callee_r];
                 assert(callee.object);
-
+                
                 if (callee.object->type == Object::Type::Function) {
-                    FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                    FunctionObj *function =
+                        static_cast<FunctionObj *>(callee.object);
+
                     function->retain(); // retain the function to release later
-                    // -1 for the function itself
-                    // -1 for the return value slot
+
+                    // Put the frame starting in the callee register
                     this->call_frames.push_back(
-                        CallFrame(function, this->stack.size() - arg_count - 2));
+                        CallFrame(function, this->ip,
+                                  frame.stack_base + callee_r));
+
+                    // Set the instruction pointer to the function's start
+                    this->ip = 0;
                 } else {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);
 
-                    // Call the native function
+                    // Call the native
                     Value result = native_function->function_ptr(
                         arg_count > 0
-                            ? &this->stack[this->stack.size() - arg_count]
+                            ? &registers[callee_r + 1]
                             : nullptr,
                         arg_count);
 
-                    // Pop the arguments and the function itself
-                    // The native IS responsible for releasing any objects arguments
-                    this->stack.resize(this->stack.size() - arg_count - 1);
-
-                    // Push the result onto the stack
-                    this->stack.back() = result;
+                    // Push the result onto the callee register 
+                    registers[callee_r] = result;
 
                     // Release the native function object
                     native_function->release();
                 }
+
+                // const uint8_t arg_count = READ_BYTE();
+                // const Value callee = this->stack[this->stack.size() - 1 - arg_count];
+                // assert(callee.object);
+
+                // if (callee.object->type == Object::Type::Function) {
+                //     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
+                //     function->retain(); // retain the function to release later
+                //     // -1 for the function itself
+                //     // -1 for the return value slot
+                //     this->call_frames.push_back(
+                //         CallFrame(function, this->stack.size() - arg_count - 2));
+                // } else {
+                //     NativeFunctionObj *native_function =
+                //         static_cast<NativeFunctionObj *>(callee.object);
+
+                //     // Call the native function
+                //     Value result = native_function->function_ptr(
+                //         arg_count > 0
+                //             ? &this->stack[this->stack.size() - arg_count]
+                //             : nullptr,
+                //         arg_count);
+
+                //     // Pop the arguments and the function itself
+                //     // The native IS responsible for releasing any objects arguments
+                //     this->stack.resize(this->stack.size() - arg_count - 1);
+
+                //     // Push the result onto the stack
+                //     this->stack.back() = result;
+
+                //     // Release the native function object
+                //     native_function->release();
+                // }
                 break;
             }
 
+
             case OpCode::Constant: {
-                const auto constant = READ_CONSTANT();
-                this->stack.push_back(constant);
+                const auto constant_index = GET_Ab_a(instruction);
+                const auto target_register = GET_Ab_b(instruction);
+                registers[target_register] =
+                    frame.function->chunk.constants[constant_index];
                 break;
             }
 
             case OpCode::Object: {
-                Object *object = READ_OBJECT();
-                object->retain();
-                this->stack.push_back({.object = object});
-                break;
-            }
-
-            case OpCode::NegateF: {
-                this->stack.back().floating = -this->stack.back().floating;
-                break;
-            }
-
-            case OpCode::NegateI: {
-                this->stack.back().fixed = -this->stack.back().fixed;
-                break;
-            }
-
-            case OpCode::AddF: BINARY_OP(+, floating)
-            case OpCode::AddI: BINARY_OP(+, fixed)
-            case OpCode::SubtractF: BINARY_OP(-, floating)
-            case OpCode::SubtractI: BINARY_OP(-, fixed)
-            case OpCode::MultiplyF: BINARY_OP(*, floating)
-            case OpCode::MultiplyI: BINARY_OP(*, fixed)
-            case OpCode::DivideF: BINARY_OP(/, floating)
-            case OpCode::DivideI: BINARY_OP(/, fixed)
-
-            case OpCode::Not: {
-                this->stack.back().boolean = !this->stack.back().boolean;
-                break;
-            }
-
-            case OpCode::I2F: CAST(fixed, floating, FloatingType);
-            case OpCode::F2I: CAST(floating, fixed, FixedType);
-            case OpCode::I2B: CAST(fixed, boolean, bool);
-            case OpCode::B2I: CAST(boolean, fixed, FixedType);
-            case OpCode::F2B: CAST(floating, boolean, bool);
-            case OpCode::B2F: CAST(boolean, floating, FloatingType);
-
-            case OpCode::I2Str: {
-                FixedType val = this->stack.back().fixed;
-                auto strObj = new StringObj(std::to_string(val));
-                this->stack.back().object = strObj;
-                break;
-            }
-
-            case OpCode::F2Str: {
-                FloatingType val = this->stack.back().floating;
-                auto strObj = new StringObj(std::to_string(val));
-                this->stack.back().object = strObj;
-                break;
-            }
-
-            case OpCode::B2Str: {
-                bool val = this->stack.back().boolean;
-                auto strObj = new StringObj(val ? "true" : "false");
-                this->stack.back().object = strObj;
-                break;
-            }
-
-            case OpCode::EqI: BINARY_OP(==, fixed);
-            case OpCode::NeI: BINARY_OP(!=, fixed);
-            case OpCode::EqF: BINARY_OP(==, floating);
-            case OpCode::NeF: BINARY_OP(!=, floating);
-            case OpCode::EqB: BINARY_OP(==, boolean);
-            case OpCode::NeB: BINARY_OP(!=, boolean);
-
-            case OpCode::GtI: BINARY_OP(>, fixed);
-            case OpCode::LtI: BINARY_OP(<, fixed);
-            case OpCode::GeI: BINARY_OP(>=, fixed);
-            case OpCode::LeI: BINARY_OP(<=, fixed);
-            case OpCode::GtF: BINARY_OP(>, floating);
-            case OpCode::LtF: BINARY_OP(<, floating);
-            case OpCode::GeF: BINARY_OP(>=, floating);
-            case OpCode::LeF: BINARY_OP(<=, floating);
-
-            case OpCode::True: {
-                Value val;
-                val.boolean = true;
-                this->stack.push_back(val);
-                break;
-            }
-
-            case OpCode::False: {
-                Value val;
-                val.boolean = false;
-                this->stack.push_back(val);
-                break;
-            }
-
-            case OpCode::Pop: {
-                this->stack.pop_back();
-                break;
-            }
-
-            case OpCode::GetLocal: {
-                const uint16_t slot = READ_UWORD();
-                this->stack.push_back(frame_stack[slot]);
-                break;
-            }
-
-            case OpCode::SetLocal: {
-                const uint16_t slot = READ_UWORD();
-                frame_stack[slot] = this->stack.back();
-                break;
-            }
-
-            case OpCode::GetLocalObject: {
-                const uint16_t slot = READ_UWORD();
-                this->stack.push_back(frame_stack[slot]);
-                // This adds a new reference to the object
-                this->stack.back().object->retain();
-                break;
-            }
-
-            case OpCode::SetLocalObject: {
-                const uint16_t slot = READ_UWORD();
-                // This removes the previous reference
-                if (frame_stack[slot].object)
-                    frame_stack[slot].object->release();
-                // And also adds a new reference
-                this->stack.back().object->retain();
-                frame_stack[slot] = this->stack.back();
-                break;
-            }
-
-            case OpCode::Move: {
-                const uint8_t slot = READ_UWORD();
-                frame_stack[slot] = this->stack.back();
-                this->stack.pop_back();
-                break;
-            }
-
-            case OpCode::Jmp: {
-                const int16_t offset = READ_WORD();
-                frame.ip += offset;
-                break;
-            }
-
-            case OpCode::JmpIfFalse: {
-                const int16_t offset = READ_WORD();
-                if (!this->stack.back().boolean) {
-                    frame.ip += offset;
-                }
-                // no pop!
-                break;
-            }
-
-            case OpCode::JmpIfTrue: {
-                const int16_t offset = READ_WORD();
-                if (this->stack.back().boolean) {
-                    frame.ip += offset;
-                }
-                // no pop!
-                break;
-            }
-
-            case OpCode::JmpIfFalsePop: {
-                const int16_t offset = READ_WORD();
-                if (!this->stack.back().boolean) {
-                    frame.ip += offset;
-                }
-                this->stack.pop_back(); // pop!
+                const auto object_index = GET_Ab_a(instruction);
+                const auto target_register = GET_Ab_b(instruction);
+                Object *object =
+                    frame.function->chunk.object_constants[object_index];
+                object->retain(); // A new reference for the register
+                registers[target_register].object = object;
                 break;
             }
 
             case OpCode::Retain: {
-                this->stack.back().object->retain();
+                const auto reg = GET_Ab_a(instruction);
+                registers[reg].object->retain();
                 break;
             }
 
             case OpCode::Release: {
-                this->stack.back().object->release();
-                this->stack.pop_back();
+                const auto reg = GET_Ab_a(instruction);
+                registers[reg].object->release();
                 break;
             }
+
+            case OpCode::Not: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].boolean = !registers[from_r].boolean;
+                break;
+            }
+
+            case OpCode::NegateI: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].fixed = -registers[from_r].fixed;
+                break;
+            }
+
+            case OpCode::NegateF: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r].floating = -registers[from_r].floating;
+                break;
+            }
+
+            case OpCode::AddI: BINARY_EXPR(+, fixed);
+            case OpCode::SubtractI: BINARY_EXPR(-, fixed);
+            case OpCode::MultiplyI: BINARY_EXPR(*, fixed);
+            case OpCode::DivideI: BINARY_EXPR(/, fixed);
+
+            case OpCode::AddF: BINARY_EXPR(+, floating);
+            case OpCode::SubtractF: BINARY_EXPR(-, floating);
+            case OpCode::MultiplyF: BINARY_EXPR(*, floating);
+            case OpCode::DivideF: BINARY_EXPR(/, floating);
+
+            case OpCode::EqI: BINARY_EXPR_2(==, fixed, boolean);
+            case OpCode::NeI: BINARY_EXPR_2(!=, fixed, boolean);
+            case OpCode::GtI: BINARY_EXPR_2(>, fixed, boolean);
+            case OpCode::GeI: BINARY_EXPR_2(>=, fixed, boolean);
+            case OpCode::LtI: BINARY_EXPR_2(<, fixed, boolean);
+            case OpCode::LeI: BINARY_EXPR_2(<=, fixed, boolean);
+
+            case OpCode::EqF: BINARY_EXPR_2(==, floating, boolean);
+            case OpCode::NeF: BINARY_EXPR_2(!=, floating, boolean);
+            case OpCode::GtF: BINARY_EXPR_2(>, floating, boolean);
+            case OpCode::GeF: BINARY_EXPR_2(>=, floating, boolean);
+            case OpCode::LtF: BINARY_EXPR_2(<, floating, boolean);
+            case OpCode::LeF: BINARY_EXPR_2(<=, floating, boolean);
+
+            case OpCode::EqB: BINARY_EXPR_2(==, boolean, boolean);
+            case OpCode::NeB: BINARY_EXPR_2(!=, boolean, boolean);
+
+            case OpCode::Copy: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                registers[to_r] = registers[from_r];
+                break;
+            }
+
+            case OpCode::Jmp: {
+                const auto offset = GET_sAb_a(instruction);
+                this->ip += offset;
+                break;
+            }
+
+            case OpCode::JmpIfFalse: {
+                const auto reg = GET_sAb_b(instruction);
+                if (!registers[reg].boolean) {
+                    const auto offset = GET_sAb_a(instruction);
+                    this->ip += offset;
+                }
+                break;
+            }
+
+            case OpCode::JmpIfTrue: {
+                const auto reg = GET_sAb_b(instruction);
+                if (registers[reg].boolean) {
+                    const auto offset = GET_sAb_a(instruction);
+                    this->ip += offset;
+                }
+                break;
+            }
+
+            case OpCode::I2F: CAST_EXPR(fixed, floating);
+            case OpCode::F2I: CAST_EXPR(floating, fixed);
+            case OpCode::I2B: CAST_EXPR(fixed, boolean);
+            case OpCode::B2I: CAST_EXPR(boolean, fixed);
+            case OpCode::F2B: CAST_EXPR(floating, boolean);
+            case OpCode::B2F: CAST_EXPR(boolean, floating);
+
+            case OpCode::I2Str: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                FixedType val = registers[from_r].fixed;
+                auto strObj = new StringObj(std::to_string(val));
+                registers[to_r].object = strObj;
+                break;
+            }
+
+            case OpCode::F2Str: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                FloatingType val = registers[from_r].floating;
+                auto strObj = new StringObj(std::to_string(val));
+                registers[to_r].object = strObj;
+                break;
+            }
+
+            case OpCode::B2Str: {
+                const auto from_r = GET_AB_a(instruction);
+                const auto to_r = GET_AB_b(instruction);
+                bool val = registers[from_r].boolean;
+                auto strObj = new StringObj(val ? "true" : "false");
+                registers[to_r].object = strObj;
+                break;
+            }
+
         }
 
     }
 
     return InterpretResult::Ok;
-
-#undef ever
-#undef READ_WORD 
-#undef READ_BYTE
-#undef READ_INS
-#undef READ_CONSTANT
 }
 

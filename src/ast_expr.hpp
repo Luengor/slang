@@ -13,7 +13,7 @@ struct LiteralNode : public ASTNode {
 
     LiteralNode(const Token &token);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 
   private:
@@ -25,21 +25,24 @@ struct FunctionNode : public ASTNode {
     ASTNodePtr return_type;
     ASTNodePtr body;
     std::unique_ptr<CompileContext> fn_ctx;
+    EntryID self_entry_id;
 
     FunctionNode(const Token &token, std::vector<ASTNodePtr> arguments,
                  ASTNodePtr return_type, ASTNodePtr body);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 
+struct NativeFunctionObj;
+
 struct VariableNode : public ASTNode {
     std::string name;
-    NameResolution resolution;
+    std::variant<EntryID, NativeFunctionObj *> resolution;
 
     VariableNode(const Token &token, const std::string &name);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 
@@ -48,7 +51,7 @@ struct UnaryExpr : public ASTNode {
 
     UnaryExpr(const Token &token, ASTNodePtr operand);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 
@@ -66,7 +69,7 @@ struct CastExpr : public ASTNode {
 
     CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 
@@ -75,7 +78,7 @@ struct BinaryExpr : public ASTNode {
 
     BinaryExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 
   private:
@@ -90,7 +93,7 @@ struct TernaryExpr : public ASTNode {
     TernaryExpr(const Token &token, ASTNodePtr condition,
                 ASTNodePtr then_branch, ASTNodePtr else_branch);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 
@@ -99,7 +102,7 @@ struct LogicExpr : public ASTNode {
 
     LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 
 private:
@@ -113,9 +116,8 @@ struct CallExpr : public ASTNode {
 
     CallExpr(const Token &token, ASTNodePtr callee,
              std::vector<ASTNodePtr> arguments);
-
     void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx) override;
+    void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;
 };
 

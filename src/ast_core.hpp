@@ -27,6 +27,12 @@ enum class ASTNodeType {
     ReturnStmt,
 };
 
+struct ResultInfo {
+    TypeID type;
+    bool is_var = false;
+    int reg = -1;
+};
+
 // Base class for all AST nodes
 struct ASTNode {
     // The type of this AST node
@@ -35,9 +41,8 @@ struct ASTNode {
     // "A" token associated with this node (for error reporting)
     const Token token;
 
-    // The result type of this node or nullopt if not yet resolved
-    // (for anything non-returning, it will be 'none' type)
-    std::optional<TypeID> result_type = std::nullopt;
+    // The result of this node
+    std::optional<ResultInfo> result = std::nullopt;
 
     ASTNode(ASTNodeType type, const Token &token);
     virtual ~ASTNode() = default;
@@ -47,7 +52,7 @@ struct ASTNode {
     virtual void resolveType(CompileContext &ctx) = 0;
 
     // Compile this AST node into the given compile context
-    virtual void compile(CompileContext &ctx) = 0;
+    virtual void compile(CompileContext &ctx, int reg = -1) = 0;
 
     // Print the AST node for debugging
     virtual void print(int indent = 0) = 0;

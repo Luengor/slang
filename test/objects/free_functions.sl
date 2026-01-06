@@ -14,27 +14,12 @@ f = () -> none {};
 
 f();
 
-# function in a function 
-() -> none {
-    () -> none {};
-};
+# the same in a block
+{
+    auto f = () -> none {};
 
-# call function containing another function
-() -> none {
-    () -> none {};
-}();
+    f = () -> none {};
 
-# function in a function assigned to a variable
-auto g = () -> none {
-    () -> none {};
-};
-
-g();
-
-# overwrite function variable with another function containing a function
-g = () -> none {
-    () -> none {};
-};
-
-g();
+    f();
+}
 

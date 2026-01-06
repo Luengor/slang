@@ -1,15 +1,12 @@
 #include "ast_stmt.hpp"
 #include "ast_expr.hpp"
+#include "native.hpp"
 #include "error.hpp"
 #include "object.hpp"
 #include <cassert>
 #include <iostream>
 #include <variant>
-
-#define ResolveGuard \
-    if (this->result_type.has_value()) { \
-        return; \
-    }
+#include "ast_macros.hpp"
 
 // ExprStmt Implementation
 ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
@@ -24,10 +21,15 @@ void ExprStmt::resolveType(CompileContext &ctx) {
         this->expression->resolveType(ctx);
 
     // Expression statements have no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 }
 
-void ExprStmt::compile(CompileContext &ctx) {
+void ExprStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
+    // There is no result register for expression statements
+    reg(this->expression) = -1;
+
     // If there is no expression, nothing to compile
     if (!this->expression) {
         return;
@@ -36,11 +38,16 @@ void ExprStmt::compile(CompileContext &ctx) {
     // Compile the expression
     this->expression->compile(ctx);
 
-    // Pop the result off the stack since it's not used
-    if (ctx.typeRegistry.isObject(this->expression->result_type.value())) {
-        ctx.function->chunk.write(OpCode::Release, this->token.line);
-    } else {
-        ctx.function->chunk.write(OpCode::Pop, this->token.line);
+    // Free it if needed
+    if (should_free(this->expression)) {
+        ctx.freeRegister(reg(this->expression));
+
+        // If it was an object type, release it
+        if (ctx.typeRegistry.isObject(type(this->expression))) {
+            ctx.function->chunk.write_Ab(OpCode::Release,
+                                         reg(this->expression), 0,
+                                         this->token.line);
+        }
     }
 }
 
@@ -66,7 +73,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
     // Enter a new scope
-    ctx.enterScope();
+    ctx.nameTable.enterScope();
 
     // Resolve types for all statements
     bool plain_return = false;
@@ -85,35 +92,45 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     }
 
     // Exit the scope
-    this->pop = ctx.exitScope();
+    ctx.nameTable.exitScope();
 
-    // For now, block statements have no result type
-    // Maybe in the future we can have the last statement's type?
-    this->result_type = ctx.typeRegistry.noneType();
+    // Block statements have no result type
+    type(this) = ctx.typeRegistry.noneType();
 }
 
-void BlockStmt::compile(CompileContext &ctx) {
+void BlockStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+
+    // Enter a new scope
+    ctx.nameTable.enterScope();
+
     // Compile all statements in the block
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
     }
 
-    // Pop local variables declared in this block
-    // We can skip this if there is a return statement at the end
-    if (!this->statements.empty() &&
-        this->statements.back()->type == ASTNodeType::ReturnStmt) {
-        return;
-    }
+    // Get all local variables declared in this block
+    auto names_in_scope = ctx.nameTable.getNamesInScope(
+            ctx.nameTable.getCurrentDepth());
 
-    unsigned j = 0;
-    for (int i = 0; i < this->pop.total; i++) {
-        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
-            ctx.function->chunk.write(OpCode::Release);
-            j++;
-        } else {
-            ctx.function->chunk.write(OpCode::Pop);
+    // Pop local variables declared in this block
+    for (auto entryID : names_in_scope) {
+        const auto &entry = ctx.nameTable.getEntry(entryID);
+        if (entry.register_index != -1) {
+            // Free the register
+            ctx.freeRegister(entry.register_index);
+
+            // If its an object type, release it
+            if (ctx.typeRegistry.isObject(entry.type)) {
+                ctx.function->chunk.write_Ab(
+                    OpCode::Release, entry.register_index,
+                    0, this->token.line);
+            }
         }
-    }
+    };
+
+    // Exit the scope
+    ctx.nameTable.exitScope();
 }
 
 void BlockStmt::print(int indent) {
@@ -133,10 +150,10 @@ VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
 
-    // Resolve the name first to ensure it isn't a native function
-    auto nameResolution = ctx.resolveName(this->token.lexeme);
-    if (nameResolution.has_value() &&
-        std::holds_alternative<NativeFunctionObj *>(nameResolution.value())) {
+    // Check if its a native function
+    auto nativeFn = ctx.nativeRegistry.getNativeFunction(
+        this->token.lexeme);
+    if (nativeFn != nullptr) {
         throw ParserError(
             this->token,
             "Variable name conflicts with a native function name.");
@@ -160,17 +177,17 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                 "Auto variable declaration requires an initializer.");
         }
 
-        this->result_type = this->initializer->result_type;
+        type(this) = type(initializer);
     } else {
         // Otherwise, use the declared type
-        this->result_type = this->type_expr->result_type;
+        type(this) = type(type_expr);
 
         // If there is an initializer, ensure it matches the declared type
         if (this->initializer) {
             // Cast them if necessary
             auto cast_result = CastExpr::tryCast(
                 std::move(this->initializer),
-                this->result_type.value(),
+                type(this),
                 ctx);
             if (!cast_result.has_value()) {
                 throw ParserError(
@@ -178,7 +195,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                     "Incompatible types in variable initializer.");
             }
             this->initializer = std::move(cast_result.value());
-        } else if (ctx.typeRegistry.isObject(this->result_type.value())) {
+        } else if (ctx.typeRegistry.isObject(type(this))) {
             // Object types require an initializer
             throw ParserError(
                 this->token,
@@ -186,35 +203,42 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
         }
     }
 
-    // Push the variable to the locals
-    int local = ctx.addLocal(this->token.lexeme, this->result_type.value());
-    if (local == -1) {
+    // Add a new local
+    auto entry_id = ctx.nameTable.addName(
+        this->token.lexeme, this->token.line,
+        type(this));
+    if (!entry_id.has_value()) {
         throw ParserError(
             this->token,
             "Variable with the same name already declared in this scope.");
     }
+
+    this->entry_id = entry_id.value();
 }
 
-void VarDeclStmt::compile(CompileContext &ctx) {
-    // Compile the initializer if present
-    if (this->initializer) {
-        this->initializer->compile(ctx);
-    } else {
-        // Default initializer
-        // for now, push false and good luck if it's not a boolean :)
-        Value defaultValue {.boolean = false};
-        const auto constant = ctx.function->chunk.addConstant(defaultValue);
-        ctx.function->chunk.write(OpCode::Constant, this->token.line);
-        ctx.function->chunk.write(static_cast<uint8_t>(constant));
-    }
+void VarDeclStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
 
-    // Nothing more to do, we pray now
+    // This is a pure statement, no result register
+    reg(this) = -1;
+
+    // Get the local entry
+    auto &entry = ctx.nameTable.getEntry(this->entry_id);
+
+    // Allocate a register for it and put it in current scope
+    assert(entry.register_index == -1);
+    entry.register_index = ctx.allocateRegister();
+    ctx.nameTable.putInScope(this->entry_id);
+
+    // Compile the initializer if present
+    if (this->initializer)
+        this->initializer->compile(ctx, entry.register_index);
 }
 
 void VarDeclStmt::print(int indent) {
     for (int i = 0; i < indent; i++) std::cout << "  ";
     std::cout << "VarDeclStmt(" << this->token.lexeme << " : "
-              << this->result_type.value() << ")\n";
+              << type(this) << ")\n";
     if (this->initializer) {
         this->initializer->print(indent + 1);
     }
@@ -236,7 +260,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     // Ensure the value can be assigned to the target
     auto cast_result = CastExpr::tryCast(
         std::move(this->value),
-        this->target->result_type.value(),
+        type(this->target),
         ctx);
     if (!cast_result.has_value()) {
         throw ParserError(
@@ -246,35 +270,55 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->value = std::move(cast_result.value());
 
     // The result type of an assignment expression is the target's type
-    this->result_type = this->target->result_type;
+    type(this) = type(target);
 }
 
-void AssignExpr::compile(CompileContext &ctx) {
-    // Compile the value
-    this->value->compile(ctx);
-
-    // The variable is only compiled on read, so we don't do it now
-    // We get the local index from the target variable node
+void AssignExpr::compile(CompileContext &ctx, int reg) {
+    // Get the variable node from the target
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
 
     // Ensure it's a valid assignment target
-    if (varNode == nullptr ||
-        !std::holds_alternative<int>(varNode->resolution.value())) {
+    if (!std::holds_alternative<EntryID>(varNode->resolution)) {
         throw ParserError(this->token,
                           "Invalid assignment target during compilation.");
     }
 
-    const int local_index =
-        std::get<int>(varNode->resolution.value());
+    // Get its register
+    const auto local_entry = std::get<EntryID>(varNode->resolution);
+    const int local_register =
+        ctx.nameTable.getEntry(local_entry).register_index;
 
-    // Store the local variable
-    if (ctx.typeRegistry.isObject(this->target->result_type.value())) {
-        ctx.function->chunk.write(OpCode::SetLocalObject, this->token.line);
+    // If a register was provided, use that
+    // Otherwise, use the local variable's register
+    if (reg != -1) {
+        reg(this) = reg;
+        is_var(this) = false;
     } else {
-        ctx.function->chunk.write(OpCode::SetLocal, this->token.line);
+        reg(this) = local_register;
+        is_var(this) = true;
     }
 
-    ctx.function->chunk.writeWord(static_cast<uint16_t>(local_index));
+    // If we are writting into an object, release the previous one first
+    bool is_object =
+        ctx.typeRegistry.isObject(type(this->target));
+
+    if (is_object)
+        ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0,
+                                     this->token.line);
+
+    // Compile the value into the local variable's register
+    this->value->compile(ctx, local_register);
+
+    // If we are using a different register, copy the value
+    if (reg(this) != local_register) {
+        // Store the local variable
+        ctx.function->chunk.write_AB(OpCode::Copy, local_register,
+                                     reg(this), this->token.line);
+
+        // Because of the copy, we have to retain
+        if (is_object)
+            ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
+    }
 }
 
 void AssignExpr::print(int indent) {
@@ -303,7 +347,7 @@ void IfStmt::resolveType(CompileContext &ctx) {
     }
 
     // For now, this has no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -317,31 +361,34 @@ void IfStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void IfStmt::compile(CompileContext &ctx) {
+void IfStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+    reg(this) = -1;
+
     // Compile the condition first
     this->condition->compile(ctx);
 
     // Insert jump if false, take note of the jump address and insert dummy
-    ctx.function->chunk.write(OpCode::JmpIfFalsePop, this->token.line);
-    const auto if_jump =
-        ctx.function->chunk.writeWord(0xFFFF); // Placeholder
+    const auto if_jump = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition), this->token.line);
+
+    // Free condition register if needed
+    if (should_free(this->condition))
+        ctx.freeRegister(reg(this->condition));
 
     // Compile then branch
     this->then_branch->compile(ctx);
     
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
-    if (this->else_branch) {
-        ctx.function->chunk.write(OpCode::Jmp);
-        else_jump =
-            ctx.function->chunk.writeWord(0xFFFF); // Placeholder
-    }
+    if (this->else_branch)
+        else_jump = ctx.function->chunk.write_sAb(OpCode::Jmp, 0xFFFF, 0);
 
     // Patch first jump
     const unsigned after_then_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_then =
-        static_cast<int16_t>(after_then_addr - (if_jump + 2));
-    ctx.function->chunk.patchWord(if_jump, offset_to_after_then);
+        static_cast<int16_t>(after_then_addr - if_jump - 1);
+    ctx.function->chunk.patch_sA(if_jump, offset_to_after_then);
 
     // If there is no else branch, we're done
     if (!this->else_branch)
@@ -353,8 +400,8 @@ void IfStmt::compile(CompileContext &ctx) {
     // Patch else jump
     const unsigned after_else_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_else =
-        static_cast<int16_t>(after_else_addr - (else_jump + 2));
-    ctx.function->chunk.patchWord(else_jump, offset_to_after_else);
+        static_cast<int16_t>(after_else_addr - else_jump - 1);
+    ctx.function->chunk.patch_sA(else_jump, offset_to_after_else);
 }
 
 void IfStmt::print(int indent) {
@@ -381,7 +428,7 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->body->resolveType(ctx);
 
     // While statements have no result type
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
     const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
@@ -395,7 +442,10 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     this->condition = std::move(cast_result.value());
 }
 
-void WhileStmt::compile(CompileContext &ctx) {
+void WhileStmt::compile(CompileContext &ctx, int reg) {
+    assert(reg == -1);
+    reg(this) = -1;
+
     // Mark the beggining of the condition
     const auto before_condition = ctx.function->chunk.currentOffset();
 
@@ -403,24 +453,28 @@ void WhileStmt::compile(CompileContext &ctx) {
     this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    ctx.function->chunk.write(OpCode::JmpIfFalsePop);
-    const auto jump_to_patch = ctx.function->chunk.writeWord(0xFFFF);
+    const auto jump_to_patch = ctx.function->chunk.write_sAb(
+        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
+        this->token.line);
+
+    // Free condition register if needed
+    if (should_free(this->condition))
+        ctx.freeRegister(reg(this->condition));
 
     // Compile body
     this->body->compile(ctx);
 
     // Insert jump to condition
-    ctx.function->chunk.write(OpCode::Jmp);
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
-        static_cast<int16_t>(ctx.function->chunk.currentOffset() + 2);
-    ctx.function->chunk.writeWord(before_offset);
+        static_cast<int16_t>(ctx.function->chunk.currentOffset()) - 1;
+    ctx.function->chunk.write_sAb(OpCode::Jmp, before_offset, 0);
 
     // Patch first jump
     const unsigned final_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_end =
-        static_cast<int16_t>(final_addr - (jump_to_patch + 2));
-    ctx.function->chunk.patchWord(jump_to_patch, offset_to_end);
+        static_cast<int16_t>(final_addr - jump_to_patch - 1);
+    ctx.function->chunk.patch_sA(jump_to_patch, offset_to_end);
 }
 
 void WhileStmt::print(int indent) {
@@ -444,7 +498,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
             "Return statement outside function");
 
     // The return type of the statement is none
-    this->result_type = ctx.typeRegistry.noneType();
+    type(this) = ctx.typeRegistry.noneType();
 
     // If there is expr, compile it
     if (this->return_expr) {
@@ -465,39 +519,36 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
         }
         this->return_expr = std::move(cast_result.value());
     }
-
-    // Get the pop count from the context
-    this->pop = ctx.getPopCount();
-    assert(this->pop.total >= 2); // At least the return slot and self slot
 }
 
-void ReturnStmt::compile(CompileContext &ctx) {
+void ReturnStmt::compile(CompileContext &ctx, int reg) {
+    // This is a pure statement, no result register
+    assert(reg == -1);
+
     // If there is expression, compile that
-    if (this->return_expr)
-        this->return_expr->compile(ctx);
-    else {
-        // If not, put something to return 
-        ctx.function->chunk.write(OpCode::False, this->token.line);
-    }
+    if (this->return_expr) {
+        this->return_expr->compile(ctx, reg);
+        reg = reg(this->return_expr);
+    } else
+        reg = 0;
 
-    // Move that value to the return slot (the "" local) 
-    ctx.function->chunk.write(OpCode::Move, this->token.line);
-    ctx.function->chunk.writeWord(0); // Return slot is always local 0
+    // Get all local variables defined now
+    auto all_names = ctx.nameTable.getNamesInScope(0);
 
-    // Clean up the stack and return
-    // Pop all locals in reverse order (except the return and self slots)
-    unsigned j = 0;
-    for (int i = 0; i < this->pop.total - 2; i++) {
-        if (j < this->pop.objects.size() && i == this->pop.objects[j]) {
-            ctx.function->chunk.write(OpCode::Release);
-            j++;
-        } else {
-            ctx.function->chunk.write(OpCode::Pop);
+    // Release all object locals
+    for (auto entryID : all_names) {
+        const auto &entry = ctx.nameTable.getEntry(entryID);
+        if (entry.register_index != -1 &&
+            ctx.typeRegistry.isObject(entry.type)) {
+            ctx.function->chunk.write_Ab(
+                OpCode::Release, entry.register_index,
+                0, this->token.line);
         }
-    }
-
+    };
+    
     // Finally, return
-    ctx.function->chunk.write(OpCode::Return);
+    ctx.function->chunk.write_Ab(
+        OpCode::Return, reg, 0, this->token.line);
 }
 
 void ReturnStmt::print(int indent) {

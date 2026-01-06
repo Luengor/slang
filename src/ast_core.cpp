@@ -1,6 +1,7 @@
 #include "ast_core.hpp"
 #include "native.hpp"
 #include "object.hpp"
+#include <cassert>
 
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
     : type(type), token(token) {}
@@ -15,21 +16,24 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     function->name = "<main>";
     function->type_id = typeRegistry.getFunction({}, typeRegistry.noneType());
     
-    CompileContext ctx{
-        .function = function.get(), 
-        .typeRegistry = typeRegistry,
-        .nativeRegistry = nativeRegistry,
-        .scope_depth = 0,
-        .locals = {},
-    };
+    CompileContext ctx(typeRegistry, nativeRegistry);
+    ctx.function = function.get();
 
     // Perform type resolution
     root->resolveType(ctx);
 
+    // There should be nothing in the current names
+    assert(ctx.nameTable.getNamesInScope().empty());
+
     // Compile the AST
     root->compile(ctx);
 
-    function->chunk.write(OpCode::Return);
+    function->chunk.write_abc(OpCode::Return, 0, 0, 0);
+
+#ifdef DEBUG_PRINT
+    // Print the name table
+    ctx.nameTable.printTable();
+#endif
 
     return function;
 }
