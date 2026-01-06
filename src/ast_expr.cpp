@@ -288,9 +288,6 @@ void VariableNode::resolveType(CompileContext &ctx) {
 }
 
 void VariableNode::compile(CompileContext &ctx, int reg) {
-    // Get a register for the result
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
-
     // Compile based on the resolution type
     std::visit(overloaded{
         [&](EntryID local_index) {
@@ -299,7 +296,15 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
             assert(entry.register_index != -1 &&
                    "Local variable must have a valid register index");
 
-            // Copy the local variable into the result register
+            // If no register was assigned, mark as variable and use the entry 
+            if (reg == -1) {
+                reg(this) = entry.register_index;
+                is_var(this) = true;
+                return;
+            }
+
+            // If not, use the provided register
+            reg(this) = reg;
             ctx.function->chunk.write_AB(
                 OpCode::Copy, static_cast<uint8_t>(entry.register_index),
                 reg(this), this->token.line);
@@ -314,6 +319,9 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
         [&](NativeFunctionObj *native_fn) {
             // Retain the native function to pass it to the chunk
             native_fn->retain();
+
+            // If no register was assigned, allocate one
+            reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
             // Load the native function as a constant
             const auto constant =
@@ -377,11 +385,24 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
 }
 
 void UnaryExpr::compile(CompileContext &ctx, int reg) {
-    // Get a register for the result
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+    if (reg != -1) {
+        // If a register is provided, compile there
+        // Don't instruct the operand to use it tho
+        reg(this) = reg;
 
-    // Compile the operand first
-    this->operand->compile(ctx, reg(this));
+        this->operand->compile(ctx);
+
+    } else {
+        // Compile the operand first
+        this->operand->compile(ctx);
+
+        // Get its register or allocate one if it's a var
+        reg(this) = reg_var_alloc(this->operand);
+    }
+
+    // Consider freeing the operand's register
+    if (should_free(this->operand))
+        ctx.freeRegister(this->reg(operand));
 
     // Compile the appropriate unary operation
     switch (this->token.type) {
@@ -389,18 +410,18 @@ void UnaryExpr::compile(CompileContext &ctx, int reg) {
             if (type(this) ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
                 ctx.function->chunk.write_AB(
-                    OpCode::NegateI, reg(this),
+                    OpCode::NegateI, reg(this->operand),
                     reg(this), this->token.line);
             } else {
                 ctx.function->chunk.write_AB(
-                    OpCode::NegateF, reg(this),
+                    OpCode::NegateF, reg(this->operand),
                     reg(this), this->token.line);
             }
             break;
 
         case Token::Type::Not:
             ctx.function->chunk.write_AB(
-                OpCode::Not, reg(this),
+                OpCode::Not, reg(this->operand),
                 reg(this), this->token.line);
             break;
 
@@ -509,14 +530,23 @@ void CastExpr::resolveType(CompileContext &ctx) {
 }
 
 void CastExpr::compile(CompileContext &ctx, int reg) {
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+    // If a register was provided, use that
+    if (reg != -1) {
+        reg(this) = reg;
+        this->operand->compile(ctx);
+    } else {
+        // If not, compile operand and get a writable register
+        this->operand->compile(ctx);
+        reg(this) = reg_var_alloc(this->operand);
+    }
 
-    // Compile the operand first
-    this->operand->compile(ctx, reg(this));
+    // Consider freeing the operand's register
+    if (should_free(this->operand))
+        ctx.freeRegister(this->reg(operand));
 
     // Write the cast operation
     ctx.function->chunk.write_AB(
-        this->cast_op, reg(this),
+        this->cast_op, reg(this->operand),
         reg(this), this->token.line);
 }
 
@@ -613,15 +643,36 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
 }
 
 void BinaryExpr::compile(CompileContext &ctx, int reg) {
-    // Get a register for the result
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+    // If a register was passed, use that
+    if (reg != -1) {
+        reg(this) = reg;
 
-    // Compile left and right operands first
-    this->left->compile(ctx, reg(this));
-    this->right->compile(ctx);
+        // Compile left and right operands freely
+        this->left->compile(ctx);
+        this->right->compile(ctx);
+    } else {
+        // Compile the operands first
+        this->left->compile(ctx);
+        this->right->compile(ctx);
 
-    // Free the right operand's register
-    ctx.freeRegister(this->reg(right));
+        // Check if we can use left's register
+        if (!is_var(this->left)) {
+            reg(this) = reg(this->left);
+        } else if (!is_var(this->right)) {
+            // Otherwise check right's register
+            reg(this) = reg(this->right);
+        } else {
+            // Otherwise allocate a new register
+            reg(this) = ctx.allocateRegister();
+        }
+    }
+
+    // Free operands
+    if (should_free(this->left))
+        ctx.freeRegister(this->reg(left));
+
+    if (should_free(this->right))
+        ctx.freeRegister(this->reg(right));
 
     // Compile the appropriate binary operation
     switch (this->token.type) {
@@ -650,9 +701,8 @@ void BinaryExpr::compile(CompileContext &ctx, int reg) {
 }
 
 #define write(op)                                                              \
-    ctx.function->chunk.write_abc(op, reg(this),                   \
-                                  this->reg(right),                \
-                                  reg(this), this->token.line);    \
+    ctx.function->chunk.write_abc(op, reg(this->left), reg(this->right),       \
+                                  reg(this), this->token.line);                \
     break;
 
 void BinaryExpr::compileArithmetic(CompileContext &ctx) {
@@ -833,12 +883,16 @@ void TernaryExpr::compile(CompileContext &ctx, int reg) {
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
     // Compile condition first
-    this->condition->compile(ctx, reg(this));
+    this->condition->compile(ctx);
+
+    // Free it if necessary
+    if (should_free(this->condition))
+        ctx.freeRegister(reg(this->condition));
 
     // Jump if false to else branch
     const int16_t jmp_to_else_pos =
         ctx.function->chunk.write_sAb(
-            OpCode::JmpIfFalse, 0xFFFF, reg(this),
+            OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
             this->token.line);
     
     // Compile then branch
@@ -1003,13 +1057,13 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx, int reg) {
-    // Get a register for the result
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
-
     // Get continous registers for the arguments and callee
     std::vector<int> arg_registers;
     for (size_t i = 0; i < this->arguments.size() + 1; i++)
         arg_registers.push_back(ctx.allocateFromTop());
+
+    // If a register was provided, use that, if not, use the callee
+    reg(this) = reg != -1 ? reg : arg_registers[0];
 
     // Compile the callee
     this->callee->compile(ctx, arg_registers[0]);
@@ -1023,14 +1077,21 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     ctx.function->chunk.write_AB(OpCode::Call, this->reg(callee),
                                  this->arguments.size(), this->token.line);
 
-    // The result value is now in the callee's result register, move it
-    ctx.function->chunk.write_AB(
-        OpCode::Copy, this->reg(callee),
-        reg(this), this->token.line);
+    if (reg(this) == this->reg(callee)) {
+        // The result is already in the correct register, do nothing
+        // Free the argument registers in reverse order (except ours)
+        for (int j = this->arguments.size(); j > 0; j--)
+            ctx.freeRegister(arg_registers[j]);
 
-    // Free the argument registers in reverse order
-    for (int j = this->arguments.size(); j >= 0; j--)
-        ctx.freeRegister(arg_registers[j]);
+    } else {
+        // The result value is now in the callee's result register, move it
+        ctx.function->chunk.write_AB(OpCode::Copy, this->reg(callee), reg(this),
+                                     this->token.line);
+
+        // Free the argument registers in reverse order
+        for (int j = this->arguments.size(); j >= 0; j--)
+            ctx.freeRegister(arg_registers[j]);
+    }
 
     // Fixup registers
     ctx.fixupRegisters();

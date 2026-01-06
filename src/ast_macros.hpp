@@ -13,3 +13,7 @@
     (reg != -1                                                                 \
          ? reg                                                                 \
          : (is_var(nm) ? ctx.allocateRegister() : reg(nm)))
+
+// Free when this is not a var and we didn't use it
+#define should_free(nm) (!is_var(nm) && reg(this) != reg(nm))
+

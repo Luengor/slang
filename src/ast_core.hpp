@@ -31,8 +31,6 @@ struct ResultInfo {
     TypeID type;
     bool is_var = false;
     int reg = -1;
-
-    int getModRegister(CompileContext &ctx);
 };
 
 // Base class for all AST nodes

@@ -38,8 +38,8 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
     // Compile the expression
     this->expression->compile(ctx);
 
-    // Mark its register as free
-    if (reg(this->expression) != -1) {
+    // Free it if needed
+    if (should_free(this->expression)) {
         ctx.freeRegister(reg(this->expression));
 
         // If it was an object type, release it
@@ -288,11 +288,15 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     const int local_register =
         ctx.nameTable.getEntry(local_entry).register_index;
 
-    // Get a register for the result if needed
-    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
-
-    // Compile the value into our register 
-    this->value->compile(ctx, reg(this));
+    // If a register was provided, use that
+    // Otherwise, use the local variable's register
+    if (reg != -1) {
+        reg(this) = reg;
+        is_var(this) = false;
+    } else {
+        reg(this) = local_register;
+        is_var(this) = true;
+    }
 
     // If we are writting into an object, release the previous one first
     bool is_object =
@@ -302,13 +306,19 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0,
                                      this->token.line);
 
-    // Store the local variable
-    ctx.function->chunk.write_AB(OpCode::Copy, reg(this),
-                                 local_register);
+    // Compile the value into the local variable's register
+    this->value->compile(ctx, local_register);
 
-    // Because of the copy, we have to retain
-    if (is_object)
-        ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
+    // If we are using a different register, copy the value
+    if (reg(this) != local_register) {
+        // Store the local variable
+        ctx.function->chunk.write_AB(OpCode::Copy, local_register,
+                                     reg(this), this->token.line);
+
+        // Because of the copy, we have to retain
+        if (is_object)
+            ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
+    }
 }
 
 void AssignExpr::print(int indent) {
@@ -353,26 +363,26 @@ void IfStmt::resolveType(CompileContext &ctx) {
 
 void IfStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
+    reg(this) = -1;
 
     // Compile the condition first
     this->condition->compile(ctx);
 
-    // Inmediately free the condition register
-    const auto cond_reg = reg(this->condition);
-    ctx.freeRegister(cond_reg);
-
     // Insert jump if false, take note of the jump address and insert dummy
     const auto if_jump = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfFalse, 0xFFFF, cond_reg, this->token.line);
+        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition), this->token.line);
+
+    // Free condition register if needed
+    if (should_free(this->condition))
+        ctx.freeRegister(reg(this->condition));
 
     // Compile then branch
     this->then_branch->compile(ctx);
     
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
-    if (this->else_branch) {
+    if (this->else_branch)
         else_jump = ctx.function->chunk.write_sAb(OpCode::Jmp, 0xFFFF, 0);
-    }
 
     // Patch first jump
     const unsigned after_then_addr = ctx.function->chunk.currentOffset();
@@ -434,6 +444,7 @@ void WhileStmt::resolveType(CompileContext &ctx) {
 
 void WhileStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
+    reg(this) = -1;
 
     // Mark the beggining of the condition
     const auto before_condition = ctx.function->chunk.currentOffset();
@@ -445,6 +456,10 @@ void WhileStmt::compile(CompileContext &ctx, int reg) {
     const auto jump_to_patch = ctx.function->chunk.write_sAb(
         OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
         this->token.line);
+
+    // Free condition register if needed
+    if (should_free(this->condition))
+        ctx.freeRegister(reg(this->condition));
 
     // Compile body
     this->body->compile(ctx);
@@ -510,12 +525,12 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     // This is a pure statement, no result register
     assert(reg == -1);
 
-    // Get a register for the return value
-    reg = ctx.allocateRegister();
-
     // If there is expression, compile that
-    if (this->return_expr)
+    if (this->return_expr) {
         this->return_expr->compile(ctx, reg);
+        reg = reg(this->return_expr);
+    } else
+        reg = 0;
 
     // Get all local variables defined now
     auto all_names = ctx.nameTable.getNamesInScope(0);
