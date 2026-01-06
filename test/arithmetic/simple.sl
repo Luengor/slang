@@ -4,10 +4,10 @@ print(-1);
 # expect: 5
 print(2 + 3);
 
-# expect: 7
+# expect: 4
 print(9 - 5);
 
-# expect: 12
+# expect: 42
 print(6 * 7);
 
 # expect: 2
