@@ -29,9 +29,10 @@ struct VarDeclStmt : public ASTNode {
     ASTNodePtr type_expr;
     ASTNodePtr initializer;
     EntryID entry_id;
+    bool is_in_function_definition;
 
     VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
-                ASTNodePtr initializer);
+                ASTNodePtr initializer, bool is_in_function_definition = false);
     void resolveType(CompileContext &ctx) override;
     void compile(CompileContext &ctx, int reg = -1) override;
     void print(int indent = 0) override;

@@ -544,7 +544,7 @@ std::unique_ptr<ASTNode> Parser::function() {
 
             // Create variable node for parameter
             arguments.push_back(std::make_unique<VarDeclStmt>(
-                std::move(param_type), param_name, nullptr));
+                std::move(param_type), param_name, nullptr, true));
 
         } while (this->match({Token::Type::Comma}));
     }

@@ -143,9 +143,10 @@ void BlockStmt::print(int indent) {
 
 // VarDeclStmt Implementation
 VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
-                         ASTNodePtr initializer)
+                         ASTNodePtr initializer, bool is_in_function_definition)
     : ASTNode(ASTNodeType::VarDeclStmt, name_token),
-      type_expr(std::move(type_expr)), initializer(std::move(initializer)) {}
+      type_expr(std::move(type_expr)), initializer(std::move(initializer)),
+      is_in_function_definition(is_in_function_definition) {}
 
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     ResolveGuard;
@@ -196,10 +197,11 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
             }
             this->initializer = std::move(cast_result.value());
         } else if (ctx.typeRegistry.isObject(type(this))) {
-            // Object types require an initializer
-            throw ParserError(
-                this->token,
-                "Object variables require an initializer.");
+            // If we are not in a function definition, object variables need an initializer
+            if (!this->is_in_function_definition)
+                throw ParserError(
+                    this->token,
+                    "Object variables require an initializer.");
         }
     }
 
