@@ -60,6 +60,12 @@ struct ASTNode {
 
 using ASTNodePtr = std::unique_ptr<ASTNode>;
 
+#define AST_OVERRIDES                     \
+    void resolveType(CompileContext &ctx) override; \
+    void compile(CompileContext &ctx, int reg = -1) override; \
+    void print(int indent = 0) override
+
+
 struct FunctionObj;
 
 std::unique_ptr<FunctionObj> compileAST(ASTNode *root);

@@ -11,18 +11,14 @@ struct ExprStmt : public ASTNode {
     ASTNodePtr expression;
 
     ExprStmt(const Token &token, ASTNodePtr expression);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct BlockStmt : public ASTNode {
     std::vector<ASTNodePtr> statements;
 
     BlockStmt(const Token &token, std::vector<ASTNodePtr> statements);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct VarDeclStmt : public ASTNode {
@@ -33,9 +29,7 @@ struct VarDeclStmt : public ASTNode {
 
     VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
                 ASTNodePtr initializer, bool is_in_function_definition = false);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct IfStmt : public ASTNode {
@@ -45,9 +39,7 @@ struct IfStmt : public ASTNode {
 
     IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
            ASTNodePtr else_branch);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct WhileStmt : public ASTNode {
@@ -55,9 +47,7 @@ struct WhileStmt : public ASTNode {
     ASTNodePtr body;
 
     WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct AssignExpr : public ASTNode {
@@ -65,17 +55,13 @@ struct AssignExpr : public ASTNode {
     ASTNodePtr value;
 
     AssignExpr(const Token &token, ASTNodePtr target, ASTNodePtr value);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
 struct ReturnStmt : public ASTNode {
     ASTNodePtr return_expr;
 
     ReturnStmt(const Token &token, ASTNodePtr return_expr);
-    void resolveType(CompileContext &ctx) override;
-    void compile(CompileContext &ctx, int reg = -1) override;
-    void print(int indent = 0) override;
+    AST_OVERRIDES;
 };
 
