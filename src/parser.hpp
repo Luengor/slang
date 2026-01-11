@@ -2,7 +2,6 @@
 
 #include "ast_core.hpp"
 #include "scanner.hpp"
-#include <memory>
 
 enum class Precedence {
     None,
@@ -48,90 +47,90 @@ class Parser {
     // Error recovery: synchronize the parser state after an error
     void syncronize();
 
-    std::unique_ptr<ASTNode> finishCall(std::unique_ptr<ASTNode> expr);
+    ASTNodePtr finishCall(ASTNodePtr expr);
 
     // typeExpr -> functionType | primitiveType
-    std::unique_ptr<ASTNode> typeExpr();
+    ASTNodePtr typeExpr();
 
     // functionType -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" typeExpr
-    std::unique_ptr<ASTNode> functionType();
+    ASTNodePtr functionType();
 
     // primitiveType -> "fixed" | "float" | "bool"
-    std::unique_ptr<ASTNode> primitiveType();
+    ASTNodePtr primitiveType();
 
     // declaration -> varDecl | funcDecl | statement
-    std::unique_ptr<ASTNode> declaration();
+    ASTNodePtr declaration();
 
     // varDecl -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
-    std::unique_ptr<ASTNode> varDecl();
+    ASTNodePtr varDecl();
 
     // statement -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block
-    std::unique_ptr<ASTNode> statement();
+    ASTNodePtr statement();
 
     // exprStmt -> expression ";"
-    std::unique_ptr<ASTNode> exprStmt();
+    ASTNodePtr exprStmt();
 
     // ifStmt -> "if" "(" expression ")" statement ( "else" statement )?
-    std::unique_ptr<ASTNode> ifStmt();
+    ASTNodePtr ifStmt();
 
     // whileStmt -> "while" "(" expression ")" statement
-    std::unique_ptr<ASTNode> whileStmt();
+    ASTNodePtr whileStmt();
 
     // forStmt -> "for" "(" ( varDecl | exprStmt | ";" ) expression? ";"
     //                       expression? ")" statement
-    std::unique_ptr<ASTNode> forStmt();
+    ASTNodePtr forStmt();
 
     // returnStmt -> "return" expression? ";"
-    std::unique_ptr<ASTNode> returnStmt();
+    ASTNodePtr returnStmt();
 
     // block -> "{" declaration* "}"
-    std::unique_ptr<ASTNode> block();
+    ASTNodePtr block();
 
     // expression -> assignment 
-    std::unique_ptr<ASTNode> expression();
+    ASTNodePtr expression();
 
     // assignment  -> IDENTIFIER "=" assignment | ternary 
-    std::unique_ptr<ASTNode> assignment();
+    ASTNodePtr assignment();
 
     // ternary -> logicOr ( "?" expression ":" ternary )?
-    std::unique_ptr<ASTNode> ternary();
+    ASTNodePtr ternary();
 
     // logicOr -> logicAnd ( "or" logicAnd )*
-    std::unique_ptr<ASTNode> logicOr();
+    ASTNodePtr logicOr();
 
     // logicAnd -> equality ( "and" equality )*
-    std::unique_ptr<ASTNode> logicAnd();
+    ASTNodePtr logicAnd();
 
     // equality -> comparison ( ( "==" | "!=" ) comparison )*
-    std::unique_ptr<ASTNode> equality();
+    ASTNodePtr equality();
 
     // comparison -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
-    std::unique_ptr<ASTNode> comparison();
+    ASTNodePtr comparison();
 
     // term -> factor ( ( "+" | "-" | "or" ) factor )*
-    std::unique_ptr<ASTNode> term();
+    ASTNodePtr term();
 
     // factor -> unary ( ( "*" | "/" | "and" ) unary )*
-    std::unique_ptr<ASTNode> factor();
+    ASTNodePtr factor();
 
     // unary -> ( "-" | "not" ) unary | call 
-    std::unique_ptr<ASTNode> unary();
+    ASTNodePtr unary();
 
     // call -> primary ( "(" arguments? ")" )*
-    std::unique_ptr<ASTNode> call();
+    ASTNodePtr call();
 
     // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")" |
     //            IDENTIFIER | function
-    std::unique_ptr<ASTNode> primary();
+    ASTNodePtr primary();
 
     // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
-    std::unique_ptr<ASTNode> function();
+    ASTNodePtr function();
 
 public:
     Parser(const std::vector<Token> &tokens);
 
     // Parse the tokens and return the root of the AST
     // program -> declaration* EOF
-    std::unique_ptr<ASTNode> parse();
+    ASTNodePtr parse();
 };
 

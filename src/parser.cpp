@@ -81,7 +81,7 @@ void Parser::syncronize() {
 
 /// Recursive descent parsing methods
 
-std::unique_ptr<ASTNode> Parser::typeExpr() {
+ASTNodePtr Parser::typeExpr() {
     // Try primitive type first
     if (this->match({Token::Type::Fixed, Token::Type::Float,
                          Token::Type::Bool, Token::Type::Str})) {
@@ -92,7 +92,7 @@ std::unique_ptr<ASTNode> Parser::typeExpr() {
     return this->functionType();
 }
 
-std::unique_ptr<ASTNode> Parser::functionType() {
+ASTNodePtr Parser::functionType() {
     // Start consuming the function type
     this->consume(Token::Type::LeftParen,
                   "Expected '(' at start of function type.");
@@ -110,7 +110,7 @@ std::unique_ptr<ASTNode> Parser::functionType() {
                   "Expected '->' after function parameter list.");
 
     // Return typeExpr or none
-    std::unique_ptr<ASTNode> return_type;
+    ASTNodePtr return_type;
     if (this->match({Token::Type::None})) {
         return_type = std::make_unique<PrimitiveTypeNode>(this->previous());
     } else {
@@ -121,12 +121,12 @@ std::unique_ptr<ASTNode> Parser::functionType() {
         this->previous(), std::move(param_types), std::move(return_type));
 }
 
-std::unique_ptr<ASTNode> Parser::primitiveType() {
+ASTNodePtr Parser::primitiveType() {
     Token type_token = this->previous();
     return std::make_unique<PrimitiveTypeNode>(type_token);
 }
 
-std::unique_ptr<ASTNode> Parser::declaration() {
+ASTNodePtr Parser::declaration() {
     try {
         // Try variable declaration and backtrack on failure
         const auto current_pos = this->current;
@@ -145,13 +145,13 @@ std::unique_ptr<ASTNode> Parser::declaration() {
     }
 }
 
-std::unique_ptr<ASTNode> Parser::varDecl() {
+ASTNodePtr Parser::varDecl() {
     // Parse type or auto
-    std::unique_ptr<ASTNode> type_node =
+    ASTNodePtr type_node =
         this->match({Token::Type::Auto}) ? nullptr : this->typeExpr();
     Token name = this->consume(Token::Type::Identifier, "Expected variable name.");
 
-    std::unique_ptr<ASTNode> initializer = nullptr;
+    ASTNodePtr initializer = nullptr;
     if (match({Token::Type::Equal})) {
         initializer = this->expression();
     }
@@ -161,7 +161,7 @@ std::unique_ptr<ASTNode> Parser::varDecl() {
                                          std::move(initializer));
 }
 
-std::unique_ptr<ASTNode> Parser::statement() {
+ASTNodePtr Parser::statement() {
     if (this->match({Token::Type::LeftBrace})) {
         return this->block();
     } else if (this->match({Token::Type::If})) {
@@ -181,20 +181,20 @@ std::unique_ptr<ASTNode> Parser::statement() {
     return this->exprStmt();
 }
 
-std::unique_ptr<ASTNode> Parser::exprStmt() {
-    std::unique_ptr<ASTNode> expr = this->expression();
+ASTNodePtr Parser::exprStmt() {
+    ASTNodePtr expr = this->expression();
     this->consume(Token::Type::Semicolon, "Expected ';' after expression.");
     return std::make_unique<ExprStmt>(this->previous(), std::move(expr));
 }
 
-std::unique_ptr<ASTNode> Parser::ifStmt() {
+ASTNodePtr Parser::ifStmt() {
     Token ifToken = this->previous();
     this->consume(Token::Type::LeftParen, "Expected '(' after 'if'.");
-    std::unique_ptr<ASTNode> condition = this->expression();
+    ASTNodePtr condition = this->expression();
     this->consume(Token::Type::RightParen, "Expected ')' after if condition.");
 
-    std::unique_ptr<ASTNode> thenBranch = this->statement();
-    std::unique_ptr<ASTNode> elseBranch = nullptr;
+    ASTNodePtr thenBranch = this->statement();
+    ASTNodePtr elseBranch = nullptr;
 
     if (this->match({Token::Type::Else})) {
         elseBranch = this->statement();
@@ -204,22 +204,22 @@ std::unique_ptr<ASTNode> Parser::ifStmt() {
         ifToken, std::move(condition), std::move(thenBranch), std::move(elseBranch));
 }
 
-std::unique_ptr<ASTNode> Parser::whileStmt() {
+ASTNodePtr Parser::whileStmt() {
     Token while_token = this->previous();
     this->consume(Token::Type::LeftParen, "Expected '(' after 'while'.");
-    std::unique_ptr<ASTNode> condition = this->expression();
+    ASTNodePtr condition = this->expression();
     this->consume(Token::Type::RightParen, "Expected ')' after while condition.");
 
-    std::unique_ptr<ASTNode> body = this->statement();
+    ASTNodePtr body = this->statement();
 
     return std::make_unique<WhileStmt>(
         while_token, std::move(condition), std::move(body));
 }
 
-std::unique_ptr<ASTNode> Parser::forStmt() {
+ASTNodePtr Parser::forStmt() {
     Token for_token = this->previous();
     this->consume(Token::Type::LeftParen, "Expected '(' after 'for'.");
-    std::unique_ptr<ASTNode> initializer = nullptr;
+    ASTNodePtr initializer = nullptr;
 
     if (!this->match({Token::Type::Semicolon})) {
         if (this->match({Token::Type::Fixed, Token::Type::Float,
@@ -231,19 +231,19 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
         }
     }
 
-    std::unique_ptr<ASTNode> condition = nullptr;
+    ASTNodePtr condition = nullptr;
     if (!this->match({Token::Type::Semicolon})) {
         condition = this->expression();
         this->consume(Token::Type::Semicolon, "Expected ';' after loop condition.");
     }
 
-    std::unique_ptr<ASTNode> increment = nullptr;
+    ASTNodePtr increment = nullptr;
     if (!this->match({Token::Type::RightParen})) {
         increment = this->expression();
         this->consume(Token::Type::RightParen, "Expected ')' after for clauses.");
     }
 
-    std::unique_ptr<ASTNode> body = this->statement();
+    ASTNodePtr body = this->statement();
 
     // caramelize for loop into while loop
     // Prepare a secuence of statements for the block
@@ -276,7 +276,7 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
     }
 
     // Create the while statement
-    std::unique_ptr<ASTNode> whileStmt = std::make_unique<WhileStmt>(
+    ASTNodePtr whileStmt = std::make_unique<WhileStmt>(
         for_token, std::move(condition), std::move(body));
 
     statements.push_back(std::move(whileStmt));
@@ -284,7 +284,7 @@ std::unique_ptr<ASTNode> Parser::forStmt() {
     return std::make_unique<BlockStmt>(for_token, std::move(statements));
 }
 
-std::unique_ptr<ASTNode> Parser::returnStmt() {
+ASTNodePtr Parser::returnStmt() {
     Token return_token = this->previous();
 
     // Get return expression if any
@@ -296,7 +296,7 @@ std::unique_ptr<ASTNode> Parser::returnStmt() {
     return std::make_unique<ReturnStmt>(return_token, std::move(expr));
 }
 
-std::unique_ptr<ASTNode> Parser::block() {
+ASTNodePtr Parser::block() {
     std::vector<ASTNodePtr> statements;
 
     while (!this->check(Token::Type::RightBrace) && !this->isAtEnd()) {
@@ -309,16 +309,16 @@ std::unique_ptr<ASTNode> Parser::block() {
     return std::make_unique<BlockStmt>(braceToken, std::move(statements));
 }
 
-std::unique_ptr<ASTNode> Parser::expression() {
+ASTNodePtr Parser::expression() {
     return this->assignment();
 }
 
-std::unique_ptr<ASTNode> Parser::assignment() {
-    std::unique_ptr<ASTNode> expr = this->ternary();
+ASTNodePtr Parser::assignment() {
+    ASTNodePtr expr = this->ternary();
 
     if (this->match({Token::Type::Equal})) {
         Token equals = this->previous();
-        std::unique_ptr<ASTNode> value = this->assignment();
+        ASTNodePtr value = this->assignment();
 
         // Perform assignment only if the left side is a VariableNode
         if (expr->type != ASTNodeType::Variable) {
@@ -332,14 +332,14 @@ std::unique_ptr<ASTNode> Parser::assignment() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::ternary() {
-    std::unique_ptr<ASTNode> expr = this->logicOr();
+ASTNodePtr Parser::ternary() {
+    ASTNodePtr expr = this->logicOr();
 
     if (this->match({Token::Type::Question})) {
         Token questionToken = this->previous();
-        std::unique_ptr<ASTNode> thenExpr = this->expression();
+        ASTNodePtr thenExpr = this->expression();
         this->consume(Token::Type::Colon, "Expected ':' in ternary expression.");
-        std::unique_ptr<ASTNode> elseExpr = this->expression();
+        ASTNodePtr elseExpr = this->expression();
 
         return std::make_unique<TernaryExpr>(
             questionToken, std::move(expr), std::move(thenExpr), std::move(elseExpr));
@@ -348,14 +348,14 @@ std::unique_ptr<ASTNode> Parser::ternary() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::logicOr() {
+ASTNodePtr Parser::logicOr() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->logicAnd();
+    ASTNodePtr expr = this->logicAnd();
 
     // While the current token is 'or', parse the right operand
     while (this->match({Token::Type::Or})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->logicAnd();
+        ASTNodePtr right = this->logicAnd();
 
         // Create a logic expression node
         expr = std::make_unique<LogicExpr>(
@@ -365,14 +365,14 @@ std::unique_ptr<ASTNode> Parser::logicOr() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::logicAnd() {
+ASTNodePtr Parser::logicAnd() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->equality();
+    ASTNodePtr expr = this->equality();
 
     // While the current token is 'and', parse the right operand
     while (this->match({Token::Type::And})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->equality();
+        ASTNodePtr right = this->equality();
 
         // Create a logic expression node
         expr = std::make_unique<LogicExpr>(
@@ -382,14 +382,14 @@ std::unique_ptr<ASTNode> Parser::logicAnd() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::equality() {
+ASTNodePtr Parser::equality() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->comparison();
+    ASTNodePtr expr = this->comparison();
 
     // While the current token is a '==' or '!=', parse the right operand
     while (this->match({Token::Type::EqualEqual, Token::Type::BangEqual})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->comparison();
+        ASTNodePtr right = this->comparison();
 
         // Create a binary expression node
         expr = std::make_unique<BinaryExpr>(
@@ -399,15 +399,15 @@ std::unique_ptr<ASTNode> Parser::equality() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::comparison() {
+ASTNodePtr Parser::comparison() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->term();
+    ASTNodePtr expr = this->term();
 
     // While the current token is a comparison operator, parse the right operand
     while (this->match({Token::Type::Greater, Token::Type::GreaterEqual,
                        Token::Type::Less, Token::Type::LessEqual})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->term();
+        ASTNodePtr right = this->term();
 
         // Create a binary expression node
         expr = std::make_unique<BinaryExpr>(
@@ -417,14 +417,14 @@ std::unique_ptr<ASTNode> Parser::comparison() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::term() {
+ASTNodePtr Parser::term() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->factor();
+    ASTNodePtr expr = this->factor();
 
     // While the current token is a '+' or '-', parse the right operand
     while (this->match({Token::Type::Plus, Token::Type::Minus})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->factor();
+        ASTNodePtr right = this->factor();
 
         // Create a binary expression node
         expr = std::make_unique<BinaryExpr>(
@@ -434,14 +434,14 @@ std::unique_ptr<ASTNode> Parser::term() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::factor() {
+ASTNodePtr Parser::factor() {
     // Get the left operand
-    std::unique_ptr<ASTNode> expr = this->unary();
+    ASTNodePtr expr = this->unary();
 
     // While the current token is a '*' or '/', parse the right operand
     while (this->match({Token::Type::Star, Token::Type::Slash})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->unary();
+        ASTNodePtr right = this->unary();
 
         // Create a binary expression node
         expr = std::make_unique<BinaryExpr>(
@@ -451,11 +451,11 @@ std::unique_ptr<ASTNode> Parser::factor() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::unary() {
+ASTNodePtr Parser::unary() {
     // Check for a unary operator
     if (this->match({Token::Type::Minus, Token::Type::Not})) {
         Token operatorToken = this->previous();
-        std::unique_ptr<ASTNode> right = this->unary();
+        ASTNodePtr right = this->unary();
         return std::make_unique<UnaryExpr>(
             operatorToken, std::move(right));
     }
@@ -464,8 +464,8 @@ std::unique_ptr<ASTNode> Parser::unary() {
     return this->call();
 }
 
-std::unique_ptr<ASTNode> Parser::call() {
-    std::unique_ptr<ASTNode> expr = this->primary();
+ASTNodePtr Parser::call() {
+    ASTNodePtr expr = this->primary();
 
     while (true) {
         if (this->match({Token::LeftParen}))
@@ -477,7 +477,7 @@ std::unique_ptr<ASTNode> Parser::call() {
     return expr;
 }
 
-std::unique_ptr<ASTNode> Parser::finishCall(std::unique_ptr<ASTNode> expr) {
+ASTNodePtr Parser::finishCall(ASTNodePtr expr) {
     std::vector<ASTNodePtr> arguments;
 
     if (!this->check(Token::RightParen)) {
@@ -493,7 +493,7 @@ std::unique_ptr<ASTNode> Parser::finishCall(std::unique_ptr<ASTNode> expr) {
                                       std::move(arguments));
 }
 
-std::unique_ptr<ASTNode> Parser::primary() {
+ASTNodePtr Parser::primary() {
     // Make a literal node for number, string, true, false
     if (this->match({Token::Type::Number, Token::Type::String,
                      Token::Type::True, Token::Type::False})) {
@@ -519,7 +519,7 @@ std::unique_ptr<ASTNode> Parser::primary() {
 
     // If left parenthesis, parse a grouped expression
     if (this->match({Token::Type::LeftParen})) {
-        std::unique_ptr<ASTNode> expr = this->expression();
+        ASTNodePtr expr = this->expression();
         this->consume(Token::Type::RightParen, "Expected ')' after expression.");
         return expr;
     }
@@ -528,7 +528,7 @@ std::unique_ptr<ASTNode> Parser::primary() {
     throw ParserError(this->peek(), "Expected expression.");
 }
 
-std::unique_ptr<ASTNode> Parser::function() {
+ASTNodePtr Parser::function() {
     // Parse parameter list
     this->consume(Token::Type::LeftParen, "Expected '(' at start of function.");
 
@@ -536,7 +536,7 @@ std::unique_ptr<ASTNode> Parser::function() {
     if (!this->check(Token::Type::RightParen)) {
         do {
             // Parse parameter type
-            std::unique_ptr<ASTNode> param_type = this->typeExpr();
+            ASTNodePtr param_type = this->typeExpr();
 
             // Parse parameter name
             Token param_name = this->consume(Token::Type::Identifier,
@@ -553,7 +553,7 @@ std::unique_ptr<ASTNode> Parser::function() {
 
     // Parse return type 
     this->consume(Token::Type::Arrow, "Expected '->' after function parameters.");
-    std::unique_ptr<ASTNode> return_type =
+    ASTNodePtr return_type =
         this->match({Token::Type::None})
             ? std::make_unique<PrimitiveTypeNode>(this->previous())
             : this->typeExpr();
@@ -561,7 +561,7 @@ std::unique_ptr<ASTNode> Parser::function() {
     // Parse function body
     this->consume(Token::Type::LeftBrace,
                   "Expected '{' at start of function body.");
-    std::unique_ptr<ASTNode> body = this->block();
+    ASTNodePtr body = this->block();
 
     return std::make_unique<FunctionNode>(
         this->previous(), std::move(arguments), std::move(return_type),
@@ -572,7 +572,7 @@ std::unique_ptr<ASTNode> Parser::function() {
 
 Parser::Parser(const std::vector<Token> &tokens) : current(0), tokens(tokens) {}
 
-std::unique_ptr<ASTNode> Parser::parse() {
+ASTNodePtr Parser::parse() {
     std::vector<ASTNodePtr> statements;
     bool failed = false;
 
