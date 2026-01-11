@@ -42,13 +42,12 @@ struct ASTNode {
     const Token token;
 
     // The result of this node
-    std::optional<ResultInfo> result = std::nullopt;
+    ResultInfo result;
 
     ASTNode(ASTNodeType type, const Token &token);
     virtual ~ASTNode() = default;
 
-    // Resolve the type of this AST node
-    // After this is called, result_type should be set
+    bool type_resolved = false;
     virtual void resolveType(CompileContext &ctx) = 0;
 
     // Compile this AST node into the given compile context

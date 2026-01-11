@@ -7,7 +7,7 @@ PrimitiveTypeNode::PrimitiveTypeNode(const Token &token)
     : ASTNode(ASTNodeType::PrimitiveType, token) {}
 
 void PrimitiveTypeNode::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Determine the primitive type based on the token
     PrimitiveKind kind;
@@ -36,7 +36,7 @@ void PrimitiveTypeNode::resolveType(CompileContext &ctx) {
     type(this) = ctx.typeRegistry.getPrimitive(kind);
 }
 
-void PrimitiveTypeNode::compile(CompileContext &_, int reg) {
+void PrimitiveTypeNode::compile(CompileContext &, int) {
     throw ParserError(
         this->token,
         "PrimitiveTypeNode should not be compiled.");
@@ -56,7 +56,7 @@ FunctionTypeNode::FunctionTypeNode(
       return_type(std::move(return_type)) {}
 
 void FunctionTypeNode::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve parameter types
     std::vector<TypeID> param_type_ids;
@@ -74,7 +74,7 @@ void FunctionTypeNode::resolveType(CompileContext &ctx) {
         param_type_ids, return_type_id);
 }
 
-void FunctionTypeNode::compile(CompileContext &_, int reg) {
+void FunctionTypeNode::compile(CompileContext &, int) {
     throw ParserError(
         this->token,
         "FunctionTypeNode should not be compiled.");

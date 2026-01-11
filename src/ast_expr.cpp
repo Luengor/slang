@@ -67,7 +67,7 @@ LiteralNode::LiteralNode(const Token &token)
 }
 
 void LiteralNode::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Get result type of the literal
     type(this) = ctx.typeRegistry.getFromValue(this->value);
@@ -153,7 +153,7 @@ FunctionNode::FunctionNode(const Token &token,
       return_type(std::move(return_type)), body(std::move(body)) {}
 
 void FunctionNode::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Create a new compile context for the function
     this->fn_ctx = std::make_unique<CompileContext>(ctx);
@@ -264,10 +264,9 @@ VariableNode::VariableNode(const Token &token, const std::string &name)
 
 // Resolve type is only called on variable use
 void VariableNode::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
-    /// Resolve the name
-    // Check if it is a native function first
+    // Check if we are binding a native function
     auto nativeFn =
         ctx.nativeRegistry.getNativeFunction(this->name);
     if (nativeFn != nullptr) {
@@ -344,7 +343,7 @@ UnaryExpr::UnaryExpr(const Token &token, ASTNodePtr operand)
     : ASTNode(ASTNodeType::UnaryExpr, token), operand(std::move(operand)) {}
 
 void UnaryExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve the operand type first
     this->operand->resolveType(ctx);
@@ -448,7 +447,7 @@ CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
 std::optional<ASTNodePtr> CastExpr::tryCast(ASTNodePtr operand,
                                             TypeID target_type,
                                             CompileContext &ctx) {
-    assert(operand->result.has_value() && "Operand type must be resolved");
+    assert(operand->type_resolved && "Operand type must be resolved");
     if (type(operand) == target_type) {
         // No cast needed
         return std::make_optional<ASTNodePtr>(std::move(operand));
@@ -469,8 +468,8 @@ std::optional<ASTNodePtr> CastExpr::tryCast(ASTNodePtr operand,
 std::optional<std::pair<ASTNodePtr, ASTNodePtr>>
 CastExpr::tryCommonCast(ASTNodePtr left, ASTNodePtr right,
                         CompileContext &ctx) {
-    assert(left->result.has_value() && "Left type must be resolved");
-    assert(right->result.has_value() && "Right type must be resolved");
+    assert(left->type_resolved && "Left operand type must be resolved");
+    assert(right->type_resolved && "Right operand type must be resolved");
 
     // If types are already the same, no casts needed
     if (type(left) == type(right)) {
@@ -508,7 +507,7 @@ CastExpr::tryCommonCast(ASTNodePtr left, ASTNodePtr right,
 }
 
 void CastExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // "Dodge" the guard for target type
     type(this) = this->target_type;
@@ -563,7 +562,7 @@ BinaryExpr::BinaryExpr(const Token &token, ASTNodePtr left,
       right(std::move(right)) { }
 
 void BinaryExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve left and right operand types first
     this->left->resolveType(ctx);
@@ -839,7 +838,7 @@ TernaryExpr::TernaryExpr(const Token &token, ASTNodePtr condition,
       then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {}
 
 void TernaryExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve condition type first
     this->condition->resolveType(ctx);
@@ -933,7 +932,7 @@ LogicExpr::LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right)
       right(std::move(right)) {}
 
 void LogicExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve left and right operand types first
     this->left->resolveType(ctx);
@@ -1013,7 +1012,7 @@ CallExpr::CallExpr(const Token &token, ASTNodePtr callee,
       arguments(std::move(arguments)) {}
 
 void CallExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve callee type first
     this->callee->resolveType(ctx);

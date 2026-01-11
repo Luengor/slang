@@ -1,13 +1,12 @@
 #pragma once
 
-#define ResolveGuard \
-    if (this->result.has_value()) \
-        return; \
-    this->result.emplace();
+#define TypeGuard \
+    if (this->type_resolved) return; \
+    this->type_resolved = true;
 
-#define reg(nm) nm->result.value().reg
-#define type(nm) nm->result.value().type
-#define is_var(nm) nm->result.value().is_var
+#define reg(nm) nm->result.reg
+#define type(nm) nm->result.type
+#define is_var(nm) nm->result.is_var
 
 #define reg_var_alloc(nm)                                                      \
     (reg != -1                                                                 \

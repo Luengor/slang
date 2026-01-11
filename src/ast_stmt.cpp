@@ -14,7 +14,7 @@ ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
       expression(std::move(expression)) {}
 
 void ExprStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve the expression type if any
     if (this->expression)
@@ -70,7 +70,7 @@ BlockStmt::BlockStmt(const Token &token, std::vector<ASTNodePtr> statements)
       statements(std::move(statements)) {}
 
 void BlockStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Enter a new scope
     ctx.nameTable.enterScope();
@@ -149,7 +149,7 @@ VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
       is_in_function_definition(is_in_function_definition) {}
 
 void VarDeclStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Check if its a native function
     auto nativeFn = ctx.nativeRegistry.getNativeFunction(
@@ -253,7 +253,7 @@ AssignExpr::AssignExpr(const Token &token, ASTNodePtr target,
       target(std::move(target)), value(std::move(value)) {}
 
 void AssignExpr::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve target and value types first
     this->target->resolveType(ctx);
@@ -339,7 +339,7 @@ IfStmt::IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
       else_branch(std::move(else_branch)) {}
 
 void IfStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve everything first
     this->condition->resolveType(ctx);
@@ -423,7 +423,7 @@ WhileStmt::WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body)
       body(std::move(body)) {}
 
 void WhileStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Resolve condition and body
     this->condition->resolveType(ctx);
@@ -492,7 +492,7 @@ ReturnStmt::ReturnStmt(const Token &token, ASTNodePtr return_expr)
       return_expr(std::move(return_expr)) {};
 
 void ReturnStmt::resolveType(CompileContext &ctx) {
-    ResolveGuard;
+    TypeGuard;
 
     // Ensure this is happening in a function
     if (!ctx.next)
