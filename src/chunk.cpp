@@ -10,48 +10,61 @@ Chunk::~Chunk() {
     }
 }
 
-void Chunk::disassembleJump(const char *name, unsigned address, bool show_reg) const {
-    const auto instruction = this->code[address];
-    int16_t A = GET_Ab_a(instruction);
-    uint8_t b = GET_Ab_b(instruction);
+void Chunk::disassembleJump(const char *name, int offset, bool show_reg) const {
+    const auto instruction = this->code[offset];
+    int32_t sBx = GET_sBx(instruction);
 
-    int16_t jump_target = static_cast<int16_t>(address + 1 + A);
+    int32_t jump_target = offset + 1 + sBx;
 
     if (show_reg) {
-        std::println("{:<16} {:4d} {:4d}? -> {:04d}", name, A, b, jump_target);
+        uint8_t A = GET_A(instruction);
+        std::println("{:<16} R{:<3d} {:04d}", name, A, jump_target);
     } else {
-        std::println("{:<16} {:4d} -> {:04d}", name, A, jump_target);
+        std::println("{:<16} {:04d}", name, jump_target);
     }
 }
 
 
-void Chunk::disassembleAB(const char *name, uint32_t instruction) const {
-    uint16_t A = GET_AB_a(instruction);
-    uint8_t B = GET_AB_b(instruction);
+void Chunk::disassembleABx(const char *name, uint32_t instruction, const std::string &b_text) const {
+    uint8_t A = GET_A(instruction);
+    uint32_t bx = GET_Bx(instruction);
 
-    std::println("{:<16} {:4d} {:4d}", name, A, B);
+    if (b_text.size())
+        std::println("{:<16} R{:<3d} {}{:<4d}", name, A, b_text, bx);
+    else if (b_text == "RC") {
+        std::println("{:<16} R{:<3d} {}{:<3d}", name, A, bx >= 256 ? 'C' : 'R', bx % 256);
+    }
+    else
+        std::println("{:<16} R{:<3d}", name, A);
 }
 
-void Chunk::disassembleAb(const char *name, uint32_t instruction) const {
-    uint16_t A = GET_Ab_a(instruction);
-    uint8_t b = GET_Ab_b(instruction);
+void Chunk::disassembleAsBx(const char *name, uint32_t instruction) const {
+    uint8_t A = GET_A(instruction);
+    int32_t sbx = GET_sBx(instruction);
 
-    std::println("{:<16} {:4d} {:4d}", name, A, b);
+    std::println("{:<16} R{:<3d} {:<4d}", name, A, sbx);
 }
 
-void Chunk::disassemblesAb(const char *name, uint32_t instruction) const {
-    int16_t A = GET_Ab_a(instruction);
-    uint8_t b = GET_Ab_b(instruction);
+void Chunk::disassembleABC(const char *name, uint32_t instruction) const {
+    uint8_t a = GET_A(instruction);
+    uint16_t b = GET_B(instruction);
+    uint16_t c = GET_C(instruction);
 
-    std::println("{:<16} {:4d} {:4d}", name, A, b);
+    std::println("{:<16} R{:<3d} {}{:<3d} {}{:<3d}", name, a,
+                 b >= 256 ? 'C' : 'R', b % 256, c >= 256 ? 'C' : 'R', c % 256);
 }
 
-void Chunk::disassembleabc(const char *name, uint32_t instruction) const {
-    uint8_t a = GET_abc_a(instruction);
-    uint8_t b = GET_abc_b(instruction);
-    uint8_t c = GET_abc_c(instruction);
+void Chunk::disassembleCall(const char *name, uint32_t instruction) const {
+    uint8_t a = GET_A(instruction);
+    uint16_t b = GET_B(instruction);
+    uint16_t c = GET_C(instruction);
 
-    std::println("{:<16} {:4d} {:4d} {:4d}", name, a, b, c);
+    if (c == 0)
+        std::println("{:<16} R{:<3d}", name, a);
+    else if (c == 1)
+        std::println("{:<16} R{:<3d} R{:d}", name, a, b);
+    else
+        std::println("{:<16} R{:<3d} R{:d}...R{:d}", name, a, b, b + c - 1);
 }
 
 void Chunk::disassembleInstruction(int offset) {
@@ -65,101 +78,104 @@ void Chunk::disassembleInstruction(int offset) {
     OpCode instruction = GET_op(this->code[offset]); 
     switch (instruction) {
         case OpCode::Return:
-            return this->disassembleAb("OP_RETURN", this->code[offset]);
+            return this->disassembleABx("OP_RETURN", this->code[offset]);
 
         case OpCode::Constant:
-            return this->disassembleAb("OP_CONSTANT", this->code[offset]);
+            return this->disassembleABx("OP_CONSTANT", this->code[offset], "C");
 
         case OpCode::Object:
-            return this->disassembleAb("OP_OBJECT", this->code[offset]);
+            return this->disassembleABx("OP_OBJECT", this->code[offset], "O");
+
+        case OpCode::Self:
+            return this->disassembleABx("OP_SELF", this->code[offset]);
 
         case OpCode::Retain:
-            return this->disassembleAb("OP_RETAIN", this->code[offset]);
+            return this->disassembleABx("OP_RETAIN", this->code[offset]);
 
         case OpCode::Release:
-            return this->disassembleAb("OP_RELEASE", this->code[offset]);
+            return this->disassembleABx("OP_RELEASE", this->code[offset]);
 
         case OpCode::Not:
-            return this->disassembleAB("OP_NOT", this->code[offset]);
+            return this->disassembleABx("OP_NOT", this->code[offset], "RC");
 
         case OpCode::NegateI:
-            return this->disassembleAB("OP_NEGATE_I", this->code[offset]);
+            return this->disassembleABx("OP_NEGATE_I", this->code[offset], "RC");
 
         case OpCode::NegateF:
-            return this->disassembleAB("OP_NEGATE_F", this->code[offset]);
+            return this->disassembleABx("OP_NEGATE_F", this->code[offset], "RC");
 
         case OpCode::AddF:
-            return this->disassembleabc("OP_ADDF", this->code[offset]);
+            return this->disassembleABC("OP_ADDF", this->code[offset]);
 
         case OpCode::AddI:
-            return this->disassembleabc("OP_ADDI", this->code[offset]);
+            return this->disassembleABC("OP_ADDI", this->code[offset]);
 
 
         case OpCode::SubtractF:
-            return this->disassembleabc("OP_SUBTRACTF", this->code[offset]);
+            return this->disassembleABC("OP_SUBTRACTF", this->code[offset]);
 
         case OpCode::SubtractI:
-            return this->disassembleabc("OP_SUBTRACTI", this->code[offset]);
+            return this->disassembleABC("OP_SUBTRACTI", this->code[offset]);
 
 
         case OpCode::MultiplyF:
-            return this->disassembleabc("OP_MULTIPLYF", this->code[offset]);
+            return this->disassembleABC("OP_MULTIPLYF", this->code[offset]);
 
         case OpCode::MultiplyI:
-            return this->disassembleabc("OP_MULTIPLYI", this->code[offset]);
+            return this->disassembleABC("OP_MULTIPLYI", this->code[offset]);
 
 
         case OpCode::DivideF:
-            return this->disassembleabc("OP_DIVIDEF", this->code[offset]);
+            return this->disassembleABC("OP_DIVIDEF", this->code[offset]);
 
         case OpCode::DivideI:
-            return this->disassembleabc("OP_DIVIDEI", this->code[offset]);
+            return this->disassembleABC("OP_DIVIDEI", this->code[offset]);
 
 
         case OpCode::EqI:
-            return this->disassembleabc("OP_EQI", this->code[offset]);
+            return this->disassembleABC("OP_EQI", this->code[offset]);
 
         case OpCode::NeI:
-            return this->disassembleabc("OP_NEI", this->code[offset]);
+            return this->disassembleABC("OP_NEI", this->code[offset]);
 
         case OpCode::EqF:
-            return this->disassembleabc("OP_EQF", this->code[offset]);
+            return this->disassembleABC("OP_EQF", this->code[offset]);
 
         case OpCode::NeF:
-            return this->disassembleabc("OP_NEF", this->code[offset]);
+            return this->disassembleABC("OP_NEF", this->code[offset]);
 
         case OpCode::EqB:
-            return this->disassembleabc("OP_EQB", this->code[offset]);
+            return this->disassembleABC("OP_EQB", this->code[offset]);
 
         case OpCode::NeB:
-            return this->disassembleabc("OP_NEB", this->code[offset]);
+            return this->disassembleABC("OP_NEB", this->code[offset]);
 
         case OpCode::GtI:
-            return this->disassembleabc("OP_GTI", this->code[offset]);
+            return this->disassembleABC("OP_GTI", this->code[offset]);
 
         case OpCode::LtI:
-            return this->disassembleabc("OP_LTI", this->code[offset]);
+            return this->disassembleABC("OP_LTI", this->code[offset]);
 
         case OpCode::GeI:
-            return this->disassembleabc("OP_GEI", this->code[offset]);
+            return this->disassembleABC("OP_GEI", this->code[offset]);
 
         case OpCode::LeI:
-            return this->disassembleabc("OP_LEI", this->code[offset]);
+            return this->disassembleABC("OP_LEI", this->code[offset]);
 
         case OpCode::GtF:
-            return this->disassembleabc("OP_GTF", this->code[offset]);
+            return this->disassembleABC("OP_GTF", this->code[offset]);
 
         case OpCode::LtF:
-            return this->disassembleabc("OP_LTF", this->code[offset]);
+            return this->disassembleABC("OP_LTF", this->code[offset]);
 
         case OpCode::GeF:
-            return this->disassembleabc("OP_GEF", this->code[offset]);
+            return this->disassembleABC("OP_GEF", this->code[offset]);
 
         case OpCode::LeF:
-            return this->disassembleabc("OP_LEF", this->code[offset]);
+            return this->disassembleABC("OP_LEF", this->code[offset]);
 
         case OpCode::Copy:
-            return this->disassembleAB("OP_COPY", this->code[offset]);
+            return this->disassembleABx("OP_COPY", this->code[offset], "R");
 
         case OpCode::Jmp:
             return this->disassembleJump("OP_JMP", offset, false);
@@ -171,26 +187,31 @@ void Chunk::disassembleInstruction(int offset) {
             return this->disassembleJump("OP_JIT", offset, true);
 
         case OpCode::I2F:
-            return this->disassembleAB("OP_I2F", this->code[offset]);
+            return this->disassembleABx("OP_I2F", this->code[offset], "RC");
 
         case OpCode::F2I:
-            return this->disassembleAB("OP_F2I", this->code[offset]);
+            return this->disassembleABx("OP_F2I", this->code[offset], "RC");
 
         case OpCode::I2B:
-            return this->disassembleAB("OP_I2B", this->code[offset]);
+            return this->disassembleABx("OP_I2B", this->code[offset], "RC");
 
         case OpCode::B2I:
-            return this->disassembleAB("OP_B2I", this->code[offset]);
+            return this->disassembleABx("OP_B2I", this->code[offset], "RC");
 
         case OpCode::F2B:
-            return this->disassembleAB("OP_F2B", this->code[offset]);
+            return this->disassembleABx("OP_F2B", this->code[offset], "RC");
 
         case OpCode::B2F:
-            return this->disassembleAB("OP_B2F", this->code[offset]);
+            return this->disassembleABx("OP_B2F", this->code[offset], "RC");
 
         case OpCode::Call:
-            std::println("OP_CALL");
+            return this->disassembleCall("OP_CALL", this->code[offset]);
             break;
+
+        case OpCode::CallSelf:
+            return this->disassembleCall("OP_CALL_SELF", this->code[offset]);
+            break;
+
         case OpCode::I2Str:
             std::println("OP_I2STR");
             break;
@@ -210,52 +231,61 @@ void Chunk::disassembleInstruction(int offset) {
 
 #define FIX_LINE line = line == -1 ? this->lines.empty() ? 0 : this->lines.back() : line;
 
-// abc -> [OpCode:8] [A:8] [B:8] [C:8]
-unsigned Chunk::write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line) {
+// [op:6] [a:8] [b:9] [c:9]
+unsigned Chunk::writeABC(OpCode op, uint8_t a, uint16_t b, uint16_t c, int line) {
     FIX_LINE;
-    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           (a << 16) | (b << 8) | c;
-    this->code.push_back(instruction);
+
+    uint32_t ins = (static_cast<uint8_t>(op) << 26) |
+                   (static_cast<uint8_t>(a) << 18) |
+                   ((b & 0x1ff) << 9) |
+                   (c & 0x1ff);
+
+    this->code.push_back(ins);
     this->lines.push_back(line);
+
     return this->code.size() - 1;
 }
 
-// Sa -> [OpCode:8] [Unused:8] [A:16]
-unsigned Chunk::write_sAb(OpCode op, int16_t A, uint8_t b, int line) {
+unsigned Chunk::writeABx(OpCode op, uint8_t a, uint32_t Bx, int line) {
     FIX_LINE;
-    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           (static_cast<uint16_t>(A) & 0xFFFF) << 8 |
-                           (b & 0xFF);
-    this->code.push_back(instruction);
+
+    uint32_t ins = (static_cast<uint8_t>(op) << 26) |
+                   (static_cast<uint8_t>(a) << 18) |
+                   (Bx & 0x3ffff);
+
+    this->code.push_back(ins);
     this->lines.push_back(line);
+
     return this->code.size() - 1;
 }
 
-// A and B are both 12 bits
-unsigned Chunk::write_AB(OpCode op, uint16_t A, uint16_t B, int line) {
+unsigned Chunk::writeAsBx(OpCode op, uint8_t a, int32_t sBx, int line) {
     FIX_LINE;
-    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           ((A & 0x0FFF) << 12) | (B & 0x0FFF);
-    this->code.push_back(instruction);
+
+    uint32_t Bx = static_cast<uint32_t>(sBx + 0x1ffff);
+    uint32_t ins = (static_cast<uint8_t>(op) << 26) |
+                   (static_cast<uint8_t>(a) << 18) |
+                   (Bx & 0x3ffff);
+
+    this->code.push_back(ins);
     this->lines.push_back(line);
+
     return this->code.size() - 1;
 }
 
-unsigned Chunk::write_Ab(OpCode op, uint16_t A, uint8_t b, int line) {
-    FIX_LINE;
-    uint32_t instruction = (static_cast<uint8_t>(op) << 24) |
-                           ((A & 0x0FFFF) << 8) | (b & 0x00FF);
-    this->code.push_back(instruction);
-    this->lines.push_back(line);
-    return this->code.size() - 1;
-}
+void Chunk::patch_AsBx(unsigned offset, int32_t sBx) {
+    assert(offset < this->code.size() && "Offset out of bounds in patch_AsBx");
 
-void Chunk::patch_sA(unsigned offset, int16_t A) {
-    assert(offset < this->code.size());
-    uint32_t instruction = this->code[offset];
-    instruction =
-        (instruction & 0xFF0000FF) | ((static_cast<uint16_t>(A) & 0xFFFF) << 8);
-    this->code[offset] = instruction;
+    uint32_t Bx = static_cast<uint32_t>(sBx + 0x1ffff);
+    uint32_t ins = this->code[offset];
+
+    // Clear the existing Bx bits
+    ins &= ~(0x3ffff);
+
+    // Set the new Bx bits
+    ins |= (Bx & 0x3ffff);
+
+    this->code[offset] = ins;
 }
 
 unsigned Chunk::currentOffset() const {

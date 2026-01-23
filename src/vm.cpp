@@ -41,24 +41,28 @@ InterpretResult VM::run() {
 #define frame this->call_frames.back()
 #define registers (this->registers.data() + frame.stack_base)
 
+#define RC(x) (x < 256 ? registers[x] : frame.function->chunk.constants[x - 256])
+
 #define BINARY_EXPR_2(op, from_field, to_field) { \
-    const auto left_r = GET_abc_a(instruction); \
-    const auto right_r = GET_abc_b(instruction); \
-    const auto target_r = GET_abc_c(instruction); \
+    const uint8_t target_r = GET_A(instruction); \
+    const uint16_t left_rc = GET_B(instruction); \
+    const uint16_t right_rc = GET_C(instruction); \
     registers[target_r].to_field = \
-        registers[left_r].from_field op registers[right_r].from_field; \
+        RC(left_rc).from_field op RC(right_rc).from_field; \
     break; \
 }
 
 #define BINARY_EXPR(op, type_field) BINARY_EXPR_2(op, type_field, type_field)
 
-#define CAST_EXPR(from_field, to_field) { \
-    const auto from_r = GET_AB_a(instruction); \
-    const auto to_r = GET_AB_b(instruction); \
-    registers[to_r].to_field = static_cast<decltype(registers[to_r].to_field)>( \
-        registers[from_r].from_field); \
-    break; \
-}
+#define CAST_EXPR(from_field, to_field)                                        \
+    {                                                                          \
+        const uint8_t target_r = GET_A(instruction);                           \
+        const uint32_t from_rc = GET_Bx(instruction);                          \
+        registers[target_r].to_field =                                         \
+            static_cast<decltype(registers[target_r].to_field)>(               \
+                RC(from_rc).from_field);                                       \
+        break;                                                                 \
+    }
 
 #ifdef DEBUG_PRINT
     std::print("\n=== VM Execution Start ===\n");
@@ -80,7 +84,7 @@ InterpretResult VM::run() {
                     return InterpretResult::Ok;
                 } else {
                     // Get the return value
-                    const auto return_r = GET_Ab_a(instruction);
+                    const uint8_t return_r = GET_A(instruction);
                     const Value return_value = registers[return_r];
 
                     // Put the return value at 0 
@@ -103,10 +107,12 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Call: {
-                const auto callee_r = GET_AB_a(instruction);
-                const auto arg_count = GET_AB_b(instruction);
+                const uint8_t callee_r = GET_A(instruction);
                 const Value callee = registers[callee_r];
                 assert(callee.object);
+
+                // Get the start of the arguments 
+                const uint16_t arg_start_r = GET_B(instruction);
                 
                 if (callee.object->type == Object::Type::Function) {
                     FunctionObj *function =
@@ -117,7 +123,7 @@ InterpretResult VM::run() {
                     // Put the frame starting in the callee register
                     this->call_frames.push_back(
                         CallFrame(function, this->ip,
-                                  frame.stack_base + callee_r));
+                                  frame.stack_base + arg_start_r));
 
                     // Set the instruction pointer to the function's start
                     this->ip = 0;
@@ -125,104 +131,95 @@ InterpretResult VM::run() {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee.object);
 
+                    // Get the argument count
+                    const uint16_t arg_count = GET_C(instruction);
+
                     // Call the native
                     Value result = native_function->function_ptr(
-                        arg_count > 0
-                            ? &registers[callee_r + 1]
-                            : nullptr,
+                        registers + arg_start_r,
                         arg_count);
 
-                    // Push the result onto the callee register 
-                    registers[callee_r] = result;
-
-                    // Release the native function object
-                    native_function->release();
+                    // Push the result onto the first argument register 
+                    registers[arg_start_r] = result;
                 }
-
-                // const uint8_t arg_count = READ_BYTE();
-                // const Value callee = this->stack[this->stack.size() - 1 - arg_count];
-                // assert(callee.object);
-
-                // if (callee.object->type == Object::Type::Function) {
-                //     FunctionObj *function = static_cast<FunctionObj *>(callee.object);
-                //     function->retain(); // retain the function to release later
-                //     // -1 for the function itself
-                //     // -1 for the return value slot
-                //     this->call_frames.push_back(
-                //         CallFrame(function, this->stack.size() - arg_count - 2));
-                // } else {
-                //     NativeFunctionObj *native_function =
-                //         static_cast<NativeFunctionObj *>(callee.object);
-
-                //     // Call the native function
-                //     Value result = native_function->function_ptr(
-                //         arg_count > 0
-                //             ? &this->stack[this->stack.size() - arg_count]
-                //             : nullptr,
-                //         arg_count);
-
-                //     // Pop the arguments and the function itself
-                //     // The native IS responsible for releasing any objects arguments
-                //     this->stack.resize(this->stack.size() - arg_count - 1);
-
-                //     // Push the result onto the stack
-                //     this->stack.back() = result;
-
-                //     // Release the native function object
-                //     native_function->release();
-                // }
                 break;
             }
 
+            case OpCode::CallSelf: {
+                // The function to call is the current function
+                FunctionObj *function =
+                    frame.function;
+
+                function->retain(); // retain the function to release later
+
+                // Get the start of the arguments 
+                const uint16_t arg_start_r = GET_B(instruction);
+
+                // Put the frame starting in the callee register
+                this->call_frames.push_back(
+                    CallFrame(function, this->ip,
+                              frame.stack_base + arg_start_r));
+
+                // Set the instruction pointer to the function's start
+                this->ip = 0;
+                break;
+            }
 
             case OpCode::Constant: {
-                const auto constant_index = GET_Ab_a(instruction);
-                const auto target_register = GET_Ab_b(instruction);
-                registers[target_register] =
-                    frame.function->chunk.constants[constant_index];
+                const uint8_t reg = GET_A(instruction); 
+                const uint16_t constant = GET_Bx(instruction);
+                registers[reg] =
+                    frame.function->chunk.constants[constant];
                 break;
             }
 
             case OpCode::Object: {
-                const auto object_index = GET_Ab_a(instruction);
-                const auto target_register = GET_Ab_b(instruction);
+                const uint8_t reg = GET_A(instruction); 
+                const uint32_t object_index = GET_Bx(instruction);
                 Object *object =
                     frame.function->chunk.object_constants[object_index];
                 object->retain(); // A new reference for the register
-                registers[target_register].object = object;
+                registers[reg].object = object;
+                break;
+            }
+
+            case OpCode::Self: {
+                const uint8_t reg = GET_A(instruction);
+                registers[reg].object = frame.function;
+                frame.function->retain(); // A new reference for the register
                 break;
             }
 
             case OpCode::Retain: {
-                const auto reg = GET_Ab_a(instruction);
+                const auto reg = GET_A(instruction);
                 registers[reg].object->retain();
                 break;
             }
 
             case OpCode::Release: {
-                const auto reg = GET_Ab_a(instruction);
+                const auto reg = GET_A(instruction);
                 registers[reg].object->release();
                 break;
             }
 
             case OpCode::Not: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                registers[to_r].boolean = !registers[from_r].boolean;
+                const uint8_t to_r = GET_A(instruction);
+                const uint16_t from_rc = GET_Bx(instruction);
+                registers[to_r].boolean = !RC(from_rc).boolean;
                 break;
             }
 
             case OpCode::NegateI: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                registers[to_r].fixed = -registers[from_r].fixed;
+                const uint8_t to_r = GET_A(instruction);
+                const uint16_t from_rc = GET_Bx(instruction);
+                registers[to_r].fixed = -RC(from_rc).fixed;
                 break;
             }
 
             case OpCode::NegateF: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                registers[to_r].floating = -registers[from_r].floating;
+                const uint8_t to_r = GET_A(instruction);
+                const uint16_t from_rc = GET_Bx(instruction);
+                registers[to_r].floating = -RC(from_rc).floating;
                 break;
             }
 
@@ -254,31 +251,31 @@ InterpretResult VM::run() {
             case OpCode::NeB: BINARY_EXPR_2(!=, boolean, boolean);
 
             case OpCode::Copy: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
+                const uint8_t to_r = GET_A(instruction);
+                const uint16_t from_r = GET_B(instruction);
                 registers[to_r] = registers[from_r];
                 break;
             }
 
             case OpCode::Jmp: {
-                const auto offset = GET_sAb_a(instruction);
+                const int32_t offset = GET_sBx(instruction);
                 this->ip += offset;
                 break;
             }
 
             case OpCode::JmpIfFalse: {
-                const auto reg = GET_sAb_b(instruction);
+                const uint8_t reg = GET_A(instruction);
                 if (!registers[reg].boolean) {
-                    const auto offset = GET_sAb_a(instruction);
+                    const int32_t offset = GET_sBx(instruction);
                     this->ip += offset;
                 }
                 break;
             }
 
             case OpCode::JmpIfTrue: {
-                const auto reg = GET_sAb_b(instruction);
+                const uint8_t reg = GET_A(instruction);
                 if (registers[reg].boolean) {
-                    const auto offset = GET_sAb_a(instruction);
+                    const int32_t offset = GET_sBx(instruction);
                     this->ip += offset;
                 }
                 break;
@@ -292,27 +289,27 @@ InterpretResult VM::run() {
             case OpCode::B2F: CAST_EXPR(boolean, floating);
 
             case OpCode::I2Str: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                FixedType val = registers[from_r].fixed;
+                const uint8_t to_r = GET_A(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
+                int64_t val = RC(from_rc).fixed;
                 auto strObj = new StringObj(std::to_string(val));
                 registers[to_r].object = strObj;
                 break;
             }
 
             case OpCode::F2Str: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                FloatingType val = registers[from_r].floating;
+                const uint8_t to_r = GET_A(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
+                double val = RC(from_rc).floating;
                 auto strObj = new StringObj(std::to_string(val));
                 registers[to_r].object = strObj;
                 break;
             }
 
             case OpCode::B2Str: {
-                const auto from_r = GET_AB_a(instruction);
-                const auto to_r = GET_AB_b(instruction);
-                bool val = registers[from_r].boolean;
+                const uint8_t to_r = GET_A(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
+                bool val = RC(from_rc).boolean;
                 auto strObj = new StringObj(val ? "true" : "false");
                 registers[to_r].object = strObj;
                 break;

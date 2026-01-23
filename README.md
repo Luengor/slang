@@ -62,49 +62,60 @@ From highest to lowest:
 
 ## Instruction Set
 ### Instruction Shapes
- - `Op`: `[opcode:8] [unused:24]`
- - `Opabc`: `[opcode:8] [a:8] [b:8] [c:8]`
- - `OpA`: `[opcode:8] [unused:8] [a:16]`
- - `OpsA`: `[opcode:8] [unused:8] [a:16]`
- - `OpAB`: `[opcode:8] [a:12] [b:12]`
- - `OpAb`: `[opcode:8] [a:16] [b:8]`
+```
+    6         8          9           9
++--------+---------+-----------+-----------+
+| OpCode |    A    |     B     |     C     |
++--------+---------+-----------+-----------+
+| OpCode |    A    |           Bx          |
++--------+---------+-----------+-----------+
+| OpCode |    A    |          sBx          |
++--------+---------+-----------------------+
+
+```
+- OpABC: OpCode + A + B + C
+- OpABx:  OpCode + A + Bx
+- OpAsBx: OpCode + A + sBx
 
 ### Instruction Reference
-| I| Instruction | Shape | Description                                         |
-|--|-------------|-------|-----------------------------------------------------|
-| 0| Return      | Op    | Return from a function                              |
-| 1| Constant    | OpAb  | b <- constants\[A\]                                 |
-| 2| Not         | OpAB  | B <- !A                                             |
-| 3| NegateI     | OpAB  | B <- -A                                             |
-| 4| NegateF     | OpAB  | B <- -A                                             |
-| 5| AddI        | Opabc | c <- a + b                                          |
-| 6| SubI        | Opabc | c <- a - b                                          |
-| 7| MulI        | Opabc | c <- a * b                                          |
-| 8| DivI        | Opabc | c <- a // b                                         |
-| 9| AddF        | Opabc | c <- a + b                                          |
-|10| SubF        | Opabc | c <- a - b                                          |
-|11| MulF        | Opabc | c <- a * b                                          |
-|12| DivF        | Opabc | c <- a / b                                          |
-|13| EqI         | Opabc | c <- a == b                                         |
-|14| NeqI        | Opabc | c <- a != b                                         |
-|15| GtI         | Opabc | c <- a > b                                          |
-|16| GeI         | Opabc | c <- a >= b                                         |
-|16| LtI         | Opabc | c <- a < b                                          |
-|17| LeI         | Opabc | c <- a <= b                                         |
-|19| EqF         | Opabc | c <- a == b                                         |
-|20| NeqF        | Opabc | c <- a != b                                         |
-|21| GtF         | Opabc | c <- a > b                                          |
-|22| GeF         | Opabc | c <- a >= b                                         |
-|22| LtF         | Opabc | c <- a < b                                          |
-|23| LeF         | Opabc | c <- a <= b                                         |
-|24| EqB         | Opabc | c <- a == b                                         |
-|25| NeqB        | Opabc | c <- a != b                                         |
-|26| Copy        | OpAB  | b <- a                                              |
-|27| Jmp         | OpA   | pc <- pc + a                                        |
-|28| JmpIfFalse  | OpAb  | pc <- !b ? pc + a : pc                              |
-|28| JmpIfTrue   | OpAb  | pc <-  b ? pc + a : pc                              |
+```
+Return          return R[A]
+Self            R[A] <- self
+Call            R[B] <- R[A](R[B], ..., R[B + C - 1])
+CallSelf        R[B] <- self(R[B], ..., R[B + C - 1])
+Jmp             PC <- PC + sBx 
+JmpIfFalse      PC <- !R[A] ? PC + sBx : PC
+JmpIfTrue       PC <-  R[A] ? PC + sBx : PC
+Constant        R[A] <- C[Bx]
+Object          R[A] <- O[Bx]
+Copy            R[A] <- R[Bx]
+Retain          retain R[A]
+Release         release R[A]
+Not             R[A] <- !RC[Bx]
+Negate          R[A] <- -RC[Bx]
+AddIF           R[A] <- RC[B] + RC[C]
+SubIF           R[A] <- RC[B] - RC[C]
+MulIF           R[A] <- RC[B] * RC[C]
+DivIF           R[A] <- RC[B] / RC[C]
+EqIFB           R[A] <- RC[B] == RC[C]
+NeIFB           R[A] <- RC[B] != RC[C]
+GtIF            R[A] <- RC[B] > RC[C]
+GeIF            R[A] <- RC[B] >= RC[C]
+LtIF            R[A] <- RC[B] < RC[C]
+LeIF            R[A] <- RC[B] <= RC[C]
+Cast            R[A] <- RC[B]
+```
 
-| I| Ins         | Op    |                                                     |
+Notes:
+* Instructions with IFO suffix operate on integers, floats or booleans
+  respectively.
+* R\[x] denotes register x.
+* PC denotes the program counter.
+* C\[x] denotes constant x.
+* O\[x] denotes object constant x.
+* RC\[x] denotes `x < 256 ? R[x] : C[x - 256]`.
+* Call calls the function in R\[a] with c arguments starting from R\[b\].
+  The result is stored in R\[b\].
 
 ## Register Usage
  - After compiling a Node, its result type, register and if it's a variable

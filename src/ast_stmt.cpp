@@ -44,7 +44,7 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
 
         // If it was an object type, release it
         if (ctx.typeRegistry.isObject(type(this->expression))) {
-            ctx.function->chunk.write_Ab(OpCode::Release,
+            ctx.function->chunk.writeABx(OpCode::Release,
                                          reg(this->expression), 0,
                                          this->token.line);
         }
@@ -122,7 +122,7 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
 
             // If its an object type, release it
             if (ctx.typeRegistry.isObject(entry.type)) {
-                ctx.function->chunk.write_Ab(
+                ctx.function->chunk.writeABx(
                     OpCode::Release, entry.register_index,
                     0, this->token.line);
             }
@@ -285,6 +285,12 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
                           "Invalid assignment target during compilation.");
     }
 
+    // Self is not a valid assignment target
+    if (varNode->name == "self") {
+        throw ParserError(this->token,
+                          "Cannot assign to 'self' variable.");
+    }
+
     // Get its register
     const auto local_entry = std::get<EntryID>(varNode->resolution);
     const int local_register =
@@ -305,7 +311,7 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         ctx.typeRegistry.isObject(type(this->target));
 
     if (is_object)
-        ctx.function->chunk.write_Ab(OpCode::Release, local_register, 0,
+        ctx.function->chunk.writeABx(OpCode::Release, local_register, 0,
                                      this->token.line);
 
     // Compile the value into the local variable's register
@@ -314,12 +320,12 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     // If we are using a different register, copy the value
     if (reg(this) != local_register) {
         // Store the local variable
-        ctx.function->chunk.write_AB(OpCode::Copy, local_register,
-                                     reg(this), this->token.line);
+        ctx.function->chunk.writeABx(OpCode::Copy, reg(this), local_register,
+                                     this->token.line);
 
         // Because of the copy, we have to retain
         if (is_object)
-            ctx.function->chunk.write_Ab(OpCode::Retain, local_register, 0);
+            ctx.function->chunk.writeABx(OpCode::Retain, local_register, 0);
     }
 }
 
@@ -371,8 +377,8 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
     this->condition->compile(ctx);
 
     // Insert jump if false, take note of the jump address and insert dummy
-    const auto if_jump = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition), this->token.line);
+    const auto if_jump = ctx.function->chunk.writeAsBx(
+        OpCode::JmpIfFalse, reg(this->condition), 0xFFFF, this->token.line);
 
     // Free condition register if needed
     if (should_free(this->condition))
@@ -384,13 +390,13 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch)
-        else_jump = ctx.function->chunk.write_sAb(OpCode::Jmp, 0xFFFF, 0);
+        else_jump = ctx.function->chunk.writeABx(OpCode::Jmp, 0, 0xFFFF);
 
     // Patch first jump
     const unsigned after_then_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_then =
         static_cast<int16_t>(after_then_addr - if_jump - 1);
-    ctx.function->chunk.patch_sA(if_jump, offset_to_after_then);
+    ctx.function->chunk.patch_AsBx(if_jump, offset_to_after_then);
 
     // If there is no else branch, we're done
     if (!this->else_branch)
@@ -403,7 +409,7 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
     const unsigned after_else_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_after_else =
         static_cast<int16_t>(after_else_addr - else_jump - 1);
-    ctx.function->chunk.patch_sA(else_jump, offset_to_after_else);
+    ctx.function->chunk.patch_AsBx(else_jump, offset_to_after_else);
 }
 
 void IfStmt::print(int indent) {
@@ -455,9 +461,8 @@ void WhileStmt::compile(CompileContext &ctx, int reg) {
     this->condition->compile(ctx);
 
     // Insert jump to end of loop if condition is false
-    const auto jump_to_patch = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
-        this->token.line);
+    const auto jump_to_patch = ctx.function->chunk.writeAsBx(
+        OpCode::JmpIfFalse, reg(this->condition), 0xFFFF, this->token.line);
 
     // Free condition register if needed
     if (should_free(this->condition))
@@ -470,13 +475,13 @@ void WhileStmt::compile(CompileContext &ctx, int reg) {
     const int16_t before_offset =
         static_cast<int16_t>(before_condition) -
         static_cast<int16_t>(ctx.function->chunk.currentOffset()) - 1;
-    ctx.function->chunk.write_sAb(OpCode::Jmp, before_offset, 0);
+    ctx.function->chunk.writeAsBx(OpCode::Jmp, 0, before_offset);
 
     // Patch first jump
     const unsigned final_addr = ctx.function->chunk.currentOffset();
     const int16_t offset_to_end =
         static_cast<int16_t>(final_addr - jump_to_patch - 1);
-    ctx.function->chunk.patch_sA(jump_to_patch, offset_to_end);
+    ctx.function->chunk.patch_AsBx(jump_to_patch, offset_to_end);
 }
 
 void WhileStmt::print(int indent) {
@@ -542,14 +547,14 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
         if (entry.register_index != -1 &&
             ctx.typeRegistry.isObject(entry.type)) {
-            ctx.function->chunk.write_Ab(
+            ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
                 0, this->token.line);
         }
     };
     
     // Finally, return
-    ctx.function->chunk.write_Ab(
+    ctx.function->chunk.writeABx(
         OpCode::Return, reg, 0, this->token.line);
 }
 

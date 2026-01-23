@@ -28,7 +28,7 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
     // Compile the AST
     root->compile(ctx);
 
-    function->chunk.write_abc(OpCode::Return, 0, 0, 0);
+    function->chunk.writeABx(OpCode::Return, 0, 0, 0);
 
 #ifdef DEBUG_PRINT
     // Print the name table

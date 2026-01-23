@@ -85,8 +85,8 @@ void LiteralNode::compile(CompileContext &ctx, int reg) {
         // Object constant
         const auto constant =
             ctx.function->chunk.addObjectConstant(this->value.second.object);
-        ctx.function->chunk.write_Ab(OpCode::Object, constant,
-                                     reg(this), this->token.line);
+        ctx.function->chunk.writeABx(OpCode::Object, reg(this),
+                                     constant, this->token.line);
         return;
     }
 
@@ -94,8 +94,8 @@ void LiteralNode::compile(CompileContext &ctx, int reg) {
     const auto constant = ctx.function->chunk.addConstant(this->value.second);
 
     // Write the constant load instruction
-    ctx.function->chunk.write_Ab(OpCode::Constant, constant,
-                                 reg(this), this->token.line);
+    ctx.function->chunk.writeABx(OpCode::Constant, reg(this), constant,
+                                 this->token.line);
 }
 
 void LiteralNode::print(int indent) {
@@ -165,10 +165,6 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function->name =
         "<fn@" + std::to_string(this->token.line) + ">";
 
-    // Add a self local for recursion
-    this->self_entry_id = this->fn_ctx->nameTable.addName(
-        "self", this->token.line, ctx.typeRegistry.noneType()).value();
-
     // Resolve argument types
     std::vector<TypeID> param_types;
     for (const auto &arg : this->arguments) {
@@ -185,10 +181,6 @@ void FunctionNode::resolveType(CompileContext &ctx) {
         param_types, return_type_id);
 
     this->fn_ctx->function->type_id = type(this);
-
-    // Update self type 
-    this->fn_ctx->nameTable.getEntry(this->self_entry_id).type =
-        type(this);
 
     // Check if the last statement in the body is a return statement
     assert(this->body->type == ASTNodeType::BlockStmt);
@@ -214,13 +206,6 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
-    // Get register for self
-    auto self_reg = fn_ctx.allocateRegister();
-    fn_ctx.nameTable.getEntry(this->self_entry_id).register_index = self_reg;
-
-    // Put self in scope
-    fn_ctx.nameTable.putInScope(this->self_entry_id);
-
     // Compile the args to push the locals
     for (const auto &arg : this->arguments) {
         arg->compile(fn_ctx); // args don't need registers
@@ -243,8 +228,8 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
 
     // Write the object load instruction
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
-    ctx.function->chunk.write_Ab(
-        OpCode::Object, constant, reg(this), this->token.line);
+    ctx.function->chunk.writeABx(
+        OpCode::Object, reg(this), constant, this->token.line);
 }
 
 void FunctionNode::print(int indent) {
@@ -275,6 +260,19 @@ void VariableNode::resolveType(CompileContext &ctx) {
         return;
     }
 
+    // If not, try to resolve as self
+    if (this->name == "self") {
+        // Check we are in a function
+        if (!ctx.next) {
+            throw ParserError(this->token,
+                              "'self' can only be used within methods.");
+        }
+
+        // Get the self type from the function context
+        type(this) = ctx.function->type_id;
+        return;
+    }
+
     // If not, resolve as a variable
     auto entry = ctx.nameTable.findEntryInScope(this->name);
     if (!entry.has_value()) {
@@ -287,6 +285,13 @@ void VariableNode::resolveType(CompileContext &ctx) {
 }
 
 void VariableNode::compile(CompileContext &ctx, int reg) {
+    // Self has a custom compilation path
+    if (this->name == "self") {
+        reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+        ctx.function->chunk.writeABx(OpCode::Self, reg(this), 0, this->token.line);
+        return;
+    }
+
     // Compile based on the resolution type
     std::visit(overloaded{
         [&](EntryID local_index) {
@@ -304,13 +309,13 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
 
             // If not, use the provided register
             reg(this) = reg;
-            ctx.function->chunk.write_AB(
-                OpCode::Copy, static_cast<uint8_t>(entry.register_index),
-                reg(this), this->token.line);
+            ctx.function->chunk.writeABx(
+                OpCode::Copy, reg(this),
+                static_cast<uint8_t>(entry.register_index), this->token.line);
 
             // If its an object type, retain it
             if (ctx.typeRegistry.isObject(type(this))) {
-                ctx.function->chunk.write_Ab(
+                ctx.function->chunk.writeABx(
                     OpCode::Retain, reg(this),
                     0, this->token.line);
             }
@@ -325,9 +330,8 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
             // Load the native function as a constant
             const auto constant =
                 ctx.function->chunk.addObjectConstant(native_fn);
-            ctx.function->chunk.write_Ab(
-                OpCode::Object, constant,
-                reg(this), this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Object, reg(this), constant,
+                                         this->token.line);
         }
     }, this->resolution);
 }
@@ -408,20 +412,19 @@ void UnaryExpr::compile(CompileContext &ctx, int reg) {
         case Token::Type::Minus:
             if (type(this) ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
-                ctx.function->chunk.write_AB(
-                    OpCode::NegateI, reg(this->operand),
-                    reg(this), this->token.line);
+                ctx.function->chunk.writeABx(OpCode::NegateI, reg(this),
+                                             reg(this->operand),
+                                             this->token.line);
             } else {
-                ctx.function->chunk.write_AB(
-                    OpCode::NegateF, reg(this->operand),
-                    reg(this), this->token.line);
+                ctx.function->chunk.writeABx(OpCode::NegateF, reg(this),
+                                             reg(this->operand),
+                                             this->token.line);
             }
             break;
 
         case Token::Type::Not:
-            ctx.function->chunk.write_AB(
-                OpCode::Not, reg(this->operand),
-                reg(this), this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Not, reg(this),
+                                         reg(this->operand), this->token.line);
             break;
 
         default:
@@ -544,9 +547,8 @@ void CastExpr::compile(CompileContext &ctx, int reg) {
         ctx.freeRegister(this->reg(operand));
 
     // Write the cast operation
-    ctx.function->chunk.write_AB(
-        this->cast_op, reg(this->operand),
-        reg(this), this->token.line);
+    ctx.function->chunk.writeABx(this->cast_op, reg(this), reg(this->operand),
+                                 this->token.line);
 }
 
 void CastExpr::print(int indent) {
@@ -700,8 +702,8 @@ void BinaryExpr::compile(CompileContext &ctx, int reg) {
 }
 
 #define write(op)                                                              \
-    ctx.function->chunk.write_abc(op, reg(this->left), reg(this->right),       \
-                                  reg(this), this->token.line);                \
+    ctx.function->chunk.writeABC(op, reg(this), reg(this->left),               \
+                                 reg(this->right), this->token.line);          \
     break;
 
 void BinaryExpr::compileArithmetic(CompileContext &ctx) {
@@ -890,8 +892,8 @@ void TernaryExpr::compile(CompileContext &ctx, int reg) {
 
     // Jump if false to else branch
     const int16_t jmp_to_else_pos =
-        ctx.function->chunk.write_sAb(
-            OpCode::JmpIfFalse, 0xFFFF, reg(this->condition),
+        ctx.function->chunk.writeAsBx(
+            OpCode::JmpIfFalse, reg(this->condition), 0xFFFF,
             this->token.line);
     
     // Compile then branch
@@ -899,14 +901,14 @@ void TernaryExpr::compile(CompileContext &ctx, int reg) {
 
     // Jump to after else branch
     const int16_t jump_after_else_pos =
-        ctx.function->chunk.write_sAb(
-            OpCode::Jmp, 0xFFFF, 0, this->token.line);
+        ctx.function->chunk.writeAsBx(
+            OpCode::Jmp, 0, 0xFFFF, this->token.line);
 
     // Patch jump to else branch
     const int16_t else_pos =
         static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset_to_else = else_pos - jmp_to_else_pos - 1;
-    ctx.function->chunk.patch_sA(jmp_to_else_pos, offset_to_else);
+    ctx.function->chunk.patch_AsBx(jmp_to_else_pos, offset_to_else);
 
     // Compile else branch
     this->else_branch->compile(ctx, reg(this));
@@ -915,7 +917,7 @@ void TernaryExpr::compile(CompileContext &ctx, int reg) {
     const int16_t after_else_pos =
         static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset_after_else = after_else_pos - jump_after_else_pos - 1;
-    ctx.function->chunk.patch_sA(jump_after_else_pos, offset_after_else);
+    ctx.function->chunk.patch_AsBx(jump_after_else_pos, offset_after_else);
 }
 
 void TernaryExpr::print(int indent) {
@@ -968,8 +970,8 @@ void LogicExpr::compileAnd(CompileContext &ctx) {
     this->left->compile(ctx, reg(this));
 
     // If that operand is false, we can skip the second operand
-    const int16_t jmp_pos = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfFalse, 0xFFFF, reg(this), this->token.line);
+    const int16_t jmp_pos = ctx.function->chunk.writeAsBx(
+        OpCode::JmpIfFalse, reg(this), 0xFFFF, this->token.line);
 
     // Compile second operand over it
     this->right->compile(ctx, reg(this));
@@ -977,7 +979,7 @@ void LogicExpr::compileAnd(CompileContext &ctx) {
     // Patch the jump position
     const int16_t after_pos = static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset = after_pos - jmp_pos - 1;
-    ctx.function->chunk.patch_sA(jmp_pos, offset);
+    ctx.function->chunk.patch_AsBx(jmp_pos, offset);
 }
 
 void LogicExpr::compileOr(CompileContext &ctx) {
@@ -985,8 +987,8 @@ void LogicExpr::compileOr(CompileContext &ctx) {
     this->left->compile(ctx, reg(this));
 
     // If its true, we can skip evaluating the second operand
-    const int16_t jmp_pos = ctx.function->chunk.write_sAb(
-        OpCode::JmpIfTrue, 0xFFFF, reg(this), this->token.line);
+    const int16_t jmp_pos = ctx.function->chunk.writeAsBx(
+        OpCode::JmpIfTrue, reg(this), 0xFFFF, this->token.line);
 
     // Compile second operand
     this->right->compile(ctx, reg(this));
@@ -995,7 +997,7 @@ void LogicExpr::compileOr(CompileContext &ctx) {
     const int16_t after_pos =
         static_cast<int16_t>(ctx.function->chunk.currentOffset());
     const int16_t offset = after_pos - jmp_pos - 1;
-    ctx.function->chunk.patch_sA(jmp_pos, offset);
+    ctx.function->chunk.patch_AsBx(jmp_pos, offset);
 }
 
 void LogicExpr::print(int indent) {
@@ -1056,40 +1058,83 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx, int reg) {
-    // Get continous registers for the arguments and callee
+    // Check if the callee is self
+    bool self_call = false;
+    if (this->callee->type == ASTNodeType::Variable) {
+        auto var_node = static_cast<VariableNode *>(this->callee.get());
+        if (var_node->name == "self") {
+            self_call = true;
+        }
+    }
+
+    // Compile the callee first 
+    this->callee->compile(ctx);
+
+    if (this->arguments.empty()) {
+        // If a register was provided, use that
+        reg(this) = reg != -1 ? reg : ctx.allocateRegister();
+
+        // Call
+        // The return value is placed on the first argument register, so
+        // pass that
+        ctx.function->chunk.writeABC(self_call ? OpCode::CallSelf : OpCode::Call,
+                                     this->reg(callee), reg(this), 0,
+                                     this->token.line);
+
+        // Free callee register if necessary
+        if (should_free(this->callee)) {
+            // Release the callee register
+            ctx.function->chunk.writeABx(
+                OpCode::Release, this->reg(callee), 0, this->token.line);
+            ctx.freeRegister(this->reg(callee));
+        }
+
+        // The result is already in the correct register, do nothing
+        return;
+
+    }
+
+    // Get continous registers for the arguments
     std::vector<int> arg_registers;
-    for (size_t i = 0; i < this->arguments.size() + 1; i++)
+    arg_registers.reserve(this->arguments.size());
+    for (size_t i = 0; i < this->arguments.size(); i++)
         arg_registers.push_back(ctx.allocateFromTop());
 
-    // If a register was provided, use that, if not, use the callee
+    // If a register was provided, use that, if not, use the first argument register
     reg(this) = reg != -1 ? reg : arg_registers[0];
 
-    // Compile the callee
-    this->callee->compile(ctx, arg_registers[0]);
-
     // Compile the arguments
-    int i = 1;
+    int i = 0;
     for (auto &arg : this->arguments)
         arg->compile(ctx, arg_registers[i++]);
 
     // Emit call
-    ctx.function->chunk.write_AB(OpCode::Call, this->reg(callee),
+    ctx.function->chunk.writeABC(self_call ? OpCode::CallSelf : OpCode::Call,
+                                 this->reg(callee), reg(this->arguments[0]),
                                  this->arguments.size(), this->token.line);
 
-    if (reg(this) == this->reg(callee)) {
+    if (reg(this) == arg_registers[0]) {
         // The result is already in the correct register, do nothing
         // Free the argument registers in reverse order (except ours)
-        for (int j = this->arguments.size(); j > 0; j--)
+        for (int j = this->arguments.size() - 1; j > 0; j--)
             ctx.freeRegister(arg_registers[j]);
 
     } else {
-        // The result value is now in the callee's result register, move it
-        ctx.function->chunk.write_AB(OpCode::Copy, this->reg(callee), reg(this),
+        // Move the result to the desired register 
+        ctx.function->chunk.writeABx(OpCode::Copy, reg(this), arg_registers[0],
                                      this->token.line);
 
         // Free the argument registers in reverse order
-        for (int j = this->arguments.size(); j >= 0; j--)
+        for (int j = this->arguments.size() - 1; j >= 0; j--)
             ctx.freeRegister(arg_registers[j]);
+    }
+
+    // Free callee register if necessary
+    if (should_free(this->callee)) {
+        // Release the callee register
+        ctx.function->chunk.writeABx(
+            OpCode::Release, this->reg(callee), 0, this->token.line);
+        ctx.freeRegister(this->reg(callee));
     }
 
     // Fixup registers

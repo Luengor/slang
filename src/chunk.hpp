@@ -6,7 +6,7 @@
 #include <vector>
 
 enum class OpCode : uint8_t {
-    Return, Constant, Object, 
+    Return, Constant, Object, Self,
     Not,
     NegateI, NegateF,
 
@@ -26,7 +26,7 @@ enum class OpCode : uint8_t {
     I2B, B2I,
     F2B, B2F,
 
-    Call,
+    Call, CallSelf,
 
     I2Str, F2Str, B2Str,
 };
@@ -40,11 +40,11 @@ class Chunk {
     ValueArray constants = {};
     std::vector<Object *> object_constants = {};
 
-    void disassembleJump(const char *name, unsigned address, bool show_reg) const;
-    void disassembleAb(const char *name, uint32_t instruction) const;
-    void disassemblesAb(const char *name, uint32_t instruction) const;
-    void disassembleAB(const char *name, uint32_t instruction) const;
-    void disassembleabc(const char *name, uint32_t instruction) const;
+    void disassembleJump(const char *name, int offset, bool show_reg) const;
+    void disassembleABx(const char *name, uint32_t instruction, const std::string &b_text = "") const;
+    void disassembleAsBx(const char *name, uint32_t instruction) const;
+    void disassembleABC(const char *name, uint32_t instruction) const;
+    void disassembleCall(const char *name, uint32_t instruction) const;
     void disassembleInstruction(int offset);
 
 public:
@@ -56,14 +56,11 @@ public:
     Chunk(Chunk &&) = default;
     Chunk &operator=(Chunk &&) = default;
 
-    unsigned write_abc(OpCode op, uint8_t a, uint8_t b, uint8_t c, int line = -1);
-    unsigned write_sAb(OpCode op, int16_t A, uint8_t b, int line = -1);
-    unsigned write_AB(OpCode op, uint16_t A, uint16_t B,
-                      int line = -1);
-    unsigned write_Ab(OpCode op, uint16_t A, uint8_t b,
-                      int line = -1);
+    unsigned writeABC(OpCode op, uint8_t a, uint16_t b, uint16_t c, int line = -1);
+    unsigned writeABx(OpCode op, uint8_t a, uint32_t Bx, int line = -1);
+    unsigned writeAsBx(OpCode op, uint8_t a, int32_t sBx, int line = -1);
 
-    void patch_sA(unsigned offset, int16_t A);
+    void patch_AsBx(unsigned offset, int32_t sBx);
 
     unsigned currentOffset() const;
 
@@ -77,19 +74,14 @@ public:
     void disassemble(const std::string &header);
 };
 
-// any -> [OpCode:8] [..]
-#define GET_op(ins) ((OpCode)(ins >> 24))
-// abc -> [OpCode:8] [A:8] [B:8] [C:8]
-#define GET_abc_a(ins) ((ins >> 16) & 0xFF)
-#define GET_abc_b(ins) ((ins >> 8) & 0xFF)
-#define GET_abc_c(ins) (ins & 0xFF)
-// AB -> [OpCode:8] [A:12] [B:12]
-#define GET_AB_a(ins) ((uint16_t)((ins >> 12) & 0x0FFF))
-#define GET_AB_b(ins) ((uint16_t)(ins & 0x0FFF))
-// Ab -> [OpCode:8] [A:16] [b:8]
-#define GET_Ab_a(ins) ((uint16_t)((ins >> 8) & 0xFFFF))
-#define GET_Ab_b(ins) ((uint8_t)(ins & 0xFF))
-// Sa -> [OpCode:8] [sA:16] [b:8]
-#define GET_sAb_a(ins) ((int16_t)((ins >> 8) & 0xFFFF))
-#define GET_sAb_b(ins) ((uint8_t)(ins & 0xFF))
+// any -> [OpCode:6] [A:8] [...:18]
+#define GET_op(ins) ((OpCode)(ins >> 26))
+#define GET_A(ins) ((ins >> 18) & 0xFF)
+
+
+// ABC -> [OpCode:6] [A:8] [B:9] [C:9] 
+#define GET_B(ins) ((ins >> 9) & 0x1FF)
+#define GET_C(ins) (ins & 0x1FF)
+#define GET_Bx(ins) (ins & 0x3FFFF)
+#define GET_sBx(ins) ((int32_t)((ins & 0x3FFFF) - 0x1FFFF))
 

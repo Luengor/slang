@@ -23,7 +23,6 @@ struct FunctionNode : public ASTNode {
     ASTNodePtr return_type;
     ASTNodePtr body;
     std::unique_ptr<CompileContext> fn_ctx;
-    EntryID self_entry_id;
 
     FunctionNode(const Token &token, std::vector<ASTNodePtr> arguments,
                  ASTNodePtr return_type, ASTNodePtr body);
