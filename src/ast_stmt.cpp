@@ -206,11 +206,12 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
             }
             this->initializer = std::move(cast_result.value());
         } else if (ctx.typeRegistry.isObject(type(this))) {
-            // If we are not in a function definition, object variables need an initializer
-            if (!this->is_in_function_definition)
+            // Functions require an initializer outside of function definitions
+            if (!this->is_in_function_definition && ctx.typeRegistry.isFunction(type(this))) {
                 throw ParserError(
                     this->token,
-                    "Object variables require an initializer.");
+                    "Function declarations require an initializer.");
+            }
         }
     }
 
@@ -245,6 +246,21 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     // Compile the initializer if present
     if (this->initializer)
         this->initializer->compile(ctx, entry.register_index);
+    else {
+        // If no initializer and it's an string, initialize to empty string
+        const auto string_type =
+            ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
+        if (type(this) == string_type) {
+            // Create an empty string literal
+            StringObj *empty_string_obj = new StringObj("");
+
+            // Put it into the chunk and store in the variable's register
+            const auto const_index =
+                ctx.function->chunk.addObjectConstant(empty_string_obj);
+            ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
+                                         const_index, this->token.line);
+        }
+    }
 }
 
 void VarDeclStmt::print(int indent) {

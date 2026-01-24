@@ -54,6 +54,7 @@ class TypeRegistry {
     bool isNumeric(TypeID typeID);
     bool isPrimitive(TypeID typeID);
     bool isObject(TypeID typeID);
+    bool isFunction(TypeID typeID);
 
     inline TypeData getTypeData(TypeID typeID) const {
         return this->types[typeID];

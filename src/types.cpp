@@ -112,6 +112,11 @@ bool TypeRegistry::isObject(TypeID typeID) {
     return true; // If not primitive, is a function 
 }
 
+bool TypeRegistry::isFunction(TypeID typeID) {
+    const auto &typeData = this->getTypeData(typeID);
+    return std::holds_alternative<FunctionType>(typeData);
+}
+
 std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {
     if (from == to) return std::nullopt; // No cast needed
 
