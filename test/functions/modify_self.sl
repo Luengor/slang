@@ -5,6 +5,6 @@ auto fn = (fixed a) -> fixed {
     return self(a);
 };
 
-# expect: 2
+# expect: COMPERROR
 print(fn(1));
 

@@ -235,7 +235,14 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
         arg->compile(fn_ctx); // args don't need registers
     }
 
-    this->body->compile(fn_ctx); // the body doesn't need a register
+    try {
+        this->body->compile(fn_ctx); // the body doesn't need a register
+    } catch (const ParserError &e) {
+        // If there was an error, release the function object
+        fn_ctx.function->release();
+        fn_ctx.function = nullptr;
+        throw; // re-throw the error
+    }
 
 #ifdef DEBUG_PRINT
     std::println("Compiled function at line {}", this->token.line);
