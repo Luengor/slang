@@ -1,8 +1,7 @@
 #pragma once
 
-// Statements are AST nodes that have side effects.
-// (statements can, and often do, behave like expressions)
-// ((but I have to draw the line somewhere))
+// Statements are AST nodes that do not produce values.
+// As such, passing a register to compile them is an error.
 
 #include "ast_core.hpp"
 #include "compile_context.hpp"
@@ -47,14 +46,6 @@ struct WhileStmt : public ASTNode {
     ASTNodePtr body;
 
     WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body);
-    AST_OVERRIDES;
-};
-
-struct AssignExpr : public ASTNode {
-    ASTNodePtr target;
-    ASTNodePtr value;
-
-    AssignExpr(const Token &token, ASTNodePtr target, ASTNodePtr value);
     AST_OVERRIDES;
 };
 

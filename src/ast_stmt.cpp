@@ -1,12 +1,11 @@
 #include "ast_stmt.hpp"
-#include "ast_expr.hpp"
-#include "native.hpp"
+#include "ast_macros.hpp"
+#include "ast_pure_expr.hpp"
 #include "error.hpp"
+#include "native.hpp"
 #include "object.hpp"
 #include <cassert>
 #include <iostream>
-#include <variant>
-#include "ast_macros.hpp"
 
 // ExprStmt Implementation
 ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
@@ -248,97 +247,6 @@ void VarDeclStmt::print(int indent) {
     if (this->initializer) {
         this->initializer->print(indent + 1);
     }
-}
-
-// AssignExpr Implementation
-AssignExpr::AssignExpr(const Token &token, ASTNodePtr target,
-                         ASTNodePtr value)
-    : ASTNode(ASTNodeType::AssignExpr, token),
-      target(std::move(target)), value(std::move(value)) {}
-
-void AssignExpr::resolveType(CompileContext &ctx) {
-    TypeGuard;
-
-    // Resolve target and value types first
-    this->target->resolveType(ctx);
-    this->value->resolveType(ctx);
-
-    // Ensure the value can be assigned to the target
-    auto cast_result = CastExpr::tryCast(
-        std::move(this->value),
-        type(this->target),
-        ctx);
-    if (!cast_result.has_value()) {
-        throw ParserError(
-            this->token,
-            "Incompatible types in assignment expression.");
-    }
-    this->value = std::move(cast_result.value());
-
-    // The result type of an assignment expression is the target's type
-    type(this) = type(target);
-}
-
-void AssignExpr::compile(CompileContext &ctx, int reg) {
-    CompileGuard;
-    // Get the variable node from the target
-    VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
-
-    // Ensure it's a valid assignment target
-    if (!std::holds_alternative<EntryID>(varNode->resolution)) {
-        throw ParserError(this->token,
-                          "Invalid assignment target during compilation.");
-    }
-
-    // Self is not a valid assignment target
-    if (varNode->name == "self") {
-        throw ParserError(this->token,
-                          "Cannot assign to 'self' variable.");
-    }
-
-    // Get its register
-    const auto local_entry = std::get<EntryID>(varNode->resolution);
-    const int local_register =
-        ctx.nameTable.getEntry(local_entry).register_index;
-
-    // If a register was provided, use that
-    // Otherwise, use the local variable's register
-    if (reg != -1) {
-        reg(this) = reg;
-        is_var(this) = false;
-    } else {
-        reg(this) = local_register;
-        is_var(this) = true;
-    }
-
-    // If we are writting into an object, release the previous one first
-    bool is_object =
-        ctx.typeRegistry.isObject(type(this->target));
-
-    if (is_object)
-        ctx.function->chunk.writeABx(OpCode::Release, local_register, 0,
-                                     this->token.line);
-
-    // Compile the value into the local variable's register
-    this->value->compile(ctx, local_register);
-
-    // If we are using a different register, copy the value
-    if (reg(this) != local_register) {
-        // Store the local variable
-        ctx.function->chunk.writeABx(OpCode::Copy, reg(this), local_register,
-                                     this->token.line);
-
-        // Because of the copy, we have to retain
-        if (is_object)
-            ctx.function->chunk.writeABx(OpCode::Retain, local_register, 0);
-    }
-}
-
-void AssignExpr::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "AssignExpr\n";
-    this->target->print(indent + 1);
-    this->value->print(indent + 1);
 }
 
 // IfStmt Implementation

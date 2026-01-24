@@ -12,6 +12,7 @@ set(TARGET_NAME cia)
 
 set(SOURCES
     src/ast_core.cpp
+    src/ast_pure_expr.cpp
     src/ast_expr.cpp
     src/ast_stmt.cpp
     src/ast_type.cpp

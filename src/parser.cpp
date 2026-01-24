@@ -1,5 +1,6 @@
 #include "ast_core.hpp"
 #include "ast_expr.hpp"
+#include "ast_pure_expr.hpp"
 #include "ast_stmt.hpp"
 #include "ast_type.hpp"
 #include "parser.hpp"
