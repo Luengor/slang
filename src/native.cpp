@@ -1,7 +1,9 @@
 #include "native.hpp"
 #include "object.hpp"
 #include "types.hpp"
+#include "value.hpp"
 #include <cassert>
+#include <cmath>
 #include <iostream>
 
 #define DUMMY_RETURN Value{.boolean = false}
@@ -21,6 +23,13 @@ Value nativePrintF(const Value *args, size_t arg_count) {
     RETURN;
 }
 
+Value nativeSqrtF(const Value *args, size_t arg_count) {
+    assert(arg_count == 1);
+    FloatingType input = args[0].floating;
+    FloatingType result = std::sqrt(input);
+    return Value{.floating = result};
+}
+
 NativeRegistry::NativeRegistry(TypeRegistry &typeRegistry) {
     // Register all native functions
     this->native_functions["print"] = new NativeFunctionObj(
@@ -28,6 +37,12 @@ NativeRegistry::NativeRegistry(TypeRegistry &typeRegistry) {
             {typeRegistry.getPrimitive(PrimitiveKind::String)},
             typeRegistry.noneType()),
         nativePrintF, "print");
+
+    this->native_functions["sqrt"] = new NativeFunctionObj(
+        typeRegistry.getFunction(
+            {typeRegistry.getPrimitive(PrimitiveKind::Floating)},
+            typeRegistry.getPrimitive(PrimitiveKind::Floating)),
+        nativeSqrtF, "sqrt");
 }
 
 NativeRegistry::~NativeRegistry() {
