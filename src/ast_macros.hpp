@@ -4,6 +4,10 @@
     if (this->type_resolved) return; \
     this->type_resolved = true;
 
+#define CompileGuard\
+    if (this->has_compiled) return; \
+    this->has_compiled = true;
+
 #define reg(nm) nm->result.reg
 #define type(nm) nm->result.type
 #define is_var(nm) nm->result.is_var

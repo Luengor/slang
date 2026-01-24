@@ -66,6 +66,17 @@ LiteralNode::LiteralNode(const Token &token)
     }
 }
 
+LiteralNode::~LiteralNode() {
+    // We may need to release the object if it's an object literal
+    // and we haven't compiled it yet
+    if (this->value.first == ValueType::Object &&
+        this->value.second.object != nullptr &&
+        !this->has_compiled) {
+        this->value.second.object->release();
+        this->value.second.object = nullptr;
+    }
+}
+
 void LiteralNode::resolveType(CompileContext &ctx) {
     TypeGuard;
 
@@ -78,6 +89,8 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 }
 
 void LiteralNode::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // Allocate a register for the result
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
@@ -87,6 +100,7 @@ void LiteralNode::compile(CompileContext &ctx, int reg) {
             ctx.function->chunk.addObjectConstant(this->value.second.object);
         ctx.function->chunk.writeABx(OpCode::Object, reg(this),
                                      constant, this->token.line);
+
         return;
     }
 
@@ -152,6 +166,14 @@ FunctionNode::FunctionNode(const Token &token,
     : ASTNode(ASTNodeType::Function, token), arguments(std::move(arguments)),
       return_type(std::move(return_type)), body(std::move(body)) {}
 
+FunctionNode::~FunctionNode() {
+    // Release the function object if it was created but not compiled
+    if (this->fn_ctx && this->fn_ctx->function && !this->has_compiled) {
+        this->fn_ctx->function->release();
+        this->fn_ctx->function = nullptr;
+    }
+}
+
 void FunctionNode::resolveType(CompileContext &ctx) {
     TypeGuard;
 
@@ -203,6 +225,8 @@ void FunctionNode::resolveType(CompileContext &ctx) {
 }
 
 void FunctionNode::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // Use the function's own compile context
     CompileContext &fn_ctx = *this->fn_ctx;
 
@@ -285,6 +309,8 @@ void VariableNode::resolveType(CompileContext &ctx) {
 }
 
 void VariableNode::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // Self has a custom compilation path
     if (this->name == "self") {
         reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
@@ -388,6 +414,8 @@ void UnaryExpr::resolveType(CompileContext &ctx) {
 }
 
 void UnaryExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     if (reg != -1) {
         // If a register is provided, compile there
         // Don't instruct the operand to use it tho
@@ -532,6 +560,8 @@ void CastExpr::resolveType(CompileContext &ctx) {
 }
 
 void CastExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // If a register was provided, use that
     if (reg != -1) {
         reg(this) = reg;
@@ -644,6 +674,8 @@ void BinaryExpr::resolveType(CompileContext &ctx) {
 }
 
 void BinaryExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // If a register was passed, use that
     if (reg != -1) {
         reg(this) = reg;
@@ -880,6 +912,8 @@ void TernaryExpr::resolveType(CompileContext &ctx) {
 }
 
 void TernaryExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // Get a register for the result
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
@@ -954,6 +988,8 @@ void LogicExpr::resolveType(CompileContext &ctx) {
 }
 
 void LogicExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+    
     // Get a register for the result
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
 
@@ -1058,6 +1094,8 @@ void CallExpr::resolveType(CompileContext &ctx) {
 }
 
 void CallExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+    
     // Check if the callee is self
     bool self_call = false;
     if (this->callee->type == ASTNodeType::Variable) {

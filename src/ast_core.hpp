@@ -3,7 +3,6 @@
 #include "compile_context.hpp"
 #include "scanner.hpp"
 #include <memory>
-#include <optional>
 
 // AST Node Types 
 enum class ASTNodeType {
@@ -50,6 +49,7 @@ struct ASTNode {
     bool type_resolved = false;
     virtual void resolveType(CompileContext &ctx) = 0;
 
+    bool has_compiled = false;
     // Compile this AST node into the given compile context
     virtual void compile(CompileContext &ctx, int reg = -1) = 0;
 

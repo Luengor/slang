@@ -25,6 +25,8 @@ void ExprStmt::resolveType(CompileContext &ctx) {
 }
 
 void ExprStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     assert(reg == -1);
 
     // There is no result register for expression statements
@@ -99,6 +101,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
 }
 
 void BlockStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
     assert(reg == -1);
 
     // Enter a new scope
@@ -219,6 +222,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 }
 
 void VarDeclStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
     assert(reg == -1);
 
     // This is a pure statement, no result register
@@ -276,6 +280,7 @@ void AssignExpr::resolveType(CompileContext &ctx) {
 }
 
 void AssignExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
     // Get the variable node from the target
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
 
@@ -370,6 +375,7 @@ void IfStmt::resolveType(CompileContext &ctx) {
 }
 
 void IfStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
     assert(reg == -1);
     reg(this) = -1;
 
@@ -451,6 +457,7 @@ void WhileStmt::resolveType(CompileContext &ctx) {
 }
 
 void WhileStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
     assert(reg == -1);
     reg(this) = -1;
 
@@ -529,6 +536,8 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
 }
 
 void ReturnStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
     // This is a pure statement, no result register
     assert(reg == -1);
 

@@ -12,6 +12,7 @@ struct LiteralNode : public ASTNode {
     TypedValue value;
 
     LiteralNode(const Token &token);
+    ~LiteralNode();
     AST_OVERRIDES;
 
   private:
@@ -26,6 +27,7 @@ struct FunctionNode : public ASTNode {
 
     FunctionNode(const Token &token, std::vector<ASTNodePtr> arguments,
                  ASTNodePtr return_type, ASTNodePtr body);
+    ~FunctionNode();
     AST_OVERRIDES;
 };
 
