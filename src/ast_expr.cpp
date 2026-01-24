@@ -1105,8 +1105,10 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
         }
     }
 
-    // Compile the callee first 
-    this->callee->compile(ctx);
+    if (!self_call) {
+        // Ensure callee is in a register
+        this->callee->compile(ctx);
+    }
 
     if (this->arguments.empty()) {
         // If a register was provided, use that
@@ -1120,7 +1122,7 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
                                      this->token.line);
 
         // Free callee register if necessary
-        if (should_free(this->callee)) {
+        if (should_free(this->callee) && !self_call) {
             // Release the callee register
             ctx.function->chunk.writeABx(
                 OpCode::Release, this->reg(callee), 0, this->token.line);
@@ -1168,7 +1170,7 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     }
 
     // Free callee register if necessary
-    if (should_free(this->callee)) {
+    if (should_free(this->callee) && !self_call) {
         // Release the callee register
         ctx.function->chunk.writeABx(
             OpCode::Release, this->reg(callee), 0, this->token.line);
