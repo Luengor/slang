@@ -29,13 +29,13 @@ void Chunk::disassembleABx(const char *name, uint32_t instruction, const std::st
     uint8_t A = GET_A(instruction);
     uint32_t bx = GET_Bx(instruction);
 
-    if (b_text.size())
-        std::println("{:<16} R{:<3d} {}{:<4d}", name, A, b_text, bx);
+    if (b_text.size() == 0)
+        std::println("{:<16} R{:<3d}", name, A);
     else if (b_text == "RC") {
         std::println("{:<16} R{:<3d} {}{:<3d}", name, A, bx >= 256 ? 'C' : 'R', bx % 256);
     }
     else
-        std::println("{:<16} R{:<3d}", name, A);
+        std::println("{:<16} R{:<3d} {}{:<4d}", name, A, b_text, bx);
 }
 
 void Chunk::disassembleAsBx(const char *name, uint32_t instruction) const {
