@@ -164,6 +164,13 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->target->resolveType(ctx);
     this->value->resolveType(ctx);
 
+    // Self is not a valid assignment target
+    VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
+    if (varNode->name == "self") {
+        throw ParserError(this->token,
+                          "Cannot assign to 'self' variable.");
+    }
+
     // Ensure the value can be assigned to the target
     auto cast_result = CastExpr::tryCast(
         std::move(this->value),
@@ -189,12 +196,6 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     if (!std::holds_alternative<EntryID>(varNode->resolution)) {
         throw ParserError(this->token,
                           "Invalid assignment target during compilation.");
-    }
-
-    // Self is not a valid assignment target
-    if (varNode->name == "self") {
-        throw ParserError(this->token,
-                          "Cannot assign to 'self' variable.");
     }
 
     // Get its register
