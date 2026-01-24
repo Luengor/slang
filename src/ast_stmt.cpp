@@ -153,6 +153,13 @@ VarDeclStmt::VarDeclStmt(ASTNodePtr type_expr, const Token &name_token,
 void VarDeclStmt::resolveType(CompileContext &ctx) {
     TypeGuard;
 
+    // Check if the variable name is 'self'
+    if (this->token.lexeme == "self") {
+        throw ParserError(
+            this->token,
+            "Cannot declare variable with reserved name 'self'.");
+    }
+
     // Check if its a native function
     auto nativeFn = ctx.nativeRegistry.getNativeFunction(
         this->token.lexeme);
