@@ -69,6 +69,8 @@ struct BinaryExpr : public ASTNode {
     AST_OVERRIDES;
 
   private:
+    int left_r, right_r;
+
     void compileArithmetic(CompileContext &ctx);
     void compileEquality(CompileContext &ctx);
     void compileComparison(CompileContext &ctx);

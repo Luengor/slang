@@ -476,6 +476,10 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     if (this->return_expr) {
         this->return_expr->compile(ctx, reg);
         reg = reg(this->return_expr);
+
+        // Try to skip constant
+        SKIP_CONSTANT_GET_REG(reg);
+
     } else
         reg = 0;
 
@@ -495,7 +499,7 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     
     // Finally, return
     ctx.function->chunk.writeABx(
-        OpCode::Return, reg, 0, this->token.line);
+        OpCode::Return, 0, reg, this->token.line);
 }
 
 void ReturnStmt::print(int indent) {

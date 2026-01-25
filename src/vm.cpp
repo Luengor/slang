@@ -84,8 +84,8 @@ InterpretResult VM::run() {
                     return InterpretResult::Ok;
                 } else {
                     // Get the return value
-                    const uint8_t return_r = GET_A(instruction);
-                    const Value return_value = registers[return_r];
+                    const uint32_t return_rc = GET_Bx(instruction);
+                    const Value return_value = RC(return_rc);
 
                     // Put the return value at 0 
                     registers[0] = return_value;

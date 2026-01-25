@@ -79,7 +79,7 @@ From highest to lowest:
 
 ### Instruction Reference
 ```
-Return          return R[A]
+Return          return RC[B]
 Self            R[A] <- self
 Call            R[B] <- R[A](R[B], ..., R[B + C - 1])
 CallSelf        R[B] <- self(R[B], ..., R[B + C - 1])

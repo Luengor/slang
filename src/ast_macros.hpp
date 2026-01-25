@@ -20,3 +20,12 @@
 // Free when this is not a var and we didn't use it
 #define should_free(nm) (!is_var(nm) && reg(this) != reg(nm))
 
+#define SKIP_CONSTANT_GET_REG(var_name)                                        \
+    if (ctx.function->chunk.currentOffset() != 0) {                            \
+        auto last_instr = ctx.function->chunk.last();                          \
+        if (GET_op(last_instr) == OpCode::Constant) {                          \
+            uint16_t constant_index = GET_Bx(last_instr);                      \
+            ctx.function->chunk.pop();                                         \
+            var_name = constant_index + 256;                                   \
+        }                                                                      \
+    }

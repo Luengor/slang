@@ -77,8 +77,11 @@ void Chunk::disassembleInstruction(int offset) {
 
     OpCode instruction = GET_op(this->code[offset]); 
     switch (instruction) {
-        case OpCode::Return:
-            return this->disassembleABx("OP_RETURN", this->code[offset]);
+        case OpCode::Return: {
+            uint32_t bx = GET_Bx(this->code[offset]);
+            std::println("{:<16} {}{:<3d}", "OP_RETURN", bx >= 256 ? 'C' : 'R', bx % 256);
+            return;
+        }
 
         case OpCode::Constant:
             return this->disassembleABx("OP_CONSTANT", this->code[offset], "C");
@@ -286,6 +289,18 @@ void Chunk::patch_AsBx(unsigned offset, int32_t sBx) {
     ins |= (Bx & 0x3ffff);
 
     this->code[offset] = ins;
+}
+
+void Chunk::pop() {
+    assert(!this->code.empty() && "Cannot pop from an empty chunk");
+    this->code.pop_back();
+    this->lines.pop_back();
+}
+
+uint32_t Chunk::last() const {
+    assert(!this->code.empty() &&
+           "Cannot get last instruction of an empty chunk");
+    return this->code.back();
 }
 
 unsigned Chunk::currentOffset() const {

@@ -439,24 +439,29 @@ void UnaryExpr::compile(CompileContext &ctx, int reg) {
     if (should_free(this->operand))
         ctx.freeRegister(this->reg(operand));
 
+    // If the last operation wrote is OP_CONSTANT X CY we can delete and write
+    // OP_NEGATE X Y + 256
+    int operand_r = reg(this->operand);
+    SKIP_CONSTANT_GET_REG(operand_r);
+
     // Compile the appropriate unary operation
     switch (this->token.type) {
         case Token::Type::Minus:
             if (type(this) ==
                 ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed)) {
                 ctx.function->chunk.writeABx(OpCode::NegateI, reg(this),
-                                             reg(this->operand),
+                                             operand_r,
                                              this->token.line);
             } else {
                 ctx.function->chunk.writeABx(OpCode::NegateF, reg(this),
-                                             reg(this->operand),
+                                             operand_r,
                                              this->token.line);
             }
             break;
 
         case Token::Type::Not:
             ctx.function->chunk.writeABx(OpCode::Not, reg(this),
-                                         reg(this->operand), this->token.line);
+                                         operand_r, this->token.line);
             break;
 
         default:
@@ -579,6 +584,7 @@ void CastExpr::compile(CompileContext &ctx, int reg) {
     // Consider freeing the operand's register
     if (should_free(this->operand))
         ctx.freeRegister(this->reg(operand));
+
 
     // Write the cast operation
     ctx.function->chunk.writeABx(this->cast_op, reg(this), reg(this->operand),
@@ -711,6 +717,12 @@ void BinaryExpr::compile(CompileContext &ctx, int reg) {
     if (should_free(this->right))
         ctx.freeRegister(this->reg(right));
 
+    // Constant skip
+    this->right_r = reg(this->right);
+    SKIP_CONSTANT_GET_REG(this->right_r);
+    this->left_r = reg(this->left);
+    SKIP_CONSTANT_GET_REG(this->left_r);
+
     // Compile the appropriate binary operation
     switch (this->token.type) {
         case Token::Type::Plus:
@@ -738,8 +750,8 @@ void BinaryExpr::compile(CompileContext &ctx, int reg) {
 }
 
 #define write(op)                                                              \
-    ctx.function->chunk.writeABC(op, reg(this), reg(this->left),               \
-                                 reg(this->right), this->token.line);          \
+    ctx.function->chunk.writeABC(op, reg(this), this->left_r, this->right_r,   \
+                                 this->token.line);                            \
     break;
 
 void BinaryExpr::compileArithmetic(CompileContext &ctx) {

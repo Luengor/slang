@@ -62,6 +62,9 @@ public:
 
     void patch_AsBx(unsigned offset, int32_t sBx);
 
+    void pop();
+    uint32_t last() const;
+
     unsigned currentOffset() const;
 
     // Adds a constant to the constants ValueArray
