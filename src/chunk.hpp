@@ -26,7 +26,7 @@ enum class OpCode : uint8_t {
     I2B, B2I,
     F2B, B2F,
 
-    Call, CallSelf,
+    Call,
 
     I2Str, F2Str, B2Str,
 };

@@ -184,6 +184,11 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     this->fn_ctx->function->name =
         "<fn@" + std::to_string(this->token.line) + ">";
 
+    // Add itself as the first object of the chunk
+    this->fn_ctx->function->chunk.addObjectConstant(
+        this->fn_ctx->function);
+    // this->fn_ctx->function->retain();
+
     // Resolve argument types
     std::vector<TypeID> param_types;
     for (const auto &arg : this->arguments) {

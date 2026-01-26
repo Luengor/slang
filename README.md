@@ -81,8 +81,7 @@ From highest to lowest:
 ```
 Return          return RC[B]
 Self            R[A] <- self
-Call            R[B] <- R[A](R[B], ..., R[B + C - 1])
-CallSelf        R[B] <- self(R[B], ..., R[B + C - 1])
+Call            R[C] <- RO[B](R[C], ..., R[C + A - 1])
 Jmp             PC <- PC + sBx 
 JmpIfFalse      PC <- !R[A] ? PC + sBx : PC
 JmpIfTrue       PC <-  R[A] ? PC + sBx : PC
@@ -114,8 +113,9 @@ Notes:
 * C\[x] denotes constant x.
 * O\[x] denotes object constant x.
 * RC\[x] denotes `x < 256 ? R[x] : C[x - 256]`.
-* Call calls the function in R\[a] with c arguments starting from R\[b\].
-  The result is stored in R\[b\].
+* RO\[x] denotes `x < 256 ? R[x] : O[x - 256]`.
+* Call calls the function in R\[B] / O\[B - 256] with A arguments
+  starting from R\[C\]. The result is stored in R\[C\].
 
 ## Register Usage
  - After compiling a Node, its result type, register and if it's a variable

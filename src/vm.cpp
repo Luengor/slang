@@ -107,16 +107,18 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Call: {
-                const uint8_t callee_r = GET_A(instruction);
-                const Value callee = registers[callee_r];
-                assert(callee.object);
+                const uint16_t callee_ro = GET_B(instruction);
+                Object *callee = callee_ro < 256 ?
+                    registers[callee_ro].object :
+                    frame.function->chunk.object_constants[callee_ro - 256];
+                assert(callee);
 
                 // Get the start of the arguments 
-                const uint16_t arg_start_r = GET_B(instruction);
+                const uint16_t arg_start_r = GET_C(instruction);
                 
-                if (callee.object->type == Object::Type::Function) {
+                if (callee->type == Object::Type::Function) {
                     FunctionObj *function =
-                        static_cast<FunctionObj *>(callee.object);
+                        static_cast<FunctionObj *>(callee);
 
                     function->retain(); // retain the function to release later
 
@@ -129,10 +131,10 @@ InterpretResult VM::run() {
                     this->ip = 0;
                 } else {
                     NativeFunctionObj *native_function =
-                        static_cast<NativeFunctionObj *>(callee.object);
+                        static_cast<NativeFunctionObj *>(callee);
 
                     // Get the argument count
-                    const uint16_t arg_count = GET_C(instruction);
+                    const uint8_t arg_count = GET_A(instruction);
 
                     // Call the native
                     Value result = native_function->function_ptr(
@@ -142,26 +144,6 @@ InterpretResult VM::run() {
                     // Push the result onto the first argument register 
                     registers[arg_start_r] = result;
                 }
-                break;
-            }
-
-            case OpCode::CallSelf: {
-                // The function to call is the current function
-                FunctionObj *function =
-                    frame.function;
-
-                function->retain(); // retain the function to release later
-
-                // Get the start of the arguments 
-                const uint16_t arg_start_r = GET_B(instruction);
-
-                // Put the frame starting in the callee register
-                this->call_frames.push_back(
-                    CallFrame(function, this->ip,
-                              frame.stack_base + arg_start_r));
-
-                // Set the instruction pointer to the function's start
-                this->ip = 0;
                 break;
             }
 

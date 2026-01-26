@@ -70,6 +70,8 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     if (!self_call) {
         // Ensure callee is in a register
         this->callee->compile(ctx);
+    } else {
+        reg(this->callee) = 256; // aka. first object constant;
     }
 
     if (this->arguments.empty()) {
@@ -79,8 +81,7 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
         // Call
         // The return value is placed on the first argument register, so
         // pass that
-        ctx.function->chunk.writeABC(self_call ? OpCode::CallSelf : OpCode::Call,
-                                     this->reg(callee), reg(this), 0,
+        ctx.function->chunk.writeABC(OpCode::Call, 0, reg(callee), reg(this),
                                      this->token.line);
 
         // Free callee register if necessary
@@ -111,9 +112,9 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
         arg->compile(ctx, arg_registers[i++]);
 
     // Emit call
-    ctx.function->chunk.writeABC(self_call ? OpCode::CallSelf : OpCode::Call,
-                                 this->reg(callee), reg(this->arguments[0]),
-                                 this->arguments.size(), this->token.line);
+    ctx.function->chunk.writeABC(OpCode::Call, this->arguments.size(),
+                                 reg(callee), reg(this->arguments[0]),
+                                 this->token.line);
 
     if (reg(this) == arg_registers[0]) {
         // The result is already in the correct register, do nothing

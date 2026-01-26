@@ -5,8 +5,8 @@
 
 Chunk::~Chunk() {
     // Release all object constants
-    for (auto object : this->object_constants) {
-        object->release();
+    for (unsigned i = 1; i < this->object_constants.size(); i++) {
+        this->object_constants[i]->release();
     }
 }
 
@@ -59,12 +59,12 @@ void Chunk::disassembleCall(const char *name, uint32_t instruction) const {
     uint16_t b = GET_B(instruction);
     uint16_t c = GET_C(instruction);
 
-    if (c == 0)
-        std::println("{:<16} R{:<3d}", name, a);
-    else if (c == 1)
-        std::println("{:<16} R{:<3d} R{:d}", name, a, b);
+    if (a == 0)
+        std::println("{:<16} {}{:<3d}", name, b >= 256 ? 'O' : 'R', b % 256);
+    else if (a == 1)
+        std::println("{:<16} {}{:<3d} R{:d}", name, b >= 256 ? 'O' : 'R', b % 256, c);
     else
-        std::println("{:<16} R{:<3d} R{:d}...R{:d}", name, a, b, b + c - 1);
+        std::println("{:<16} {}{:<3d} R{:d}...R{:d}", name, b >= 256 ? 'O' : 'R', b % 256, c, c + a - 1);
 }
 
 void Chunk::disassembleInstruction(int offset) {
@@ -209,10 +209,6 @@ void Chunk::disassembleInstruction(int offset) {
 
         case OpCode::Call:
             return this->disassembleCall("OP_CALL", this->code[offset]);
-            break;
-
-        case OpCode::CallSelf:
-            return this->disassembleCall("OP_CALL_SELF", this->code[offset]);
             break;
 
         case OpCode::I2Str:
