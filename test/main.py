@@ -13,7 +13,10 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(root_dir)
 
 print("Building the project...")
-subprocess.run(["make"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+result = subprocess.run(["make"])
+if result.returncode != 0:
+    print("Build failed. Exiting.")
+    exit(1)
 executable = os.path.join(root_dir, "cia")
 
 # Find all tests
