@@ -306,15 +306,30 @@ void VariableNode::resolveType(CompileContext &ctx) {
         return;
     }
 
-    // If not, resolve as a variable
+    // If not, try to resolve as a local 
     auto entry = ctx.nameTable.findEntryInScope(this->name);
-    if (!entry.has_value()) {
-        throw ParserError(this->token,
-                          "Undefined variable: " + this->name);
+    if (entry.has_value()) {
+        this->resolution = entry.value();
+        type(this) = ctx.nameTable.getEntry(entry.value()).type;
+        return;
     }
 
-    this->resolution = entry.value();
-    type(this) = ctx.nameTable.getEntry(entry.value()).type;
+    // If not, try to resolve as an upvalue
+    auto next = ctx.next;
+    while (next != nullptr) {
+        // There is an enclosing context, try to find the variable there
+        auto upvalue_entry = next->nameTable.findEntryInScope(this->name);
+
+        if (upvalue_entry.has_value()) {
+            throw ParserError(
+                this->token,
+                "Upvalue variable access is not supported yet.");
+        }
+
+        next = next->next;
+    }
+
+    throw ParserError(this->token, "Undefined variable: " + this->name);
 }
 
 void VariableNode::compile(CompileContext &ctx, int reg) {
