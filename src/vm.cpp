@@ -116,7 +116,7 @@ InterpretResult VM::run() {
                 // Get the start of the arguments 
                 const uint16_t arg_start_r = GET_C(instruction);
                 
-                if (callee->type == Object::Type::Function) {
+                if (callee->obj_type == Object::Type::Function) {
                     FunctionObj *function =
                         static_cast<FunctionObj *>(callee);
 

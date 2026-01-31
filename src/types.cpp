@@ -75,7 +75,7 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
         throw std::runtime_error("Null object in getFromValue.");
     }
 
-    switch (value.second.object->type) {
+    switch (value.second.object->obj_type) {
         case Object::Type::String:
             return getPrimitive(PrimitiveKind::String);
         case Object::Type::Function: {

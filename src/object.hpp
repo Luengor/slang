@@ -10,7 +10,7 @@ struct Object {
         Function,
         NativeFunction,
     };
-    Type type;
+    Type obj_type;
     int ref_count = 1;
 
     virtual ~Object() = default;

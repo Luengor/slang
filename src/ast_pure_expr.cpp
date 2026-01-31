@@ -135,7 +135,7 @@ void LiteralNode::print(int indent) {
 }
 
 void LiteralNode::print_object() {
-    switch (this->value.second.object->type) {
+    switch (this->value.second.object->obj_type) {
         case Object::Type::String: {
             StringObj *strObj = static_cast<StringObj *>(this->value.second.object);
             std::println("Literal(\"{}\")", strObj->value);

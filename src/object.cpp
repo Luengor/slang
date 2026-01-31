@@ -36,7 +36,7 @@ void Object::release() {
 }
 
 StringObj::StringObj(const std::string &value) : Object(), value(value) {
-    this->type = Object::Type::String;
+    this->obj_type = Object::Type::String;
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
@@ -48,7 +48,7 @@ std::string StringObj::toString() const {
 }
 
 FunctionObj::FunctionObj() : Object() {
-    this->type = Object::Type::Function;
+    this->obj_type = Object::Type::Function;
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
@@ -62,7 +62,7 @@ std::string FunctionObj::toString() const {
 NativeFunctionObj::NativeFunctionObj(
     TypeID type_id, NativeFunctionPtr function_ptr, const std::string &name)
     : Object(), type_id(type_id), function_ptr(function_ptr), name(name) {
-    this->type = Object::Type::NativeFunction;
+    this->obj_type = Object::Type::NativeFunction;
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
