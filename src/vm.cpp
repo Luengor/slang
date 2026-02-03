@@ -34,7 +34,10 @@ InterpretResult VM::interpret(const std::string &source) {
 
     // Run the code 
     this->ip = 0;
-    return this->run();
+    const auto result = this->run();
+    assert(function->ref_count == 1 &&
+           "<main> ref count should be 1 after execution.");
+    return result;
 }
 
 InterpretResult VM::run() {
