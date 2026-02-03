@@ -237,7 +237,7 @@ InterpretResult VM::run() {
 
             case OpCode::Copy: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t from_r = GET_B(instruction);
+                const uint16_t from_r = GET_Bx(instruction);
                 registers[to_r] = registers[from_r];
                 break;
             }
