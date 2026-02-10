@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(ci-again)
+project(slang)
 
 # things
 set(CMAKE_CXX_STANDARD 23)
@@ -8,7 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(DEBUG_PRINT "Enable debug printing" OFF)
 option(RELEASE "Define NDEBUG and enable optimizations" OFF)
 
-set(TARGET_NAME cia)
+set(TARGET_NAME slang)
 
 set(SOURCES
     src/ast_core.cpp

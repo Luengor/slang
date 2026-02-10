@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     if (argc == 2) {
         runFile(argv[1]);
     } else {
-        std::print("Usage: cia <path>\n");
+        std::print("Usage: {} <path>\n", argc > 0 ? argv[0] : "slang");
         return 64;
     }
 

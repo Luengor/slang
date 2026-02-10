@@ -17,7 +17,7 @@ result = subprocess.run(["make"])
 if result.returncode != 0:
     print("Build failed. Exiting.")
     exit(1)
-executable = os.path.join(root_dir, "cia")
+executable = os.path.join(root_dir, "slang")
 
 # Find all tests
 print("Discovering test cases...")
