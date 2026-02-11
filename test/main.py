@@ -13,7 +13,8 @@ root_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(root_dir)
 
 print("Building the project...")
-result = subprocess.run(["make"])
+nproc = os.cpu_count() or 4
+result = subprocess.run(f"cmake --build . -- -j {nproc}".split())
 if result.returncode != 0:
     print("Build failed. Exiting.")
     exit(1)
