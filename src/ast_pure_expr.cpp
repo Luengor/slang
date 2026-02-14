@@ -142,6 +142,13 @@ void LiteralNode::print_object() {
             break;
         }
 
+        case Object::Type::Closure: {
+            ClosureObj *closure =
+                static_cast<ClosureObj *>(this->value.second.object);
+            std::println("Literal(<Closure: {}>)", closure->function->name);
+            break;
+        }
+
         case Object::Type::Function: {
             std::println("Literal(<Function Object>)");
             break;

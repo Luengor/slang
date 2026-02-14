@@ -10,8 +10,8 @@ enum class InterpretResult {
 };
 
 struct CallFrame {
-    // The function being called
-    FunctionObj *function;
+    // The closure being called
+    ClosureObj *closure;
 
     // The instruction to return to after this function call 
     uint32_t return_ip;
@@ -20,7 +20,7 @@ struct CallFrame {
     size_t stack_base;
 
     CallFrame() = default;
-    CallFrame(FunctionObj *function, uint32_t return_ip, size_t stack_base);
+    CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
 };
 
 class VM {

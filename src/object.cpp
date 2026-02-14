@@ -59,6 +59,38 @@ std::string FunctionObj::toString() const {
     return this->name;
 }
 
+ClosureObj::ClosureObj(FunctionObj *function) : Object() {
+    this->obj_type = Object::Type::Closure;
+
+    // Get the function
+    this->function = function;
+    this->function->retain(); // retain the function to release it later
+
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
+}
+
+ClosureObj::~ClosureObj() {
+    // Release the function
+    if (this->function) {
+        this->function->release();
+        this->function = nullptr;
+    }
+
+#ifndef NDEBUG
+    OBJECT_COUNT--;
+#ifdef DEBUG_PRINT
+    std::print("{} destroyed. Remaining objects: {}\n",
+               this->toString(), OBJECT_COUNT);
+#endif
+#endif
+}
+
+std::string ClosureObj::toString() const {
+    return "<closure: " + (this->function ? this->function->name : "released function") + ">";
+}
+
 NativeFunctionObj::NativeFunctionObj(
     TypeID type_id, NativeFunctionPtr function_ptr, const std::string &name)
     : Object(), type_id(type_id), function_ptr(function_ptr), name(name) {

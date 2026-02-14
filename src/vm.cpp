@@ -10,41 +10,46 @@
 #define TODO \
     throw std::runtime_error("TODO at " + std::string(__FILE__) + ":" + std::to_string(__LINE__))
 
-CallFrame::CallFrame(FunctionObj *function, uint32_t return_ip, size_t stack_base) {
-    this->function = function;
+CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base) {
+    this->closure = closure;
     this->return_ip = return_ip;
     this->stack_base = stack_base;
 }
 
 InterpretResult VM::interpret(const std::string &source) {
-    // Compile the source code into a function 
+    // Compile the source code into a closure 
     Compiler compiler(source);
-    std::unique_ptr<FunctionObj> function;
+    FunctionObj *function;
 
     try {
-        function = compiler.compile();
+        function = compiler.compile().release();
     } catch (const std::runtime_error &error) {
         std::print("Compilation error: {}\n", error.what());
         return InterpretResult::CompileError;
     }
 
+    // Wrap the function in a closure
+    std::unique_ptr<ClosureObj> closure = std::make_unique<ClosureObj>(function);
+    closure->function->release();
+
     // Create the first call frame
     this->call_frames.push_back(
-        CallFrame(function.get(), 0, 0));
+        CallFrame(closure.get(), 0, 0));
 
     // Run the code 
     this->ip = 0;
     const auto result = this->run();
-    assert(function->ref_count == 1 &&
+    assert(closure->ref_count == 1 &&
            "<main> ref count should be 1 after execution.");
     return result;
 }
 
 InterpretResult VM::run() {
 #define frame this->call_frames.back()
+#define function frame.closure->function
 #define registers (this->registers.data() + frame.stack_base)
 
-#define RC(x) (x < 256 ? registers[x] : frame.function->chunk.constants[x - 256])
+#define RC(x) (x < 256 ? registers[x] : function->chunk.constants[x - 256])
 
 #define BINARY_EXPR_2(op, from_field, to_field) { \
     const uint8_t target_r = GET_A(instruction); \
@@ -76,10 +81,10 @@ InterpretResult VM::run() {
         // // Print current stack size
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base, this->stack.size());
         // Print the current instruction
-        frame.function->chunk.disassembleInstruction(this->ip);
+        function->chunk.disassembleInstruction(this->ip);
 #endif
 
-        const uint32_t instruction = frame.function->chunk.code[this->ip++];
+        const uint32_t instruction = function->chunk.code[this->ip++];
         const OpCode op = GET_op(instruction);
         switch (op) {
             case OpCode::Return: {
@@ -96,8 +101,8 @@ InterpretResult VM::run() {
                     // Get the return address
                     const uint32_t return_ip = this->call_frames.back().return_ip;
                     
-                    // Release the function object
-                    this->call_frames.back().function->release();
+                    // Release the closure
+                    this->call_frames.back().closure->release();
 
                     // Pop the call frame
                     this->call_frames.pop_back();
@@ -113,26 +118,13 @@ InterpretResult VM::run() {
                 const uint16_t callee_ro = GET_B(instruction);
                 Object *callee = callee_ro < 256 ?
                     registers[callee_ro].object :
-                    frame.function->chunk.object_constants[callee_ro - 256];
+                    function->chunk.object_constants[callee_ro - 256];
                 assert(callee);
 
                 // Get the start of the arguments 
                 const uint16_t arg_start_r = GET_C(instruction);
-                
-                if (callee->obj_type == Object::Type::Function) {
-                    FunctionObj *function =
-                        static_cast<FunctionObj *>(callee);
 
-                    function->retain(); // retain the function to release later
-
-                    // Put the frame starting in the callee register
-                    this->call_frames.push_back(
-                        CallFrame(function, this->ip,
-                                  frame.stack_base + arg_start_r));
-
-                    // Set the instruction pointer to the function's start
-                    this->ip = 0;
-                } else {
+                if (callee->obj_type == Object::Type::NativeFunction) {
                     NativeFunctionObj *native_function =
                         static_cast<NativeFunctionObj *>(callee);
 
@@ -146,6 +138,24 @@ InterpretResult VM::run() {
 
                     // Push the result onto the first argument register 
                     registers[arg_start_r] = result;
+                } else {
+                    ClosureObj *closure;
+
+                    if (callee->obj_type == Object::Type::Closure) { 
+                        closure = static_cast<ClosureObj *>(callee);
+                    }
+                    else if (callee->obj_type == Object::Type::Function)
+                        closure = new ClosureObj(static_cast<FunctionObj *>(callee));
+                    else
+                        assert(false && "Callee must be a function or closure");
+
+                    // Put the frame starting in the callee register
+                    this->call_frames.push_back(
+                        CallFrame(closure, this->ip,
+                                  frame.stack_base + arg_start_r));
+
+                    // Set the instruction pointer to the function's start
+                    this->ip = 0;
                 }
                 break;
             }
@@ -154,7 +164,7 @@ InterpretResult VM::run() {
                 const uint8_t reg = GET_A(instruction); 
                 const uint16_t constant = GET_Bx(instruction);
                 registers[reg] =
-                    frame.function->chunk.constants[constant];
+                    function->chunk.constants[constant];
                 break;
             }
 
@@ -162,7 +172,7 @@ InterpretResult VM::run() {
                 const uint8_t reg = GET_A(instruction); 
                 const uint32_t object_index = GET_Bx(instruction);
                 Object *object =
-                    frame.function->chunk.object_constants[object_index];
+                    function->chunk.object_constants[object_index];
                 object->retain(); // A new reference for the register
                 registers[reg].object = object;
                 break;
@@ -170,8 +180,8 @@ InterpretResult VM::run() {
 
             case OpCode::Self: {
                 const uint8_t reg = GET_A(instruction);
-                registers[reg].object = frame.function;
-                frame.function->retain(); // A new reference for the register
+                registers[reg].object = function;
+                function->retain(); // A new reference for the register
                 break;
             }
 

@@ -83,6 +83,11 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
                 static_cast<FunctionObj *>(value.second.object);
             return fnObj->type_id;
         }
+        case Object::Type::Closure: {
+            ClosureObj *closure =
+                static_cast<ClosureObj *>(value.second.object);
+            return closure->function->type_id;
+        }
         case Object::Type::NativeFunction: {
             NativeFunctionObj *nativeFn =
                 static_cast<NativeFunctionObj *>(value.second.object);

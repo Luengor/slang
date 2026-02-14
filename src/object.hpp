@@ -8,6 +8,7 @@ struct Object {
     enum Type {
         String,
         Function,
+        Closure,
         NativeFunction,
     };
     Type obj_type;
@@ -45,6 +46,9 @@ struct FunctionObj : public Object {
     // The chunk of bytecode representing the function body
     Chunk chunk;
 
+    // The upvalues captured by this function from its parent
+    std::vector<int> captured_upvalues;
+
     FunctionObj();
 #ifndef NDEBUG 
     ~FunctionObj();
@@ -53,6 +57,14 @@ struct FunctionObj : public Object {
     std::string toString() const override;
 };
 
+struct ClosureObj : public Object {
+    FunctionObj *function;
+
+    ClosureObj(FunctionObj *function);
+    ~ClosureObj();
+
+    std::string toString() const override;
+};
 
 using NativeFunctionPtr = Value(*)(const Value *args, size_t arg_count);
 
