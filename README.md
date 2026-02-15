@@ -87,6 +87,9 @@ JmpIfFalse      PC <- !R[A] ? PC + sBx : PC
 JmpIfTrue       PC <-  R[A] ? PC + sBx : PC
 Constant        R[A] <- C[Bx]
 Object          R[A] <- O[Bx]
+Closure         R[A] <- closure O[Bx]
+GetUpval        R[A] <- Upval[Bx]
+SetUpval        Upval[A] <- RC[Bx]
 Copy            R[A] <- R[Bx]
 Retain          retain R[A]
 Release         release R[A]

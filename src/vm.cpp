@@ -185,6 +185,31 @@ InterpretResult VM::run() {
                 break;
             }
 
+            case OpCode::Closure: {
+                const uint8_t reg = GET_A(instruction);
+                const uint32_t function_ro= GET_Bx(instruction);
+                FunctionObj *func = function_ro < 256 ?
+                    static_cast<FunctionObj *>(registers[function_ro].object) :
+                    static_cast<FunctionObj *>(function->chunk.object_constants[function_ro - 256]);
+                ClosureObj *closure = new ClosureObj(func, frame.closure);
+                registers[reg].object = closure;
+                break;
+            }
+
+            case OpCode::GetUpvalue: {
+                const uint8_t to_r = GET_A(instruction);
+                const uint16_t upvalue_index = GET_Bx(instruction);
+                registers[to_r] = frame.closure->upvalues[upvalue_index]->value;
+                break;
+            }
+
+            case OpCode::SetUpvalue: {
+                const uint8_t upvalue_index = GET_A(instruction);
+                const uint16_t from_rc = GET_Bx(instruction);
+                frame.closure->upvalues[upvalue_index]->value = RC(from_rc);
+                break;
+            }
+
             case OpCode::Retain: {
                 const auto reg = GET_A(instruction);
                 registers[reg].object->retain();
