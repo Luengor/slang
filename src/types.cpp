@@ -78,6 +78,8 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.second.object->obj_type) {
         case Object::Type::String:
             return getPrimitive(PrimitiveKind::String);
+        case Object::Type::Upvalue: 
+            throw std::runtime_error("Upvalue objects cannot be directly typed in getFromValue.");
         case Object::Type::Function: {
             FunctionObj *fnObj =
                 static_cast<FunctionObj *>(value.second.object);

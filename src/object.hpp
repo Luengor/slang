@@ -2,11 +2,13 @@
 
 #include "chunk.hpp"
 #include "types.hpp"
+#include "value.hpp"
 #include <string>
 
 struct Object {
     enum Type {
         String,
+        Upvalue,
         Function,
         Closure,
         NativeFunction,
@@ -35,6 +37,15 @@ struct StringObj : public Object {
     std::string toString() const override;
 };
 
+struct UpvalueObj : public Object {
+    Value value;
+
+    UpvalueObj();
+    ~UpvalueObj();
+
+    std::string toString() const override;
+};
+
 struct FunctionObj : public Object {
     // A "name" for the function
     std::string name;
@@ -49,6 +60,10 @@ struct FunctionObj : public Object {
     // The upvalues captured by this function from its parent
     std::vector<int> captured_upvalues;
 
+    // The total number of upvalues this function has (including those captured
+    // from its parent and those defined in its own body)
+    int total_upvalues;
+
     FunctionObj();
 #ifndef NDEBUG 
     ~FunctionObj();
@@ -60,7 +75,9 @@ struct FunctionObj : public Object {
 struct ClosureObj : public Object {
     FunctionObj *function;
 
-    ClosureObj(FunctionObj *function);
+    std::vector<UpvalueObj *> upvalues;
+
+    ClosureObj(FunctionObj *function, ClosureObj *parent_closure = nullptr);
     ~ClosureObj();
 
     std::string toString() const override;

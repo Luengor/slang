@@ -47,6 +47,28 @@ std::string StringObj::toString() const {
     return this->value;
 }
 
+UpvalueObj::UpvalueObj() : Object() {
+    this->obj_type = Object::Type::Upvalue;
+
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
+}
+
+UpvalueObj::~UpvalueObj() {
+#ifndef NDEBUG
+    OBJECT_COUNT--;
+#ifdef DEBUG_PRINT
+    std::print("{} destroyed. Remaining objects: {}\n",
+               this->toString(), OBJECT_COUNT);
+#endif
+#endif
+}
+
+std::string UpvalueObj::toString() const {
+    return "<upvalue>";
+}
+
 FunctionObj::FunctionObj() : Object() {
     this->obj_type = Object::Type::Function;
 
@@ -59,12 +81,27 @@ std::string FunctionObj::toString() const {
     return this->name;
 }
 
-ClosureObj::ClosureObj(FunctionObj *function) : Object() {
+ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Object() {
     this->obj_type = Object::Type::Closure;
 
     // Get the function
     this->function = function;
     this->function->retain(); // retain the function to release it later
+
+    // Copy the upvalues from the parent closure if it exists
+    if (parent_closure) {
+        for (auto up : function->captured_upvalues) {
+            UpvalueObj *upvalue = parent_closure->upvalues[up];
+            upvalue->retain();
+            this->upvalues.push_back(upvalue);
+        }
+    }
+
+    // Create new upvalues for any captured upvalues that aren't in the parent closure
+    for (size_t i = this->upvalues.size(); i < (size_t)function->total_upvalues; i++) {
+        UpvalueObj *upvalue = new UpvalueObj();
+        this->upvalues.push_back(upvalue);
+    } 
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
@@ -77,6 +114,11 @@ ClosureObj::~ClosureObj() {
         this->function->release();
         this->function = nullptr;
     }
+
+    for (UpvalueObj *upvalue : this->upvalues) {
+        upvalue->release();
+    }
+    this->upvalues.clear();
 
 #ifndef NDEBUG
     OBJECT_COUNT--;
