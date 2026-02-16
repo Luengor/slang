@@ -65,7 +65,7 @@ struct FunctionObj : public Object {
     int total_upvalues;
 
     FunctionObj();
-#ifndef NDEBUG 
+#ifndef NDEBUG
     ~FunctionObj();
 #endif
 
@@ -98,7 +98,7 @@ struct NativeFunctionObj : public Object {
     NativeFunctionObj(TypeID type_id, NativeFunctionPtr function_ptr,
                       const std::string &name);
 
-#ifndef NDEBUG 
+#ifndef NDEBUG
     ~NativeFunctionObj();
 #endif
 

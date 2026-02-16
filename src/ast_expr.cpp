@@ -123,7 +123,7 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
             ctx.freeRegister(arg_registers[j]);
 
     } else {
-        // Move the result to the desired register 
+        // Move the result to the desired register
         ctx.function->chunk.writeABx(OpCode::Copy, reg(this), arg_registers[0],
                                      this->token.line);
 

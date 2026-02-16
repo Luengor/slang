@@ -86,10 +86,10 @@ class Parser {
     // block -> "{" declaration* "}"
     ASTNodePtr block();
 
-    // expression -> assignment 
+    // expression -> assignment
     ASTNodePtr expression();
 
-    // assignment  -> IDENTIFIER "=" assignment | ternary 
+    // assignment  -> IDENTIFIER "=" assignment | ternary
     ASTNodePtr assignment();
 
     // ternary -> logicOr ( "?" expression ":" ternary )?
@@ -113,7 +113,7 @@ class Parser {
     // factor -> unary ( ( "*" | "/" | "and" ) unary )*
     ASTNodePtr factor();
 
-    // unary -> ( "-" | "not" ) unary | call 
+    // unary -> ( "-" | "not" ) unary | call
     ASTNodePtr unary();
 
     // call -> primary ( "(" arguments? ")" )*
@@ -123,7 +123,7 @@ class Parser {
     //            IDENTIFIER | function
     ASTNodePtr primary();
 
-    // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
+    // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block
     ASTNodePtr function();
 
 public:

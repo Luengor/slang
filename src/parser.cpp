@@ -507,7 +507,7 @@ ASTNodePtr Parser::primary() {
             this->previous(), this->previous().lexeme);
     }
 
-    // Try to parse a function definition 
+    // Try to parse a function definition
     const auto current_pos = this->current;
     try {
         if (this->match({Token::Type::LeftParen})) {
@@ -552,7 +552,7 @@ ASTNodePtr Parser::function() {
 
     this->consume(Token::Type::RightParen, "Expected ')' after function parameters.");
 
-    // Parse return type 
+    // Parse return type
     this->consume(Token::Type::Arrow, "Expected '->' after function parameters.");
     ASTNodePtr return_type =
         this->match({Token::Type::None})

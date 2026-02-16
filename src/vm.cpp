@@ -17,7 +17,7 @@ CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base)
 }
 
 InterpretResult VM::interpret(const std::string &source) {
-    // Compile the source code into a closure 
+    // Compile the source code into a closure
     Compiler compiler(source);
     FunctionObj *function;
 
@@ -36,7 +36,7 @@ InterpretResult VM::interpret(const std::string &source) {
     this->call_frames.push_back(
         CallFrame(closure.get(), 0, 0));
 
-    // Run the code 
+    // Run the code
     this->ip = 0;
     const auto result = this->run();
     assert(closure->ref_count == 1 &&
@@ -121,7 +121,7 @@ InterpretResult VM::run() {
                     function->chunk.object_constants[callee_ro - 256];
                 assert(callee);
 
-                // Get the start of the arguments 
+                // Get the start of the arguments
                 const uint16_t arg_start_r = GET_C(instruction);
 
                 if (callee->obj_type == Object::Type::NativeFunction) {
@@ -136,12 +136,12 @@ InterpretResult VM::run() {
                         registers + arg_start_r,
                         arg_count);
 
-                    // Push the result onto the first argument register 
+                    // Push the result onto the first argument register
                     registers[arg_start_r] = result;
                 } else {
                     ClosureObj *closure;
 
-                    if (callee->obj_type == Object::Type::Closure) { 
+                    if (callee->obj_type == Object::Type::Closure) {
                         closure = static_cast<ClosureObj *>(callee);
                     }
                     else if (callee->obj_type == Object::Type::Function)
@@ -161,7 +161,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Constant: {
-                const uint8_t reg = GET_A(instruction); 
+                const uint8_t reg = GET_A(instruction);
                 const uint16_t constant = GET_Bx(instruction);
                 registers[reg] =
                     function->chunk.constants[constant];
@@ -169,7 +169,7 @@ InterpretResult VM::run() {
             }
 
             case OpCode::Object: {
-                const uint8_t reg = GET_A(instruction); 
+                const uint8_t reg = GET_A(instruction);
                 const uint32_t object_index = GET_Bx(instruction);
                 Object *object =
                     function->chunk.object_constants[object_index];

@@ -52,7 +52,7 @@ struct CompileContext {
     // The native function registry
     NativeRegistry &nativeRegistry;
 
-    // The name table 
+    // The name table
     NameTable nameTable;
 
     // The parent compile context.
@@ -71,7 +71,7 @@ struct CompileContext {
     // Free a previously allocated register
     void freeRegister(int reg);
 
-    // Fixup registers 
+    // Fixup registers
     void fixupRegisters();
 
 private:

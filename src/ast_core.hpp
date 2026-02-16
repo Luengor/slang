@@ -4,7 +4,7 @@
 #include "scanner.hpp"
 #include <memory>
 
-// AST Node Types 
+// AST Node Types
 enum class ASTNodeType {
     Literal,
     Function,

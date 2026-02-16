@@ -101,7 +101,7 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
     for (size_t i = this->upvalues.size(); i < (size_t)function->total_upvalues; i++) {
         UpvalueObj *upvalue = new UpvalueObj();
         this->upvalues.push_back(upvalue);
-    } 
+    }
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
@@ -147,7 +147,7 @@ std::string NativeFunctionObj::toString() const {
     return "<native: " + this->name + ">";
 }
 
-#ifndef NDEBUG 
+#ifndef NDEBUG
 
 
 StringObj::~StringObj() {

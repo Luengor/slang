@@ -23,7 +23,7 @@ union Value {
     FixedType fixed;
     PtrType object;
     bool boolean;
-}; 
+};
 
 using TypedValue = std::pair<ValueType, Value>;
 

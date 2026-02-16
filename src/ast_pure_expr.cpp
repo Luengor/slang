@@ -189,7 +189,7 @@ void FunctionNode::resolveType(CompileContext &ctx) {
     // Create a new compile context for the function
     this->fn_ctx = std::make_unique<CompileContext>(ctx);
 
-    // Create a new function to compile into 
+    // Create a new function to compile into
     this->fn_ctx->function = new FunctionObj();
 
     // Name the function after its line number for now
@@ -318,7 +318,7 @@ void VariableNode::resolveType(CompileContext &ctx) {
         return;
     }
 
-    // If not, try to resolve as a local 
+    // If not, try to resolve as a local
     auto entry = ctx.nameTable.findEntryInScope(this->name);
     if (entry.has_value()) {
         this->resolution = entry.value();
@@ -362,7 +362,7 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
             assert(entry.register_index != -1 &&
                    "Local variable must have a valid register index");
 
-            // If no register was assigned, mark as variable and use the entry 
+            // If no register was assigned, mark as variable and use the entry
             if (reg == -1) {
                 reg(this) = entry.register_index;
                 is_var(this) = true;

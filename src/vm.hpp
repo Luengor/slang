@@ -13,7 +13,7 @@ struct CallFrame {
     // The closure being called
     ClosureObj *closure;
 
-    // The instruction to return to after this function call 
+    // The instruction to return to after this function call
     uint32_t return_ip;
 
     // The base index in the register file for this call frame

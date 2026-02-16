@@ -31,7 +31,7 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
 
     // Create AST
     Parser parser(tokens);
-    std::unique_ptr<ASTNode> root = parser.parse(); 
+    std::unique_ptr<ASTNode> root = parser.parse();
 
     // Compile AST to Chunk
     if (root == nullptr)

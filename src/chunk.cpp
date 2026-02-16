@@ -75,7 +75,7 @@ void Chunk::disassembleInstruction(int offset) {
     else
         std::print("{:4d} ", this->lines[offset]);
 
-    OpCode instruction = GET_op(this->code[offset]); 
+    OpCode instruction = GET_op(this->code[offset]);
     switch (instruction) {
         case OpCode::Return: {
             uint32_t bx = GET_Bx(this->code[offset]);

@@ -116,7 +116,7 @@ bool TypeRegistry::isObject(TypeID typeID) {
         const PrimitiveType primType = std::get<PrimitiveType>(typeData);
         return primType.kind == PrimitiveKind::String;
     }
-    return true; // If not primitive, is a function 
+    return true; // If not primitive, is a function
 }
 
 bool TypeRegistry::isFunction(TypeID typeID) {

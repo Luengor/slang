@@ -12,7 +12,7 @@ enum class OpCode : uint8_t {
     NegateI, NegateF,
 
     AddI, SubtractI, MultiplyI, DivideI,
-    AddF, SubtractF, MultiplyF, DivideF, 
+    AddF, SubtractF, MultiplyF, DivideF,
 
     EqI, NeI, GtI, LtI, GeI, LeI,
     EqF, NeF, GtF, LtF, GeF, LeF,
@@ -83,7 +83,7 @@ public:
 #define GET_A(ins) ((ins >> 18) & 0xFF)
 
 
-// ABC -> [OpCode:6] [A:8] [B:9] [C:9] 
+// ABC -> [OpCode:6] [A:8] [B:9] [C:9]
 #define GET_B(ins) ((ins >> 9) & 0x1FF)
 #define GET_C(ins) (ins & 0x1FF)
 #define GET_Bx(ins) (ins & 0x3FFFF)
