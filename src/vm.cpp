@@ -191,10 +191,9 @@ InterpretResult VM::run() {
 
             case OpCode::Closure: {
                 const uint8_t reg = GET_A(instruction);
-                const uint32_t function_ro= GET_Bx(instruction);
-                FunctionObj *func = function_ro < 256 ?
-                    static_cast<FunctionObj *>(registers[function_ro].object) :
-                    static_cast<FunctionObj *>(function->chunk.object_constants[function_ro - 256]);
+                const uint32_t function_o = GET_Bx(instruction);
+                FunctionObj *func = static_cast<FunctionObj *>(
+                    function->chunk.object_constants[function_o]);
                 ClosureObj *closure = new ClosureObj(func, frame.closure);
                 registers[reg].object = closure;
                 break;
