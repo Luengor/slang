@@ -57,12 +57,9 @@ struct FunctionObj : public Object {
     // The chunk of bytecode representing the function body
     Chunk chunk;
 
-    // The upvalues captured by this function from its parent
-    std::vector<int> captured_upvalues;
-
-    // The total number of upvalues this function has (including those captured
-    // from its parent and those defined in its own body)
-    int total_upvalues;
+    // The upvalues captured by this function from its parent.
+    // Values of -1 means that the upvalue is created by this function
+    std::vector<int> upvalues;
 
     FunctionObj();
 #ifndef NDEBUG

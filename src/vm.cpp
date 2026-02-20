@@ -144,9 +144,13 @@ InterpretResult VM::run() {
                     if (callee->obj_type == Object::Type::Closure) {
                         closure = static_cast<ClosureObj *>(callee);
                     }
-                    else if (callee->obj_type == Object::Type::Function)
+                    else if (callee->obj_type == Object::Type::Function) {
+                        assert(static_cast<FunctionObj *>(callee)
+                                       ->upvalues.size() == 0 &&
+                               "Function objects with upvalues should be "
+                               "wrapped in closures.");
                         closure = new ClosureObj(static_cast<FunctionObj *>(callee));
-                    else
+                    } else
                         assert(false && "Callee must be a function or closure");
 
                     // Put the frame starting in the callee register

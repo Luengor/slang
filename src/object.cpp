@@ -1,4 +1,5 @@
 #include "object.hpp"
+#include <stdexcept>
 
 #ifndef NDEBUG
 #ifdef DEBUG_PRINT
@@ -89,18 +90,18 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
     this->function->retain(); // retain the function to release it later
 
     // Copy the upvalues from the parent closure if it exists
-    if (parent_closure) {
-        for (auto up : function->captured_upvalues) {
+    for (auto up : function->upvalues) {
+        if (up == -1) {
+            // Create a new upvalue for this function
+            UpvalueObj *upvalue = new UpvalueObj();
+            this->upvalues.push_back(upvalue);
+        } else if (parent_closure) {
             UpvalueObj *upvalue = parent_closure->upvalues[up];
             upvalue->retain();
             this->upvalues.push_back(upvalue);
+        } else {
+            throw std::runtime_error("Function has upvalues but no parent closure provided");
         }
-    }
-
-    // Create new upvalues for any captured upvalues that aren't in the parent closure
-    for (size_t i = this->upvalues.size(); i < (size_t)function->total_upvalues; i++) {
-        UpvalueObj *upvalue = new UpvalueObj();
-        this->upvalues.push_back(upvalue);
     }
 
 #ifndef NDEBUG
