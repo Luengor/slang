@@ -1,4 +1,5 @@
 #include "object.hpp"
+#include <format>
 #include <stdexcept>
 
 #ifndef NDEBUG
@@ -45,7 +46,7 @@ StringObj::StringObj(const std::string &value) : Object(), value(value) {
 }
 
 std::string StringObj::toString() const {
-    return this->value;
+    return std::format("\"{}\"", this->value);
 }
 
 UpvalueObj::UpvalueObj() : Object() {
