@@ -162,7 +162,7 @@ InterpretResult VM::run() {
 
             case OpCode::Constant: {
                 const uint8_t reg = GET_A(instruction);
-                const uint16_t constant = GET_Bx(instruction);
+                const uint32_t constant = GET_Bx(instruction);
                 registers[reg] =
                     function->chunk.constants[constant];
                 break;
@@ -198,14 +198,14 @@ InterpretResult VM::run() {
 
             case OpCode::GetUpvalue: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t upvalue_index = GET_Bx(instruction);
+                const uint32_t upvalue_index = GET_Bx(instruction);
                 registers[to_r] = frame.closure->upvalues[upvalue_index]->value;
                 break;
             }
 
             case OpCode::SetUpvalue: {
                 const uint8_t upvalue_index = GET_A(instruction);
-                const uint16_t from_rc = GET_Bx(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
                 frame.closure->upvalues[upvalue_index]->value = RC(from_rc);
                 break;
             }
@@ -224,21 +224,21 @@ InterpretResult VM::run() {
 
             case OpCode::Not: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t from_rc = GET_Bx(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
                 registers[to_r].boolean = !RC(from_rc).boolean;
                 break;
             }
 
             case OpCode::NegateI: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t from_rc = GET_Bx(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
                 registers[to_r].fixed = -RC(from_rc).fixed;
                 break;
             }
 
             case OpCode::NegateF: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t from_rc = GET_Bx(instruction);
+                const uint32_t from_rc = GET_Bx(instruction);
                 registers[to_r].floating = -RC(from_rc).floating;
                 break;
             }
@@ -272,7 +272,7 @@ InterpretResult VM::run() {
 
             case OpCode::Copy: {
                 const uint8_t to_r = GET_A(instruction);
-                const uint16_t from_r = GET_Bx(instruction);
+                const uint32_t from_r = GET_Bx(instruction);
                 registers[to_r] = registers[from_r];
                 break;
             }
