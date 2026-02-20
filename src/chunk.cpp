@@ -1,4 +1,5 @@
 #include "chunk.hpp"
+#include "error.hpp"
 #include "object.hpp"
 #include <cassert>
 #include <print>
@@ -91,6 +92,24 @@ void Chunk::disassembleInstruction(int offset) {
 
         case OpCode::Self:
             return this->disassembleABx("OP_SELF", this->code[offset]);
+
+        case OpCode::Closure: {
+            uint8_t A = GET_A(this->code[offset]);
+            uint32_t bx = GET_Bx(this->code[offset]);
+            FunctionObj *func = static_cast<FunctionObj *>(this->object_constants[bx]);
+
+            std::println("{:<16} R{:<3d} closure{}", "OP_CLOSURE", A, func->name);
+            return;
+        }
+
+        case OpCode::GetUpvalue:
+            return this->disassembleABx("OP_GETUPVALUE", this->code[offset], "U");
+
+        case OpCode::SetUpvalue:
+            return this->disassembleABx("OP_SETUPVALUE", this->code[offset], "U");
+
+        case OpCode::ReleaseUpvalue:
+            return this->disassembleABx("OP_RELEASEUPVALUE", this->code[offset], "U");
 
         case OpCode::Retain:
             return this->disassembleABx("OP_RETAIN", this->code[offset]);
