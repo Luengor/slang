@@ -124,7 +124,9 @@ InterpretResult VM::run() {
                 Object *callee = callee_ro < 256 ?
                     registers[callee_ro].object :
                     function->chunk.object_constants[callee_ro - 256];
-                callee = callee == function ? frame.closure : callee; // Handle self calls
+
+                // Handle self calls
+                callee = callee == function ? frame.closure : callee;
                 assert(callee);
 
                 // Get the start of the arguments

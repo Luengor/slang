@@ -193,8 +193,12 @@ void ClosureObj::doCall() {
             // This upvalue is created by this function, so we create a new one
             UpvalueObj *new_upvalue = new UpvalueObj();
             new_upvalue->is_object = this->function->upvalues[i].is_object;
-            new_upvalue->next = this->upvalues[i]; // Chain it to the previous upvalue that captures the same variable
-            this->upvalues[i] = new_upvalue; // Set the new upvalue as the current one for this variable
+
+            // Chain it to the previous upvalue that captures the same variable
+            new_upvalue->next = this->upvalues[i]; 
+
+            // Set the new upvalue as the current one for this variable
+            this->upvalues[i] = new_upvalue;
 
 #ifdef DEBUG_PRINT
             std::print("created {} for {}\n",
