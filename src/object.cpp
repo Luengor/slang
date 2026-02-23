@@ -153,6 +153,11 @@ void ClosureObj::doCall() {
             UpvalueObj *new_upvalue = new UpvalueObj();
             new_upvalue->next = this->upvalues[i]; // Chain it to the previous upvalue that captures the same variable
             this->upvalues[i] = new_upvalue; // Set the new upvalue as the current one for this variable
+
+#ifdef DEBUG_PRINT
+            std::print("created {} for {}\n",
+                       new_upvalue->toString(), this->toString());
+#endif
         }
     }
 }
