@@ -133,6 +133,10 @@ The following rules apply to reference counting:
  - Running functions and closures are counted. When a function/closure is called,
    it is retained, and when it returns, it is released.
  - Both the upvalues and the function objects of a closure are counted.
+ - Objects in Upvalues are counted. When an object is stored in an upvalue, it
+   is retained, and when the upvalue is released, the object is released as
+   well. Because of this, upvalues must know whether they contain an object or
+   not.
 
 ## Register Usage
  - After compiling a Node, its result type, register and if it's a variable
