@@ -310,15 +310,12 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             ctx.freeRegister(init_reg);
         }
     } else {
-        // If its an object, copy it to the upvalue
         // The value we want is in the given register
-        if (ctx.typeRegistry.isObject(type(this))) {
-            ctx.function->chunk.writeABx(OpCode::SetUpvalue, reg, upvalue_index,
-                                         this->token.line);
+        ctx.function->chunk.writeABx(OpCode::SetUpvalue, reg, upvalue_index,
+                                     this->token.line);
 
-            // Consider the object released from the registers from this point
-            // on
-        }
+        // No need to release anything, since the value is "moved" and
+        // the runtime knows if it's an object or a plain value.
     }
 }
 
