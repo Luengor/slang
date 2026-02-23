@@ -38,13 +38,25 @@ struct StringObj : public Object {
 };
 
 struct UpvalueObj : public Object {
-    Value value;
+    Value value{.object = nullptr};
+    bool is_object = false;
     UpvalueObj *next = nullptr; // For chaining upvalues that capture the same variable
 
     UpvalueObj();
     ~UpvalueObj();
 
+    Value get();
+    void set(const Value &new_value);
     std::string toString() const override;
+};
+
+struct UpvalueInfo {
+    // The index to retreive from the parent closure's upvalues.
+    // If -1, the upvalue is created by the current function
+    int index = -1;
+
+    // Whether the upvalue is an object and needs to be retained and released
+    bool is_object = false;
 };
 
 struct FunctionObj : public Object {
@@ -60,7 +72,7 @@ struct FunctionObj : public Object {
 
     // The upvalues captured by this function from its parent.
     // Values of -1 means that the upvalue is created by this function
-    std::vector<int> upvalues;
+    std::vector<UpvalueInfo> upvalues;
 
     FunctionObj();
 #ifndef NDEBUG

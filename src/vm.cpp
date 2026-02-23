@@ -215,14 +215,14 @@ InterpretResult VM::run() {
             case OpCode::GetUpvalue: {
                 const uint8_t to_r = GET_A(instruction);
                 const uint32_t upvalue_index = GET_Bx(instruction);
-                registers[to_r] = frame.closure->upvalues[upvalue_index]->value;
+                registers[to_r] = frame.closure->upvalues[upvalue_index]->get();
                 break;
             }
 
             case OpCode::SetUpvalue: {
                 const uint8_t upvalue_index = GET_A(instruction);
                 const uint32_t from_rc = GET_Bx(instruction);
-                frame.closure->upvalues[upvalue_index]->value = RC(from_rc);
+                frame.closure->upvalues[upvalue_index]->set(RC(from_rc));
                 break;
             }
 

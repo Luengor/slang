@@ -316,10 +316,9 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             ctx.function->chunk.writeABx(OpCode::SetUpvalue, reg, upvalue_index,
                                          this->token.line);
 
-            // Release the value from the register since it's now owned by the upvalue
-            ctx.function->chunk.writeABx(OpCode::Release, reg, 0, this->token.line);
+            // Consider the object released from the registers from this point
+            // on
         }
-        
     }
 }
 

@@ -59,6 +59,12 @@ UpvalueObj::UpvalueObj() : Object() {
 }
 
 UpvalueObj::~UpvalueObj() {
+    if (this->is_object) {
+        Object *obj = static_cast<Object *>(this->value.object);
+        if (obj)
+            obj->release();
+    }
+
 #ifndef NDEBUG
     OBJECT_COUNT--;
 #ifdef DEBUG_PRINT
@@ -68,8 +74,43 @@ UpvalueObj::~UpvalueObj() {
 #endif
 }
 
+Value UpvalueObj::get() {
+    // If this is not an object simply return the value
+    if (!this->is_object)
+        return this->value;
+
+    // Retain the object before returning to ensure it stays alive while in use
+    Object *obj = static_cast<Object *>(this->value.object);
+    assert(obj && "Object value should not be null when getting");
+    obj->retain();
+
+    return this->value;
+}
+
+void UpvalueObj::set(const Value &new_value) {
+    // If this is not an object simply copy
+    if (!this->is_object) {
+        this->value = new_value;
+        return;
+    }
+
+    assert(new_value.object &&
+           "New value should have an object when is_object is true");
+
+    // Release the previous object if it exists
+    if (this->value.object) {
+        Object *old_obj = static_cast<Object *>(this->value.object);
+        old_obj->release();
+    }
+
+    // There is no need to retain the object, since the new value
+    // is "moved" from a register
+
+    this->value = new_value;
+}
+
 std::string UpvalueObj::toString() const {
-    return "<upvalue>";
+    return std::format("<upvalue-{}>", this->is_object ? "obj" : "val");
 }
 
 FunctionObj::FunctionObj() : Object() {
@@ -92,14 +133,14 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
     this->function->retain(); // retain the function to release it later
 
     // Copy the upvalues from the parent closure if it exists
-    for (auto up : function->upvalues) {
-        if (up == -1) {
+    for (auto &[index, object] : function->upvalues) {
+        if (index == -1) {
             this->half_baked = true;
 
             // Placeholder for the upvalue that will be created when the closure is called
             this->upvalues.push_back(nullptr);
         } else if (parent_closure) {
-            UpvalueObj *upvalue = parent_closure->upvalues[up];
+            UpvalueObj *upvalue = parent_closure->upvalues[index];
             upvalue->retain();
             this->upvalues.push_back(upvalue);
         } else {
@@ -148,9 +189,10 @@ void ClosureObj::doCall() {
 
     // If it is, create a new set of upvalues for this closure
     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-        if (this->function->upvalues[i] == -1) {
+        if (this->function->upvalues[i].index == -1) {
             // This upvalue is created by this function, so we create a new one
             UpvalueObj *new_upvalue = new UpvalueObj();
+            new_upvalue->is_object = this->function->upvalues[i].is_object;
             new_upvalue->next = this->upvalues[i]; // Chain it to the previous upvalue that captures the same variable
             this->upvalues[i] = new_upvalue; // Set the new upvalue as the current one for this variable
 
@@ -170,7 +212,7 @@ void ClosureObj::doReturn() {
 
     // If it is, we need to pop the upvalues created by this function
     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-        if (this->function->upvalues[i] == -1) {
+        if (this->function->upvalues[i].index == -1) {
             // This upvalue is created by this function, so we pop it
             UpvalueObj *upvalue_to_pop = this->upvalues[i];
             assert(upvalue_to_pop != nullptr && "Upvalue to pop should not be null");
