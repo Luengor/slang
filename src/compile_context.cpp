@@ -28,7 +28,7 @@ std::optional<EntryID> NameTable::findEntryInScope(const std::string &name, bool
     // Search in reverse order to find the most recent entry
     for (auto it = this->in_scope.rbegin(); it != this->in_scope.rend(); ++it) {
         const NameEntry &entry = this->entries[*it];
-        if (entry.name == name && (!only_upvalues || entry.is_upvalue)) {
+        if (entry.name == name && (!only_upvalues || (entry.is_upvalue || entry.is_captured))) {
             return *it;
         }
     }
@@ -37,7 +37,7 @@ std::optional<EntryID> NameTable::findEntryInScope(const std::string &name, bool
 }
 
 std::vector<EntryID> NameTable::getNamesInScope(int depth) {
-    auto result = this->in_scope;
+    std::vector<EntryID> result = this->in_scope;
     if (depth > 0) {
         result.erase(
             std::remove_if(
@@ -177,9 +177,9 @@ int CompileContext::getUpvalueIndex(EntryID entry_id) {
     // Otherwise, it's an upvalue that should have an index assigned
     // in a parent context, so recurse
     assert(this->next != nullptr && "Upvalue should have been resolved in a parent context");
-    // auto parent_entry_id = this->next->nameTable.findEntryInScope(entry.name, true);
-    // assert(parent_entry_id.has_value() && "Upvalue should have been found in parent context");
-    int parent_index = this->next->getUpvalueIndex(entry_id);
+    auto parent_entry_id = this->next->nameTable.findEntryInScope(entry.name, true);
+    assert(parent_entry_id.has_value() && "Upvalue should have been found in parent context");
+    int parent_index = this->next->getUpvalueIndex(parent_entry_id.value());
 
     // Add it to this function's upvalues with the parent index
     auto upvalue_index = this->function->upvalues.size();

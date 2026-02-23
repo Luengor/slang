@@ -253,6 +253,14 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
         arg->compile(fn_ctx, i);
     }
 
+    // Put all upvalues in scope so they can be resolved
+    auto entries = fn_ctx.nameTable.getNamesInScope(0);
+    for (const auto entry_id : entries) {
+        const auto &entry = fn_ctx.nameTable.getEntry(entry_id);
+        if (entry.is_upvalue)
+            fn_ctx.nameTable.putInScope(entry_id);
+    }
+
     try {
         this->body->compile(fn_ctx); // the body doesn't need a register
     } catch (const ParserError &e) {
