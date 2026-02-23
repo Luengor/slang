@@ -39,6 +39,7 @@ struct StringObj : public Object {
 
 struct UpvalueObj : public Object {
     Value value;
+    UpvalueObj *next = nullptr; // For chaining upvalues that capture the same variable
 
     UpvalueObj();
     ~UpvalueObj();
@@ -72,11 +73,20 @@ struct FunctionObj : public Object {
 struct ClosureObj : public Object {
     FunctionObj *function;
 
+    // Whether the closure is half-baked, meaning that it has its own upvalues.
+    bool half_baked = false;
+
     std::vector<UpvalueObj *> upvalues;
+
+#ifdef DEBUG_PRINT
+    std::string function_name_cache;
+#endif
 
     ClosureObj(FunctionObj *function, ClosureObj *parent_closure = nullptr);
     ~ClosureObj();
 
+    void doCall();
+    void doReturn();
     std::string toString() const override;
 };
 

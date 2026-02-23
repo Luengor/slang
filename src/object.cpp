@@ -1,4 +1,5 @@
 #include "object.hpp"
+#include <cassert>
 #include <format>
 #include <stdexcept>
 
@@ -93,9 +94,10 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
     // Copy the upvalues from the parent closure if it exists
     for (auto up : function->upvalues) {
         if (up == -1) {
-            // Create a new upvalue for this function
-            UpvalueObj *upvalue = new UpvalueObj();
-            this->upvalues.push_back(upvalue);
+            this->half_baked = true;
+
+            // Placeholder for the upvalue that will be created when the closure is called
+            this->upvalues.push_back(nullptr);
         } else if (parent_closure) {
             UpvalueObj *upvalue = parent_closure->upvalues[up];
             upvalue->retain();
@@ -107,6 +109,12 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
+
+#ifdef DEBUG_PRINT
+    this->function_name_cache = this->function->name;
+    std::print("{} created. Total objects: {}\n",
+               this->toString(), OBJECT_COUNT);
+#endif
 #endif
 }
 
@@ -118,7 +126,8 @@ ClosureObj::~ClosureObj() {
     }
 
     for (UpvalueObj *upvalue : this->upvalues) {
-        upvalue->release();
+        if (upvalue)
+            upvalue->release();
     }
     this->upvalues.clear();
 
@@ -131,8 +140,48 @@ ClosureObj::~ClosureObj() {
 #endif
 }
 
+void ClosureObj::doCall() {
+    // If the closure is not half-baked, we have no need to do anything,
+    // since all upvalues are already set up correctly.
+    if (!this->half_baked)
+        return;
+
+    // If it is, create a new set of upvalues for this closure
+    for (size_t i = 0; i < this->function->upvalues.size(); i++) {
+        if (this->function->upvalues[i] == -1) {
+            // This upvalue is created by this function, so we create a new one
+            UpvalueObj *new_upvalue = new UpvalueObj();
+            new_upvalue->next = this->upvalues[i]; // Chain it to the previous upvalue that captures the same variable
+            this->upvalues[i] = new_upvalue; // Set the new upvalue as the current one for this variable
+        }
+    }
+}
+
+void ClosureObj::doReturn() {
+    // If the closure is not half-baked, we have no need to do anything,
+    // since all upvalues are already set up correctly.
+    if (!this->half_baked)
+        return;
+
+    // If it is, we need to pop the upvalues created by this function
+    for (size_t i = 0; i < this->function->upvalues.size(); i++) {
+        if (this->function->upvalues[i] == -1) {
+            // This upvalue is created by this function, so we pop it
+            UpvalueObj *upvalue_to_pop = this->upvalues[i];
+            assert(upvalue_to_pop != nullptr && "Upvalue to pop should not be null");
+
+            this->upvalues[i] = upvalue_to_pop->next; // Set the next upvalue as the current one for this variable
+            upvalue_to_pop->release(); // Release the popped upvalue
+        }
+    }
+}
+
 std::string ClosureObj::toString() const {
+#ifdef DEBUG_PRINT
+    return "<closure: " + this->function_name_cache + ">";
+#else
     return "<closure: " + (this->function ? this->function->name : "released function") + ">";
+#endif
 }
 
 NativeFunctionObj::NativeFunctionObj(
