@@ -254,11 +254,10 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     }
 
     // Put all upvalues in scope so they can be resolved
-    auto entries = fn_ctx.nameTable.getNamesInScope(0);
-    for (const auto entry_id : entries) {
-        const auto &entry = fn_ctx.nameTable.getEntry(entry_id);
-        if (entry.is_upvalue)
-            fn_ctx.nameTable.putInScope(entry_id);
+    auto entries = fn_ctx.nameTable.getEntries();
+    for (size_t i = 0; i < entries.size(); i++) {
+        if (entries[i].is_upvalue)
+            fn_ctx.nameTable.putInScope(i);
     }
 
     try {

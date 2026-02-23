@@ -35,6 +35,7 @@ class NameTable {
     std::optional<EntryID> findEntryInScope(const std::string &name, bool only_upvalues = false);
 
     std::vector<EntryID> getNamesInScope(int depth = 0);
+    const std::vector<NameEntry> &getEntries();
 
     NameEntry &getEntry(EntryID id);
 

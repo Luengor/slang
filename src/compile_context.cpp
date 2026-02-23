@@ -51,6 +51,10 @@ std::vector<EntryID> NameTable::getNamesInScope(int depth) {
     return result;
 }
 
+const std::vector<NameEntry> &NameTable::getEntries() {
+    return this->entries;
+}
+
 NameEntry &NameTable::getEntry(EntryID id) {
     return this->entries[id];
 }
