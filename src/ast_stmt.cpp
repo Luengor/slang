@@ -77,12 +77,11 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     ctx.nameTable.enterScope();
 
     // Resolve types for all statements
-    bool plain_return = false;
     for (auto &stmt : this->statements) {
-        if (!plain_return) {
+        if (!this->has_end_return) {
             stmt->resolveType(ctx);
             if (stmt->type == ASTNodeType::ReturnStmt) {
-                plain_return = true;
+                this->has_end_return = true;
             }
         } else {
             // Dead code after return
@@ -109,6 +108,12 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
     // Compile all statements in the block
     for (auto &stmt : this->statements) {
         stmt->compile(ctx);
+    }
+
+    if (this->has_end_return) {
+        // No need to do anything, the return will handle it
+        ctx.nameTable.exitScope();
+        return;
     }
 
     // Get all local variables declared in this block
