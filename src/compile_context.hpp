@@ -28,7 +28,6 @@ class NameTable {
     std::vector<NameEntry> entries;
     std::vector<EntryID> in_scope;
     int current_depth = 0;
-    int total_upvalues = 0, total_captured = 0;
 
   public:
     std::optional<EntryID> addName(const std::string &name, int line, TypeID type,
@@ -48,9 +47,6 @@ class NameTable {
 
     void capture(EntryID id);
     void markUpvalue(EntryID id);
-
-    inline int getTotalUpvalues() const { return this->total_upvalues; }
-    inline int getTotalCaptured() const { return this->total_captured; }
 
     void printTable() const;
 };

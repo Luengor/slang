@@ -86,17 +86,11 @@ int NameTable::getCurrentDepth() const {
 }
 
 void NameTable::capture(EntryID id) {
-    if (!this->entries[id].is_captured) {
-        this->entries[id].is_captured = true;
-        this->total_upvalues++;
-    }
+    this->entries[id].is_captured = true;
 }
 
 void NameTable::markUpvalue(EntryID id) {
-    if (!this->entries[id].is_upvalue) {
-        this->entries[id].is_upvalue = true;
-        this->total_captured++;
-    }
+    this->entries[id].is_upvalue = true;
 }
 
 void NameTable::printTable() const {
