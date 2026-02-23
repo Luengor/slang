@@ -234,7 +234,7 @@ EntryID CompileContext::markUpvalue(EntryID parentEntryID) {
 
     // Add a new entry for the upvalue in the current context's name table
     const auto &parentEntry = this->next->nameTable.getEntry(parentEntryID);
-    auto new_entry_id = this->nameTable.addName(parentEntry.name, -1, parentEntry.type);
+    auto new_entry_id = this->nameTable.addName(parentEntry.name, parentEntry.line_declared, parentEntry.type);
     if (!new_entry_id.has_value()) {
         throw std::runtime_error("Failed to mark upvalue: duplicate name");
     }
