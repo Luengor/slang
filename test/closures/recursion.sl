@@ -1,10 +1,10 @@
 auto fn = (bool first_call) -> () -> none {
     # Create an upvalue that will be captured by the closure
     auto text = first_call ? "first call" : "second call";
-    # auto print_fn = () -> none { print(text); };
+    auto print_fn = () -> none { print(text); };
 
     # If this is not the first call, return print_fn directly
-    if (!first_call) {
+    if (not first_call) {
         return print_fn;
     }
 
