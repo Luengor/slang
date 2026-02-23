@@ -1,11 +1,10 @@
 #include "chunk.hpp"
-#include "error.hpp"
 #include "object.hpp"
 #include <cassert>
 #include <print>
 
 Chunk::~Chunk() {
-    // Release all object constants
+    // Release (almost) all object constants
     for (unsigned i = 1; i < this->object_constants.size(); i++) {
         this->object_constants[i]->release();
     }
@@ -98,7 +97,7 @@ void Chunk::disassembleInstruction(int offset) {
             uint32_t bx = GET_Bx(this->code[offset]);
             FunctionObj *func = static_cast<FunctionObj *>(this->object_constants[bx]);
 
-            std::println("{:<16} R{:<3d} closure{}", "OP_CLOSURE", A, func->name);
+            std::println("{:<16} R{:<3d} O[{}] closure{}", "OP_CLOSURE", A, bx, func->name);
             return;
         }
 

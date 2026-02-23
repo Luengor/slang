@@ -37,6 +37,10 @@ struct VariableNode : public ASTNode {
 
     VariableNode(const Token &token, const std::string &name);
     AST_OVERRIDES;
+
+private:
+    void compileLocal(CompileContext &ctx, int reg);
+    void compileUpvalue(CompileContext &ctx, int reg);
 };
 
 struct UnaryExpr : public ASTNode {

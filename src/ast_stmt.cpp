@@ -235,23 +235,62 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 
 void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     CompileGuard;
-    assert(reg == -1);
 
     // This is a pure statement, no result register
     reg(this) = -1;
 
-    // Get the local entry
+    // Get the local entry and put it in scope
     auto &entry = ctx.nameTable.getEntry(this->entry_id);
-
-    // Allocate a register for it and put it in current scope
-    assert(entry.register_index == -1);
-    entry.register_index = ctx.allocateRegister();
     ctx.nameTable.putInScope(this->entry_id);
+    assert(entry.register_index == -1);
 
-    // Compile the initializer if present
-    if (this->initializer)
-        this->initializer->compile(ctx, entry.register_index);
-    else {
+    if (!entry.is_captured) {
+        // If it's not captured, we can allocate a register for it now
+        entry.register_index = ctx.allocateRegister();
+
+        // If it has an initializer, compile it into the variable's register
+        if (this->initializer) {
+            this->initializer->compile(ctx, entry.register_index);
+        } else if (!this->is_in_function_definition) {
+            // If no initializer and it's an string, initialize to empty string
+            const auto string_type =
+                ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
+            if (type(this) == string_type) {
+                // Create an empty string literal
+                StringObj *empty_string_obj = new StringObj("");
+
+                // Put it into the chunk and store in the variable's register
+                const auto const_index =
+                    ctx.function->chunk.addObjectConstant(empty_string_obj);
+                ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
+                                             const_index, this->token.line);
+            }
+        }
+
+        return;
+    }
+
+    // Captured
+    // A declaration of a capture variable can not be an upvalue, it must be a
+    // local variable in the current context
+    assert(!entry.is_upvalue && "A variable declaration cannot be an upvalue");
+
+    auto upvalue_index = ctx.getUpvalueIndex(this->entry_id);
+
+    // If it has an initializer, compile it and set it
+    if (this->initializer) {
+        this->initializer->compile(ctx);
+
+        // Emit instruction to set the upvalue
+        auto init_reg = reg(this->initializer);
+        ctx.function->chunk.writeABx(OpCode::SetUpvalue, init_reg,
+                                     upvalue_index, this->token.line);
+
+        // Free the initializer register if needed
+        if (should_free(this->initializer))
+            ctx.freeRegister(init_reg);
+
+    } else if (!this->is_in_function_definition) {
         // If no initializer and it's an string, initialize to empty string
         const auto string_type =
             ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
@@ -262,9 +301,25 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             // Put it into the chunk and store in the variable's register
             const auto const_index =
                 ctx.function->chunk.addObjectConstant(empty_string_obj);
-            ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
+
+            auto init_reg = ctx.allocateRegister();
+            ctx.function->chunk.writeABx(OpCode::Object, init_reg,
                                          const_index, this->token.line);
+            ctx.function->chunk.writeABx(OpCode::SetUpvalue, init_reg,
+                                         upvalue_index, this->token.line);
+            ctx.freeRegister(init_reg);
         }
+    } else {
+        // If its an object, copy it to the upvalue
+        // The value we want is in the given register
+        if (ctx.typeRegistry.isObject(type(this))) {
+            ctx.function->chunk.writeABx(OpCode::SetUpvalue, reg, upvalue_index,
+                                         this->token.line);
+
+            // Release the value from the register since it's now owned by the upvalue
+            ctx.function->chunk.writeABx(OpCode::Release, reg, 0, this->token.line);
+        }
+        
     }
 }
 
@@ -478,9 +533,11 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
 
     // If there is expression, compile that
+    int dont_free_reg = -1;
     if (this->return_expr) {
         this->return_expr->compile(ctx, reg);
         reg = reg(this->return_expr);
+        dont_free_reg = reg;
 
         // Try to skip constant
         SKIP_CONSTANT_GET_REG(reg);
@@ -491,11 +548,11 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     // Get all local variables defined now
     auto all_names = ctx.nameTable.getNamesInScope(0);
 
-    // Release all object locals
+    // Release all object locals that aren't captured or upvalues
     for (auto entryID : all_names) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
-        if (entry.register_index != -1 &&
-            ctx.typeRegistry.isObject(entry.type)) {
+        if (entry.register_index != -1 && !entry.is_upvalue && !entry.is_captured &&
+            ctx.typeRegistry.isObject(entry.type) && entry.register_index != dont_free_reg) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
                 0, this->token.line);

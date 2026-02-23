@@ -16,17 +16,24 @@ struct NameEntry {
     int depth;
     int line_declared = -1;
     int register_index = -1;
+
+    // Is this variable captured by an inner function?
+    bool is_captured = false;
+
+    // Is this variable an upvalue (captured from an outer scope)?
+    bool is_upvalue = false;
 };
 
 class NameTable {
     std::vector<NameEntry> entries;
     std::vector<EntryID> in_scope;
     int current_depth = 0;
+    int total_upvalues = 0, total_captured = 0;
 
   public:
     std::optional<EntryID> addName(const std::string &name, int line, TypeID type,
                                    int depth = -1);
-    std::optional<EntryID> findEntryInScope(const std::string &name);
+    std::optional<EntryID> findEntryInScope(const std::string &name, bool only_upvalues = false);
 
     std::vector<EntryID> getNamesInScope(int depth = 0);
 
@@ -38,6 +45,12 @@ class NameTable {
 
     void putInScope(EntryID id);
     int getCurrentDepth() const;
+
+    void capture(EntryID id);
+    void markUpvalue(EntryID id);
+
+    inline int getTotalUpvalues() const { return this->total_upvalues; }
+    inline int getTotalCaptured() const { return this->total_captured; }
 
     void printTable() const;
 };
@@ -62,6 +75,11 @@ struct CompileContext {
     CompileContext(TypeRegistry &typeRegistry, NativeRegistry &nativeRegistry);
     CompileContext(CompileContext &parent);
 
+    // Resolves the name of a new upvalue
+    std::optional<EntryID> resolveNewUpvalue(const std::string &name);
+
+    int getUpvalueIndex(EntryID entry_id);
+
     // Allocate a new register
     int allocateRegister();
 
@@ -77,5 +95,7 @@ struct CompileContext {
 private:
     std::vector<int> free_registers;
     int max_registers = 0;
+
+    EntryID markUpvalue(EntryID parentEntryID);
 };
 

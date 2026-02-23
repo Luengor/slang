@@ -197,9 +197,10 @@ void FunctionNode::resolveType(CompileContext &ctx) {
         "<fn@" + std::to_string(this->token.line) + ">";
 
     // Add itself as the first object of the chunk
+    // TODO: change this for nullptr to ensure we don't accidentally use it
+    // directly
     this->fn_ctx->function->chunk.addObjectConstant(
         this->fn_ctx->function);
-    // this->fn_ctx->function->retain();
 
     // Resolve argument types
     std::vector<TypeID> param_types;
@@ -245,8 +246,11 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     CompileContext &fn_ctx = *this->fn_ctx;
 
     // Compile the args to push the locals
-    for (const auto &arg : this->arguments) {
-        arg->compile(fn_ctx); // args don't need registers
+    for (uint i = 0; i < this->arguments.size(); i++) {
+        auto &arg = this->arguments[i];
+
+        // Arguments are always in registers starting from 0
+        arg->compile(fn_ctx, i);
     }
 
     try {
@@ -271,10 +275,18 @@ void FunctionNode::compile(CompileContext &ctx, int reg) {
     const auto constant =
         ctx.function->chunk.addObjectConstant(fn_ctx.function);
 
-    // Write the object load instruction
+    // Get a register for the result 
     reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
-    ctx.function->chunk.writeABx(
-        OpCode::Object, reg(this), constant, this->token.line);
+
+    // If the function has upvalues, wrap it into a closure
+    if (fn_ctx.function->upvalues.size() > 0) {
+        ctx.function->chunk.writeABx(
+            OpCode::Closure, reg(this), constant, this->token.line);
+    } else {
+        // Otherwise, just load the function object
+        ctx.function->chunk.writeABx(
+            OpCode::Object, reg(this), constant, this->token.line);
+    }
 }
 
 void FunctionNode::print(int indent) {
@@ -327,18 +339,11 @@ void VariableNode::resolveType(CompileContext &ctx) {
     }
 
     // If not, try to resolve as an upvalue
-    auto next = ctx.next;
-    while (next != nullptr) {
-        // There is an enclosing context, try to find the variable there
-        auto upvalue_entry = next->nameTable.findEntryInScope(this->name);
-
-        if (upvalue_entry.has_value()) {
-            throw ParserError(
-                this->token,
-                "Upvalue variable access is not supported yet.");
-        }
-
-        next = next->next;
+    auto entry_upvalue = ctx.resolveNewUpvalue(this->name);
+    if (entry_upvalue.has_value()) {
+        this->resolution = entry_upvalue.value();
+        type(this) = ctx.nameTable.getEntry(entry_upvalue.value()).type;
+        return;
     }
 
     throw ParserError(this->token, "Undefined variable: " + this->name);
@@ -359,27 +364,10 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
         [&](EntryID local_index) {
             // Get the local
             const auto &entry = ctx.nameTable.getEntry(local_index);
-            assert(entry.register_index != -1 &&
-                   "Local variable must have a valid register index");
-
-            // If no register was assigned, mark as variable and use the entry
-            if (reg == -1) {
-                reg(this) = entry.register_index;
-                is_var(this) = true;
-                return;
-            }
-
-            // If not, use the provided register
-            reg(this) = reg;
-            ctx.function->chunk.writeABx(
-                OpCode::Copy, reg(this),
-                static_cast<uint8_t>(entry.register_index), this->token.line);
-
-            // If its an object type, retain it
-            if (ctx.typeRegistry.isObject(type(this))) {
-                ctx.function->chunk.writeABx(
-                    OpCode::Retain, reg(this),
-                    0, this->token.line);
+            if (entry.is_captured || entry.is_upvalue) {
+                this->compileUpvalue(ctx, reg);
+            } else {
+                this->compileLocal(ctx, reg);
             }
         },
         [&](NativeFunctionObj *native_fn) {
@@ -396,6 +384,54 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
                                          this->token.line);
         }
     }, this->resolution);
+}
+
+void VariableNode::compileLocal(CompileContext &ctx, int reg) {
+    auto &entry = ctx.nameTable.getEntry(std::get<EntryID>(this->resolution));
+
+    // Get the local entry
+    assert(entry.register_index != -1 &&
+           "Local must have a valid register index before compilation.");
+    if (entry.is_upvalue || entry.is_captured) {
+        throw ParserError(this->token,
+                          "Cannot directly access captured variables.");
+    }
+
+    // If no register was assigned, mark as variable and use the entry
+    if (reg == -1) {
+        reg(this) = entry.register_index;
+        is_var(this) = true;
+        return;
+    }
+
+    // If not, use the provided register
+    reg(this) = reg;
+    ctx.function->chunk.writeABx(
+        OpCode::Copy, reg(this),
+        static_cast<uint8_t>(entry.register_index), this->token.line);
+
+    // If its an object type, retain it
+    if (ctx.typeRegistry.isObject(type(this))) {
+        ctx.function->chunk.writeABx(
+            OpCode::Retain, reg(this),
+            0, this->token.line);
+    }
+}
+
+void VariableNode::compileUpvalue(CompileContext &ctx, int reg) {
+    // Get the upvalue entry
+    const auto entry_id = std::get<EntryID>(this->resolution);
+    int index = ctx.getUpvalueIndex(entry_id);
+
+    // If a register was provided, use that
+    // Either way, this is never a variable, it's always a value in a register
+    is_var(this) = false;
+    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+
+    // Load the upvalue into the register
+    ctx.function->chunk.writeABx(
+        OpCode::GetUpvalue, reg(this),
+        index, this->token.line);
 }
 
 void VariableNode::print(int indent) {

@@ -1,6 +1,8 @@
 #include "compile_context.hpp"
+#include "object.hpp"
 #include "native.hpp"
 #include <algorithm>
+#include <cassert>
 #include <print>
 
 std::optional<EntryID> NameTable::addName(const std::string &name, int line,
@@ -22,11 +24,11 @@ std::optional<EntryID> NameTable::addName(const std::string &name, int line,
     return id;
 }
 
-std::optional<EntryID> NameTable::findEntryInScope(const std::string &name) {
+std::optional<EntryID> NameTable::findEntryInScope(const std::string &name, bool only_upvalues) {
     // Search in reverse order to find the most recent entry
     for (auto it = this->in_scope.rbegin(); it != this->in_scope.rend(); ++it) {
         const NameEntry &entry = this->entries[*it];
-        if (entry.name == name) {
+        if (entry.name == name && (!only_upvalues || entry.is_upvalue)) {
             return *it;
         }
     }
@@ -83,20 +85,36 @@ int NameTable::getCurrentDepth() const {
     return this->current_depth;
 }
 
+void NameTable::capture(EntryID id) {
+    if (!this->entries[id].is_captured) {
+        this->entries[id].is_captured = true;
+        this->total_upvalues++;
+    }
+}
+
+void NameTable::markUpvalue(EntryID id) {
+    if (!this->entries[id].is_upvalue) {
+        this->entries[id].is_upvalue = true;
+        this->total_captured++;
+    }
+}
+
 void NameTable::printTable() const {
     std::println("Name Table:");
 
     // Print header
-    std::println(" Line | Name           | Type | Depth | Reg ");
-    std::println("------|----------------|------|-------|-----");
+    std::println(" Line | Name           | Type | Depth | Cap? | UpVal? | Reg ");
+    std::println("------|----------------|------|-------|------|--------|-----");
 
     for (size_t i = 0; i < this->entries.size(); i++) {
         const auto &entry = this->entries[i];
-        std::println("{:>5} | {:<14} | {:<4} | {:>5} | {:>3} ",
+        std::println("{:>5} | {:<14} | {:<4} | {:>5} | {:>4} | {:>6} | {:>3} ",
                      entry.line_declared,
                      entry.name,
                      entry.type,
                      entry.depth,
+                     entry.is_captured ? "Yes" : "No",
+                     entry.is_upvalue ? "Yes" : "No",
                      entry.register_index);
     }
 }
@@ -110,6 +128,68 @@ CompileContext::CompileContext(CompileContext &parent) :
     typeRegistry(parent.typeRegistry),
     nativeRegistry(parent.nativeRegistry),
     next(&parent) {}
+
+std::optional<EntryID> CompileContext::resolveNewUpvalue(const std::string &name) {
+    // If there's no parent context, we can't resolve an upvalue
+    if (this->next == nullptr)
+        return std::nullopt;
+
+    // Try to find the name in the parent context's name table
+    auto parentEntry = this->next->nameTable.findEntryInScope(name);
+    if (parentEntry.has_value())
+        return this->markUpvalue(parentEntry.value());
+
+    // If not found, try to resolve it as an upvalue in the parent context
+    auto upvalue = this->next->resolveNewUpvalue(name);
+    if (upvalue.has_value())
+        return this->markUpvalue(upvalue.value());
+
+    return std::nullopt; // Not found
+}
+
+int CompileContext::getUpvalueIndex(EntryID entry_id) {
+    // Get it from the name table first
+    auto &entry = this->nameTable.getEntry(entry_id);
+    assert(entry.is_captured || entry.is_upvalue);
+
+    if (entry.register_index != -1) {
+        // If it already has an index, return it
+        return entry.register_index;
+    }
+
+    // If the entry is only captured and doesn't have an upvalue index yet,
+    // this is a declaration of a capture variable.
+    if (entry.is_captured && !entry.is_upvalue) {
+        // The index for this upvalue would be the current total upvalues in the
+        // function plus the ones captured from the parent contexts.
+        auto upvalue_index = this->function->upvalues.size();
+
+        // Write the index on the name table
+        entry.register_index = upvalue_index;
+
+        // Add it to the current function's upvalues as -1 (because it's created
+        // by this function)
+        this->function->upvalues.push_back(-1);
+
+        return upvalue_index;
+    }
+
+    // Otherwise, it's an upvalue that should have an index assigned
+    // in a parent context, so recurse
+    assert(this->next != nullptr && "Upvalue should have been resolved in a parent context");
+    // auto parent_entry_id = this->next->nameTable.findEntryInScope(entry.name, true);
+    // assert(parent_entry_id.has_value() && "Upvalue should have been found in parent context");
+    int parent_index = this->next->getUpvalueIndex(entry_id);
+
+    // Add it to this function's upvalues with the parent index
+    auto upvalue_index = this->function->upvalues.size();
+    this->function->upvalues.push_back(parent_index);
+
+    // Write the index on the name table
+    entry.register_index = upvalue_index;
+
+    return upvalue_index;
+}
 
 int CompileContext::allocateRegister() {
     // Get a register from the stack if any are free
@@ -152,5 +232,22 @@ void CompileContext::fixupRegisters() {
         this->free_registers.pop_back();
         this->max_registers--;
     }
+}
+
+EntryID CompileContext::markUpvalue(EntryID parentEntryID) {
+    // Mark the parent entry as captured
+    this->next->nameTable.capture(parentEntryID);
+
+    // Add a new entry for the upvalue in the current context's name table
+    const auto &parentEntry = this->next->nameTable.getEntry(parentEntryID);
+    auto new_entry_id = this->nameTable.addName(parentEntry.name, -1, parentEntry.type);
+    if (!new_entry_id.has_value()) {
+        throw std::runtime_error("Failed to mark upvalue: duplicate name");
+    }
+
+    // Mark the new entry as an upvalue
+    this->nameTable.markUpvalue(new_entry_id.value());
+
+    return new_entry_id.value();
 }
 

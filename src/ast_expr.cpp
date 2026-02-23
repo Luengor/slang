@@ -198,9 +198,18 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         throw ParserError(this->token,
                           "Invalid assignment target during compilation.");
     }
-
-    // Get its register
+    
+    // Compile upvalue or local variable
     const auto local_entry = std::get<EntryID>(varNode->resolution);
+    const auto &entry = ctx.nameTable.getEntry(local_entry);
+    if (entry.is_upvalue || entry.is_captured) {
+        this->compileUpvalue(ctx, reg);
+    } else {
+        this->compileLocal(ctx, local_entry, reg);
+    }
+}
+
+void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry, int reg) {
     const int local_register =
         ctx.nameTable.getEntry(local_entry).register_index;
 
@@ -235,6 +244,30 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         if (is_object)
             ctx.function->chunk.writeABx(OpCode::Retain, local_register, 0);
     }
+}
+
+void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
+    const int upvalue_index =
+        std::get<EntryID>(static_cast<VariableNode *>(this->target.get())->resolution);
+
+    // If a register was provided, use that, if not, allocate a new one
+    reg(this) = reg != -1 ? reg : ctx.allocateRegister();
+    is_var(this) = false;
+
+    // If we are writting into an object, release the previous one first
+    bool is_object =
+        ctx.typeRegistry.isObject(type(this->target));
+
+    if (is_object)
+        ctx.function->chunk.writeABx(OpCode::ReleaseUpvalue, 0, upvalue_index,
+                                     this->token.line);
+
+    // Compile the value into the upvalue register
+    this->value->compile(ctx, reg(this));
+
+    // Store the upvalue
+    ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index, reg(this),
+                                 this->token.line);
 }
 
 void AssignExpr::print(int indent) {

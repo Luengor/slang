@@ -15,6 +15,7 @@ struct ExprStmt : public ASTNode {
 
 struct BlockStmt : public ASTNode {
     std::vector<ASTNodePtr> statements;
+    bool has_end_return = false;
 
     BlockStmt(const Token &token, std::vector<ASTNodePtr> statements);
     AST_OVERRIDES;
