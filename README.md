@@ -121,6 +121,19 @@ Notes:
 * Call calls the function in R\[B] / O\[B - 256] with A arguments
   starting from R\[C\]. The result is stored in R\[C\].
 
+## Reference Counting
+The following rules apply to reference counting:
+ - All objects are reference counted. This includes strings, upvalues,
+   functions and closures but not plain Values.
+ - Every object in an active register is counted. There is no way to do
+   this automatically, so the compiler must emit `Retain` and `Release` instructions
+   to manage the reference count of objects.
+ - All object constants but the first in a chunk are counted. The first one is
+   self and treated differently.
+ - Running functions and closures are counted. When a function/closure is called,
+   it is retained, and when it returns, it is released.
+ - Both the upvalues and the function objects of a closure are counted.
+
 ## Register Usage
  - After compiling a Node, its result type, register and if it's a variable
    is stored in a structure.
