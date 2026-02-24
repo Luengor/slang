@@ -228,12 +228,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::ReleaseUpvalue: {
-                const uint32_t upvalue_index = GET_Bx(instruction);
-                frame.closure->upvalues[upvalue_index]->release();
-                break;
-            }
-
             case OpCode::Retain: {
                 const auto reg = GET_A(instruction);
                 registers[reg].object->retain();

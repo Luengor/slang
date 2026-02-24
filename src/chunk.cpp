@@ -107,9 +107,6 @@ void Chunk::disassembleInstruction(int offset) {
         case OpCode::SetUpvalue:
             return this->disassembleABx("OP_SETUPVALUE", this->code[offset], "U");
 
-        case OpCode::ReleaseUpvalue:
-            return this->disassembleABx("OP_RELEASEUPVALUE", this->code[offset], "U");
-
         case OpCode::Retain:
             return this->disassembleABx("OP_RETAIN", this->code[offset]);
 

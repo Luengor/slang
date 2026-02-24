@@ -254,14 +254,6 @@ void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
     reg(this) = reg != -1 ? reg : ctx.allocateRegister();
     is_var(this) = false;
 
-    // If we are writting into an object, release the previous one first
-    bool is_object =
-        ctx.typeRegistry.isObject(type(this->target));
-
-    if (is_object)
-        ctx.function->chunk.writeABx(OpCode::ReleaseUpvalue, 0, upvalue_index,
-                                     this->token.line);
-
     // Compile the value into the upvalue register
     this->value->compile(ctx, reg(this));
 
