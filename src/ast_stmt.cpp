@@ -283,8 +283,8 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
 
         // Emit instruction to set the upvalue
         auto init_reg = reg(this->initializer);
-        ctx.function->chunk.writeABx(OpCode::SetUpvalue, init_reg,
-                                     upvalue_index, this->token.line);
+        ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
+                                     init_reg, this->token.line);
 
         // Free the initializer register if needed
         if (should_free(this->initializer))
@@ -306,7 +306,7 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             ctx.function->chunk.writeABx(OpCode::Object, init_reg,
                                          const_index, this->token.line);
             ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
-                                         upvalue_index, this->token.line);
+                                         init_reg, this->token.line);
             ctx.freeRegister(init_reg);
         }
     } else {

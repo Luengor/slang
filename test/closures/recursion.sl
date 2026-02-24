@@ -11,11 +11,17 @@ auto fn = (bool first_call) -> () -> none {
     # If this is the first call, call self
     auto other_print_fn = self(false);
 
-    print_fn(); # expect: first call
-    other_print_fn(); # expect: second call
+    print_fn();
+    print(text);
+    other_print_fn();
+    print(text);
 
     return () -> none {};
 };
 
+# expect: first call
+# expect: first call
+# expect: second call
+# expect: first call
 fn(true);
 
