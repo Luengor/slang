@@ -41,8 +41,8 @@ if (${RELEASE})
     target_link_options(${TARGET_NAME} PRIVATE -O3)
     target_compile_definitions(${TARGET_NAME} PRIVATE NDEBUG)
 else()
-    target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wpedantic -O0 -g)
-    target_link_options(${TARGET_NAME} PRIVATE -Wall -Wpedantic -O0 -g)
+    target_compile_options(${TARGET_NAME} PRIVATE -Wall -Wpedantic -O0 -g -fsanitize=address,undefined)
+    target_link_options(${TARGET_NAME} PRIVATE -Wall -Wpedantic -O0 -g -fsanitize=address,undefined)
 endif()
 
 
