@@ -305,13 +305,13 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             auto init_reg = ctx.allocateRegister();
             ctx.function->chunk.writeABx(OpCode::Object, init_reg,
                                          const_index, this->token.line);
-            ctx.function->chunk.writeABx(OpCode::SetUpvalue, init_reg,
+            ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
                                          upvalue_index, this->token.line);
             ctx.freeRegister(init_reg);
         }
     } else {
         // The value we want is in the given register
-        ctx.function->chunk.writeABx(OpCode::SetUpvalue, reg, upvalue_index,
+        ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index, reg,
                                      this->token.line);
 
         // No need to release anything, since the value is "moved" and
