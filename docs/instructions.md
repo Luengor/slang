@@ -1,4 +1,6 @@
 # Slang instruction set 
+Heavily inspired by Lua's instruction set :)
+
 ## Instruction Shapes
 ```
     6         8          9           9
@@ -28,7 +30,6 @@ Object          R[A] <- O[Bx]
 Closure         R[A] <- closure O[Bx]
 GetUpval        R[A] <- Upval[Bx]
 SetUpval        Upval[A] <- RC[Bx]
-ReleaseUpval    release Upval[Bx]
 Copy            R[A] <- R[Bx]
 Retain          retain R[A]
 Release         release R[A]
