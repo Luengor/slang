@@ -44,6 +44,8 @@ to manage the reference count of objects.
  - Releasing the arguments of a function call is the responsibility of the
    callee, not the caller. They are treated as locals variables inside the
    callee.
+ - When an upvalue is written to, the old value is released from the registers
+   if its not needed there anymore.
 
 ### Implicit reference counting
 Some instructions implicitly modify the reference count of objects:

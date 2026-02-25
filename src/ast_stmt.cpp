@@ -287,8 +287,13 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
                                      init_reg, this->token.line);
 
         // Free the initializer register if needed
-        if (should_free(this->initializer))
+        if (should_free(this->initializer)) {
+            if (ctx.typeRegistry.isObject(type(this->initializer))) {
+                ctx.function->chunk.writeABx(OpCode::Release, init_reg, 0,
+                                             this->token.line);
+            }
             ctx.freeRegister(init_reg);
+        }
 
     } else if (!this->is_in_function_definition) {
         // If no initializer and it's an string, initialize to empty string
@@ -307,6 +312,8 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
                                          const_index, this->token.line);
             ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
                                          init_reg, this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Release, init_reg, 0,
+                                         this->token.line);
             ctx.freeRegister(init_reg);
         }
     } else {
@@ -314,8 +321,11 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
         ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index, reg,
                                      this->token.line);
 
-        // No need to release anything, since the value is "moved" and
-        // the runtime knows if it's an object or a plain value.
+        // From now on, the value is in the upvalue, so we release the register
+        if (ctx.typeRegistry.isObject(type(this))) {
+            ctx.function->chunk.writeABx(OpCode::Release, reg, 0,
+                                         this->token.line);
+        }
     }
 }
 

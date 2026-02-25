@@ -103,8 +103,8 @@ void UpvalueObj::set(const Value &new_value) {
         old_obj->release();
     }
 
-    // There is no need to retain the object, since the new value
-    // is "moved" from a register
+    // There is a new reference of the new object, so retain it
+    new_value.object->retain();
 
     this->value = new_value;
 }
