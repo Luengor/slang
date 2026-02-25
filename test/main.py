@@ -72,14 +72,14 @@ class TestCase:
     def test(self) -> TestResult:
         try:
             result = subprocess.run([executable, self.input_file], capture_output=True, text=True, timeout=5)
-            output = result.stdout.strip()
+            full_output = result.stdout.strip() + ("\n" + result.stderr.strip() if result.stderr else "")
             return_code = result.returncode
 
             if return_code >= 0:
-                if output == self.expected_output or (self.expected_output == COMPERROR and return_code == COMPERROR_CODE):
+                if full_output == self.expected_output or (self.expected_output == COMPERROR and return_code == COMPERROR_CODE):
                     return TestResult(status=TestStatus.PASS)
                 else:
-                    return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output}, Got: {output}")
+                    return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output.replace('\n', ', ')}\nGot: {full_output}")
             else:
                 error_message = result.stderr.strip() if result.stderr else "No error message."
                 error_code_result = os.strerror(return_code)
