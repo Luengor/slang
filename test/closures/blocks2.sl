@@ -5,7 +5,6 @@
 }
 
 auto i1 = 1;
-auto closure1 = () -> none {i1 + 1;};
-closure1();
-
+# expect: 1
+print(i1);
 
