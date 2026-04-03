@@ -123,16 +123,17 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
     // Pop local variables declared in this block
     for (auto entryID : names_in_scope) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
-        if (entry.register_index != -1) {
-            // Free the register
-            ctx.freeRegister(entry.register_index);
+        if (entry.is_captured || entry.register_index == -1)
+            continue;
 
-            // If its an object type, release it
-            if (ctx.typeRegistry.isObject(entry.type)) {
-                ctx.function->chunk.writeABx(
-                    OpCode::Release, entry.register_index,
-                    0, this->token.line);
-            }
+        // Free the register
+        ctx.freeRegister(entry.register_index);
+
+        // If its an object type, release it
+        if (ctx.typeRegistry.isObject(entry.type)) {
+            ctx.function->chunk.writeABx(
+                OpCode::Release, entry.register_index,
+                0, this->token.line);
         }
     };
 
