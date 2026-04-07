@@ -245,6 +245,25 @@ void ClosureObj::doReturn() {
     }
 }
 
+void ClosureObj::create(uint8_t upvalue_index) {
+    assert(upvalue_index < this->upvalues.size() &&
+           "Upvalue index out of bounds for closure");
+    assert(this->function->upvalues[upvalue_index].index ==
+           UpvalueInfo::UpValueIndex::LOOP_UPVAL &&
+           "Can only create loop upvalues at runtime");
+
+    // Check if the upvalue alredy exists and release it if it does
+    if (this->upvalues[upvalue_index]) {
+        this->upvalues[upvalue_index]->release();
+        this->upvalues[upvalue_index] = nullptr;
+    }
+
+    // Create a new upvalue for this index
+    this->upvalues[upvalue_index] = new UpvalueObj();
+    this->upvalues[upvalue_index]->is_object =
+        this->function->upvalues[upvalue_index].is_object;
+}
+
 std::string ClosureObj::toString() const {
 #ifdef DEBUG_PRINT
     return "<closure: " + this->function_name_cache + ">";

@@ -108,6 +108,7 @@ struct ClosureObj : public Object {
 
     void doCall();
     void doReturn();
+    void create(uint8_t upvalue_index);
     std::string toString() const override;
 };
 
