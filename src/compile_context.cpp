@@ -167,7 +167,7 @@ int CompileContext::getUpvalueIndex(EntryID entry_id) {
 
         // Add it to the current function's upvalues as -1 (because it's created
         // by this function)
-        this->function->upvalues.push_back({-1, this->typeRegistry.isObject(entry.type)});
+        this->function->upvalues.push_back({UpvalueInfo::UpValueIndex::HALF_BAKED, this->typeRegistry.isObject(entry.type)});
 
         return upvalue_index;
     }
@@ -181,7 +181,7 @@ int CompileContext::getUpvalueIndex(EntryID entry_id) {
 
     // Add it to this function's upvalues with the parent index
     auto upvalue_index = this->function->upvalues.size();
-    this->function->upvalues.push_back({parent_index, this->typeRegistry.isObject(entry.type)});
+    this->function->upvalues.push_back({static_cast<UpvalueInfo::UpValueIndex>(parent_index), this->typeRegistry.isObject(entry.type)});
 
     // Write the index on the name table
     entry.register_index = upvalue_index;

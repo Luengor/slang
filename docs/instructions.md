@@ -30,6 +30,7 @@ Object          R[A] <- O[Bx]
 Closure         R[A] <- closure O[Bx]
 GetUpval        R[A] <- Upval[Bx]
 SetUpval        Upval[A] <- RC[Bx]
+CreateUpVal     Upval[A] <- RC[Bx]
 Copy            R[A] <- R[Bx]
 Retain          retain R[A]
 Release         release R[A]
@@ -59,4 +60,6 @@ Notes:
 * RO\[x] denotes `x < 256 ? R[x] : O[x - 256]`.
 * Call calls the function in R\[B] / O\[B - 256] with A arguments
   starting from R\[C\]. The result is stored in R\[C\].
+* CreateUpVal free's the UpValue at A and creates another one on that slot. It
+  is intended to be used in loops to create a new UpValue for each iteration.
 

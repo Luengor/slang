@@ -51,12 +51,21 @@ struct UpvalueObj : public Object {
 };
 
 struct UpvalueInfo {
+    enum class UpValueIndex : int {
+        LOOP_UPVAL = -2,
+        HALF_BAKED = -1,
+    };
+
     // The index to retreive from the parent closure's upvalues.
     // If -1, the upvalue is created by the current function
-    int index = -1;
+    UpValueIndex index = UpValueIndex::HALF_BAKED;
 
     // Whether the upvalue is an object and needs to be retained and released
     bool is_object = false;
+
+    inline int getIndex() const {
+        return static_cast<int>(this->index);
+    }
 };
 
 struct FunctionObj : public Object {

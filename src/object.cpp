@@ -134,13 +134,19 @@ ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Obje
 
     // Copy the upvalues from the parent closure if it exists
     for (auto &[index, object] : function->upvalues) {
-        if (index == -1) {
+        if (index == UpvalueInfo::UpValueIndex::HALF_BAKED) {
             this->half_baked = true;
 
-            // Placeholder for the upvalue that will be created when the closure is called
+            // Placeholder for the upvalue that will be created when the closure
+            // is called
+            this->upvalues.push_back(nullptr);
+        } else if (index == UpvalueInfo::UpValueIndex::LOOP_UPVAL) {
+            // Loop upvalues are created at runtime, so it should be initialized
+            // to nullptr
             this->upvalues.push_back(nullptr);
         } else if (parent_closure) {
-            UpvalueObj *upvalue = parent_closure->upvalues[index];
+            UpvalueObj *upvalue =
+                parent_closure->upvalues[static_cast<int>(index)];
             upvalue->retain();
             this->upvalues.push_back(upvalue);
         } else {
@@ -189,7 +195,8 @@ void ClosureObj::doCall() {
 
     // If it is, create a new set of upvalues for this closure
     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-        if (this->function->upvalues[i].index == -1) {
+        if (this->function->upvalues[i].index ==
+            UpvalueInfo::UpValueIndex::HALF_BAKED) {
             // This upvalue is created by this function, so we create a new one
             UpvalueObj *new_upvalue = new UpvalueObj();
             new_upvalue->is_object = this->function->upvalues[i].is_object;
@@ -216,13 +223,24 @@ void ClosureObj::doReturn() {
 
     // If it is, we need to pop the upvalues created by this function
     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-        if (this->function->upvalues[i].index == -1) {
+        const auto index = this->function->upvalues[i].index;
+        if (index == UpvalueInfo::UpValueIndex::HALF_BAKED) {
             // This upvalue is created by this function, so we pop it
             UpvalueObj *upvalue_to_pop = this->upvalues[i];
             assert(upvalue_to_pop != nullptr && "Upvalue to pop should not be null");
 
             this->upvalues[i] = upvalue_to_pop->next; // Set the next upvalue as the current one for this variable
             upvalue_to_pop->release(); // Release the popped upvalue
+        } else if (index == UpvalueInfo::UpValueIndex::LOOP_UPVAL) {
+            // Loop upvalues are created at runtime, so we should only pop it if
+            // it exists
+            if (this->upvalues[i]) {
+                UpvalueObj *upvalue_to_pop = this->upvalues[i];
+                this->upvalues[i] =
+                    upvalue_to_pop->next; // Set the next upvalue as the current
+                                          // one for this variable
+                upvalue_to_pop->release(); // Release the popped upvalue
+            }
         }
     }
 }
