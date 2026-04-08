@@ -148,40 +148,36 @@ std::optional<EntryID> CompileContext::resolveNewUpvalue(const std::string &name
 int CompileContext::getUpvalueIndex(EntryID entry_id) {
     // Get it from the name table first
     auto &entry = this->nameTable.getEntry(entry_id);
-    assert(entry.is_captured || entry.is_upvalue);
+    assert((entry.is_upvalue || entry.is_captured) && "Trying to get the upvalue index of a non-upvalue entry");
 
     if (entry.register_index != -1) {
         // If it already has an index, return it
         return entry.register_index;
     }
 
-    // If the entry is only captured and doesn't have an upvalue index yet,
-    // this is a declaration of a capture variable.
-    if (entry.is_captured && !entry.is_upvalue) {
-        // The index for this upvalue would be the current total upvalues in the
-        // function plus the ones captured from the parent contexts.
-        auto upvalue_index = this->function->upvalues.size();
+    // There sould only be upvalues from this point on
+    assert(entry.is_upvalue && "Non-upvalue captured local should have been resolved");
 
-        // Write the index on the name table
-        entry.register_index = upvalue_index;
-
-        // Add it to the current function's upvalues as -1 (because it's created
-        // by this function)
-        this->function->upvalues.push_back({UpvalueInfo::UpValueIndex::HALF_BAKED, this->typeRegistry.isObject(entry.type)});
-
-        return upvalue_index;
-    }
-
-    // Otherwise, it's an upvalue that should have an index assigned
-    // in a parent context, so recurse
+    // Because local upvalues are actually normal local variables, this upvalue
+    // should have an index in a parent context.
     assert(this->next != nullptr && "Upvalue should have been resolved in a parent context");
     auto parent_entry_id = this->next->nameTable.findEntryInScope(entry.name, true);
     assert(parent_entry_id.has_value() && "Upvalue should have been found in parent context");
+    auto parent_entry = this->next->nameTable.getEntry(parent_entry_id.value());
     int parent_index = this->next->getUpvalueIndex(parent_entry_id.value());
 
     // Add it to this function's upvalues with the parent index
     auto upvalue_index = this->function->upvalues.size();
-    this->function->upvalues.push_back({static_cast<UpvalueInfo::UpValueIndex>(parent_index), this->typeRegistry.isObject(entry.type)});
+    const UpvalueInfo info{
+        .is_object = this->typeRegistry.isObject(entry.type),
+
+        // If the parent entry is an upvalue, then this upvalue does not refer
+        // to a local
+        .is_local = !parent_entry.is_upvalue,
+
+        .index = parent_index
+    };
+    this->function->upvalues.push_back(info);
 
     // Write the index on the name table
     entry.register_index = upvalue_index;

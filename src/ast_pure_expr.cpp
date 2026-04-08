@@ -369,13 +369,18 @@ void VariableNode::compile(CompileContext &ctx, int reg) {
     // Compile based on the resolution type
     std::visit(overloaded{
         [&](EntryID local_index) {
-            // Get the local
+            // Get the entry 
             const auto &entry = ctx.nameTable.getEntry(local_index);
-            if (entry.is_captured || entry.is_upvalue) {
+
+            if (entry.is_upvalue)
+                // Upvalues are not accessible directly, they must be accessed
+                // through its upvalue
                 this->compileUpvalue(ctx, reg);
-            } else {
+            else
+                // Locals can be compiled directly
+                // (note that this also includes captured variables, as they are
+                //  always local in their own function)
                 this->compileLocal(ctx, reg);
-            }
         },
         [&](NativeFunctionObj *native_fn) {
             // Retain the native function to pass it to the chunk
@@ -399,7 +404,7 @@ void VariableNode::compileLocal(CompileContext &ctx, int reg) {
     // Get the local entry
     assert(entry.register_index != -1 &&
            "Local must have a valid register index before compilation.");
-    if (entry.is_upvalue || entry.is_captured) {
+    if (entry.is_upvalue) {
         throw ParserError(this->token,
                           "Cannot directly access captured variables.");
     }

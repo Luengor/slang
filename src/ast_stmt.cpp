@@ -245,57 +245,12 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     ctx.nameTable.putInScope(this->entry_id);
     assert(entry.register_index == -1);
 
-    if (!entry.is_captured) {
-        // If it's not captured, we can allocate a register for it now
-        entry.register_index = ctx.allocateRegister();
+    // If it's not captured, we can allocate a register for it now
+    entry.register_index = ctx.allocateRegister();
 
-        // If it has an initializer, compile it into the variable's register
-        if (this->initializer) {
-            this->initializer->compile(ctx, entry.register_index);
-        } else if (!this->is_in_function_definition) {
-            // If no initializer and it's an string, initialize to empty string
-            const auto string_type =
-                ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
-            if (type(this) == string_type) {
-                // Create an empty string literal
-                StringObj *empty_string_obj = new StringObj("");
-
-                // Put it into the chunk and store in the variable's register
-                const auto const_index =
-                    ctx.function->chunk.addObjectConstant(empty_string_obj);
-                ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
-                                             const_index, this->token.line);
-            }
-        }
-
-        return;
-    }
-
-    // Captured
-    // A declaration of a capture variable can not be an upvalue, it must be a
-    // local variable in the current context
-    assert(!entry.is_upvalue && "A variable declaration cannot be an upvalue");
-
-    auto upvalue_index = ctx.getUpvalueIndex(this->entry_id);
-
-    // If it has an initializer, compile it and set it
+    // If it has an initializer, compile it into the variable's register
     if (this->initializer) {
-        this->initializer->compile(ctx);
-
-        // Emit instruction to set the upvalue
-        auto init_reg = reg(this->initializer);
-        ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
-                                     init_reg, this->token.line);
-
-        // Free the initializer register if needed
-        if (should_free(this->initializer)) {
-            if (ctx.typeRegistry.isObject(type(this->initializer))) {
-                ctx.function->chunk.writeABx(OpCode::Release, init_reg, 0,
-                                             this->token.line);
-            }
-            ctx.freeRegister(init_reg);
-        }
-
+        this->initializer->compile(ctx, entry.register_index);
     } else if (!this->is_in_function_definition) {
         // If no initializer and it's an string, initialize to empty string
         const auto string_type =
@@ -307,25 +262,8 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             // Put it into the chunk and store in the variable's register
             const auto const_index =
                 ctx.function->chunk.addObjectConstant(empty_string_obj);
-
-            auto init_reg = ctx.allocateRegister();
-            ctx.function->chunk.writeABx(OpCode::Object, init_reg,
+            ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
                                          const_index, this->token.line);
-            ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index,
-                                         init_reg, this->token.line);
-            ctx.function->chunk.writeABx(OpCode::Release, init_reg, 0,
-                                         this->token.line);
-            ctx.freeRegister(init_reg);
-        }
-    } else {
-        // The value we want is in the given register
-        ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index, reg,
-                                     this->token.line);
-
-        // From now on, the value is in the upvalue, so we release the register
-        if (ctx.typeRegistry.isObject(type(this))) {
-            ctx.function->chunk.writeABx(OpCode::Release, reg, 0,
-                                         this->token.line);
         }
     }
 }

@@ -38,8 +38,14 @@ struct StringObj : public Object {
 };
 
 struct UpvalueObj : public Object {
-    Value value{.object = nullptr};
+    union {
+        Value value;
+        int register_index;
+    } data;
+
     bool is_object = false;
+    bool is_closed = false;
+
     UpvalueObj *next = nullptr; // For chaining upvalues that capture the same variable
 
     UpvalueObj();
@@ -51,21 +57,15 @@ struct UpvalueObj : public Object {
 };
 
 struct UpvalueInfo {
-    enum class UpValueIndex : int {
-        LOOP_UPVAL = -2,
-        HALF_BAKED = -1,
-    };
-
-    // The index to retreive from the parent closure's upvalues.
-    // If -1, the upvalue is created by the current function
-    UpValueIndex index = UpValueIndex::HALF_BAKED;
-
     // Whether the upvalue is an object and needs to be retained and released
     bool is_object = false;
 
-    inline int getIndex() const {
-        return static_cast<int>(this->index);
-    }
+    // Whether the upvalue refers to a local variable in the stack or another
+    // upvalue in the parent closure.
+    bool is_local = false;
+
+    // The index of the local variable or the parent upvalue index. 
+    int index = -1;
 };
 
 struct FunctionObj : public Object {
