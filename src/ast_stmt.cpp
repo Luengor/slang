@@ -123,13 +123,18 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
     // Pop local variables declared in this block
     for (auto entryID : names_in_scope) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
-        if (entry.is_captured || entry.register_index == -1)
-            continue;
 
         // Free the register
         ctx.freeRegister(entry.register_index);
 
-        // If its an object type, release it
+        // If it is a captured variable (but not an upvalue) we need to
+        // lift it
+        if (entry.is_captured && !entry.is_upvalue) {
+            ctx.function->chunk.writeABx(
+                OpCode::LiftUpvalue, 0, entry.register_index, this->token.line);
+        }
+
+        // If its an object type, release it once
         if (ctx.typeRegistry.isObject(entry.type)) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
@@ -496,7 +501,15 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     // Release all object locals that aren't captured or upvalues
     for (auto entryID : all_names) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
-        if (entry.register_index != -1 && !entry.is_upvalue && !entry.is_captured &&
+
+        // If its a captured varialbe that isn't an upvalue, we need to lift it
+        if (entry.is_captured && !entry.is_upvalue) {
+            ctx.function->chunk.writeABx(
+                OpCode::LiftUpvalue, 0, entry.register_index,
+                this->token.line);
+        }
+
+        if (entry.register_index != -1 && !entry.is_upvalue &&
             ctx.typeRegistry.isObject(entry.type) && entry.register_index != dont_free_reg) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
