@@ -228,14 +228,6 @@ InterpretResult VM::run() {
                 break;
             }
 
-            case OpCode::CreateUpvalue: {
-                const uint8_t upvalue_index = GET_A(instruction);
-                const uint32_t from_rc = GET_Bx(instruction);
-                frame.closure->create(upvalue_index);
-                frame.closure->upvalues[upvalue_index]->set(RC(from_rc));
-                break;
-            }
-
             case OpCode::Retain: {
                 const auto reg = GET_A(instruction);
                 registers[reg].object->retain();

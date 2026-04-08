@@ -7,7 +7,7 @@
 
 enum class OpCode : uint8_t {
     Return, Constant, Object, Self,
-    Closure, GetUpvalue, SetUpvalue, CreateUpvalue,
+    Closure, GetUpvalue, SetUpvalue, LiftUpvalue,
     Not,
     NegateI, NegateF,
 
