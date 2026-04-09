@@ -1,7 +1,7 @@
 auto func = (bool should_closure) -> none {
     auto upval_sometimes = 1;
 
-    if (!should_closure) {
+    if (not should_closure) {
         return;
     }
 
