@@ -6,18 +6,21 @@ objects.
 ## What is counted 
  - All objects are reference counted. This includes strings, upvalues,
    functions and closures but not plain Values.
- - Every object in an active register is counted. There is no way to do
-   this automatically, so the compiler must emit `Retain` and `Release` instructions
-   to manage the reference count of objects.
+ - Every object in an active register is counted. There is no way to do this
+   automatically, so the compiler must emit `Retain` and `Release` instructions
+   to manage the reference count of objects (normally at least, check the last
+   entry).
  - All object constants but the first in a chunk are counted. The first one is
    self and treated differently.
  - Running functions and closures are counted. When a function/closure is called,
    it is retained, and when it returns, it is released.
  - Both the upvalues and the function objects of a closure are counted.
- - Objects in Upvalues are counted. When an object is stored in an upvalue, it
-   is retained, and when the upvalue is released, the object is released as
-   well. Because of this, upvalues must know whether they contain an object or
-   not.
+ - Objects in upvalues are _usually_ counted. The exception is with not closed
+   upvalues. Because this upvalues refer to registers, they are considered to
+   be a "duplicate" of the value and not a separate object. When an upvalue is
+   closed, the value is moved to the heap but no retain or releases are emitted.
+   From that point on, the upvalue internally manages the reference count of the
+   object it contains (if any).
 
 ## How it is kept track of
 Because (most of the time) the interpreter does not know the type of the values
