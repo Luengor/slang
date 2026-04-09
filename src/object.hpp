@@ -51,8 +51,6 @@ struct UpvalueObj : public Object {
     UpvalueObj();
     ~UpvalueObj();
 
-    Value get();
-    void set(const Value &new_value);
     std::string toString() const override;
 };
 

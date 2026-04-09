@@ -25,7 +25,7 @@ struct CallFrame {
 
 class VM {
     uint32_t ip;
-    std::array<Value, 256> registers;
+    std::array<Value, 256> regs;
     std::vector<CallFrame> call_frames;
 
     InterpretResult run();

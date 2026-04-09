@@ -1,7 +1,6 @@
 #include "object.hpp"
 #include <cassert>
 #include <format>
-#include <stdexcept>
 
 #ifndef NDEBUG
 #ifdef DEBUG_PRINT
@@ -59,11 +58,11 @@ UpvalueObj::UpvalueObj() : Object() {
 }
 
 UpvalueObj::~UpvalueObj() {
-//     if (this->is_object) {
-//         Object *obj = static_cast<Object *>(this->value.object);
-//         if (obj)
-//             obj->release();
-//     }
+    if (this->is_object && this->is_closed) {
+        Object *obj = static_cast<Object *>(this->data.value.object);
+        if (obj)
+            obj->release();
+    }
 
 #ifndef NDEBUG
     OBJECT_COUNT--;
@@ -72,41 +71,6 @@ UpvalueObj::~UpvalueObj() {
                this->toString(), OBJECT_COUNT);
 #endif
 #endif
-}
-
-Value UpvalueObj::get() {
-//     // If this is not an object simply return the value
-//     if (!this->is_object)
-//         return this->value;
-// 
-//     // Retain the object before returning to ensure it stays alive while in use
-//     Object *obj = static_cast<Object *>(this->value.object);
-//     assert(obj && "Object value should not be null when getting");
-//     obj->retain();
-// 
-//     return this->value;
-}
-
-void UpvalueObj::set(const Value &new_value) {
-//     // If this is not an object simply copy
-//     if (!this->is_object) {
-//         this->value = new_value;
-//         return;
-//     }
-// 
-//     assert(new_value.object &&
-//            "New value should have an object when is_object is true");
-// 
-//     // Release the previous object if it exists
-//     if (this->value.object) {
-//         Object *old_obj = static_cast<Object *>(this->value.object);
-//         old_obj->release();
-//     }
-// 
-//     // There is a new reference of the new object, so retain it
-//     new_value.object->retain();
-// 
-//     this->value = new_value;
 }
 
 std::string UpvalueObj::toString() const {

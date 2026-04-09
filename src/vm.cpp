@@ -50,7 +50,7 @@ InterpretResult VM::interpret(const std::string &source) {
 InterpretResult VM::run() {
 #define frame this->call_frames.back()
 #define function frame.closure->function
-#define registers (this->registers.data() + frame.stack_base)
+#define registers (this->regs.data() + frame.stack_base)
 
 #define RC(x) (x < 256 ? registers[x] : function->chunk.constants[x - 256])
 
@@ -217,14 +217,48 @@ InterpretResult VM::run() {
             case OpCode::GetUpvalue: {
                 const uint8_t to_r = GET_A(instruction);
                 const uint32_t upvalue_index = GET_Bx(instruction);
-                registers[to_r] = frame.closure->upvalues[upvalue_index]->get();
+                
+                // Get the upvalue from the closure
+                const auto &upval = frame.closure->upvalues[upvalue_index];
+
+                // Get its value and put it in the register
+                registers[to_r] = upval->is_closed
+                                      ? upval->data.value
+                                      : this->regs[upval->data.register_index];
+
+                // If it was an object, retain it for the register
+                if (upval->is_object) {
+                    registers[to_r].object->retain();
+                }
+
                 break;
             }
 
             case OpCode::SetUpvalue: {
                 const uint8_t upvalue_index = GET_A(instruction);
                 const uint32_t from_rc = GET_Bx(instruction);
-                frame.closure->upvalues[upvalue_index]->set(RC(from_rc));
+
+                // Get the upvalue from the closure
+                const auto &upval = frame.closure->upvalues[upvalue_index];
+
+                // If we are going to overwrite an object upvalue, release it first
+                if (upval->is_object) {
+                    (upval->is_closed
+                         ? static_cast<Object *>(upval->data.value.object)
+                         : this->regs[upval->data.register_index].object)
+                        ->release();
+                }
+
+
+                // Set the upvalue to the value from the register or constant
+                const auto &new_value = RC(from_rc);
+                (upval->is_closed ? upval->data.value
+                                  : this->regs[upval->data.register_index]) =
+                    new_value; 
+
+                // If it is an object, retain it for the upvalue
+                new_value.object->retain();
+
                 break;
             }
 
