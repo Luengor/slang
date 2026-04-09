@@ -46,8 +46,6 @@ struct UpvalueObj : public Object {
     bool is_object = false;
     bool is_closed = false;
 
-    UpvalueObj *next = nullptr; // For chaining upvalues that capture the same variable
-
     UpvalueObj();
     ~UpvalueObj();
 
@@ -92,21 +90,15 @@ struct FunctionObj : public Object {
 struct ClosureObj : public Object {
     FunctionObj *function;
 
-    // Whether the closure is half-baked, meaning that it has its own upvalues.
-    bool half_baked = false;
-
     std::vector<UpvalueObj *> upvalues;
 
 #ifdef DEBUG_PRINT
     std::string function_name_cache;
 #endif
 
-    ClosureObj(FunctionObj *function, ClosureObj *parent_closure = nullptr);
+    ClosureObj(FunctionObj *function, int stack_base, ClosureObj *parent_closure = nullptr);
     ~ClosureObj();
 
-    void doCall();
-    void doReturn();
-    void create(uint8_t upvalue_index);
     std::string toString() const override;
 };
 

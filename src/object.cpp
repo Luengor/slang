@@ -89,34 +89,34 @@ std::string FunctionObj::toString() const {
     return this->name;
 }
 
-ClosureObj::ClosureObj(FunctionObj *function, ClosureObj *parent_closure) : Object() {
+ClosureObj::ClosureObj(FunctionObj *function, int stack_base, ClosureObj *parent_closure) : Object() {
     this->obj_type = Object::Type::Closure;
 
     // Get the function
     this->function = function;
     this->function->retain(); // retain the function to release it later
 
-    // // Copy the upvalues from the parent closure if it exists
-    // for (auto &[index, object] : function->upvalues) {
-    //     if (index == UpvalueInfo::UpValueIndex::HALF_BAKED) {
-    //         this->half_baked = true;
-
-    //         // Placeholder for the upvalue that will be created when the closure
-    //         // is called
-    //         this->upvalues.push_back(nullptr);
-    //     } else if (index == UpvalueInfo::UpValueIndex::LOOP_UPVAL) {
-    //         // Loop upvalues are created at runtime, so it should be initialized
-    //         // to nullptr
-    //         this->upvalues.push_back(nullptr);
-    //     } else if (parent_closure) {
-    //         UpvalueObj *upvalue =
-    //             parent_closure->upvalues[static_cast<int>(index)];
-    //         upvalue->retain();
-    //         this->upvalues.push_back(upvalue);
-    //     } else {
-    //         throw std::runtime_error("Function has upvalues but no parent closure provided");
-    //     }
-    // }
+    // Prepare the upvalues
+    for (auto &upvalue_info : this->function->upvalues) {
+        if (upvalue_info.is_local) {
+            // We need to get the absolute register index of the local variable
+            // captured by this upvalue.
+            this->upvalues.push_back(new UpvalueObj());
+            this->upvalues.back()->is_object = upvalue_info.is_object;
+            this->upvalues.back()->data.register_index =
+                stack_base + upvalue_info.index;
+            this->upvalues.back()->is_closed = false;
+        } else {
+            assert(parent_closure != nullptr &&
+                   "Upvalue refers to a parent upvalue but no parent closure provided");
+            // Capture the upvalue from the parent closure
+            const auto index = upvalue_info.index;
+            UpvalueObj *upvalue =
+                parent_closure->upvalues[static_cast<int>(index)];
+            upvalue->retain();
+            this->upvalues.push_back(upvalue);
+        }
+    }
 
 #ifndef NDEBUG
     OBJECT_COUNT++;
@@ -149,83 +149,6 @@ ClosureObj::~ClosureObj() {
                this->toString(), OBJECT_COUNT);
 #endif
 #endif
-}
-
-void ClosureObj::doCall() {
-    // If the closure is not half-baked, we have no need to do anything,
-    // since all upvalues are already set up correctly.
-    if (!this->half_baked)
-        return;
-
-//     // If it is, create a new set of upvalues for this closure
-//     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-//         if (this->function->upvalues[i].index ==
-//             UpvalueInfo::UpValueIndex::HALF_BAKED) {
-//             // This upvalue is created by this function, so we create a new one
-//             UpvalueObj *new_upvalue = new UpvalueObj();
-//             new_upvalue->is_object = this->function->upvalues[i].is_object;
-// 
-//             // Chain it to the previous upvalue that captures the same variable
-//             new_upvalue->next = this->upvalues[i]; 
-// 
-//             // Set the new upvalue as the current one for this variable
-//             this->upvalues[i] = new_upvalue;
-// 
-// #ifdef DEBUG_PRINT
-//             std::print("created {} for {}\n",
-//                        new_upvalue->toString(), this->toString());
-// #endif
-//         }
-//     }
-}
-
-void ClosureObj::doReturn() {
-    // If the closure is not half-baked, we have no need to do anything,
-    // since all upvalues are already set up correctly.
-    if (!this->half_baked)
-        return;
-
-//     // If it is, we need to pop the upvalues created by this function
-//     for (size_t i = 0; i < this->function->upvalues.size(); i++) {
-//         const auto index = this->function->upvalues[i].index;
-//         if (index == UpvalueInfo::UpValueIndex::HALF_BAKED) {
-//             // This upvalue is created by this function, so we pop it
-//             UpvalueObj *upvalue_to_pop = this->upvalues[i];
-//             assert(upvalue_to_pop != nullptr && "Upvalue to pop should not be null");
-// 
-//             this->upvalues[i] = upvalue_to_pop->next; // Set the next upvalue as the current one for this variable
-//             upvalue_to_pop->release(); // Release the popped upvalue
-//         } else if (index == UpvalueInfo::UpValueIndex::LOOP_UPVAL) {
-//             // Loop upvalues are created at runtime, so we should only pop it if
-//             // it exists
-//             if (this->upvalues[i]) {
-//                 UpvalueObj *upvalue_to_pop = this->upvalues[i];
-//                 this->upvalues[i] =
-//                     upvalue_to_pop->next; // Set the next upvalue as the current
-//                                           // one for this variable
-//                 upvalue_to_pop->release(); // Release the popped upvalue
-//             }
-//         }
-//     }
-}
-
-void ClosureObj::create(uint8_t upvalue_index) {
-    assert(upvalue_index < this->upvalues.size() &&
-           "Upvalue index out of bounds for closure");
-//     assert(this->function->upvalues[upvalue_index].index ==
-//            UpvalueInfo::UpValueIndex::LOOP_UPVAL &&
-//            "Can only create loop upvalues at runtime");
-
-    // Check if the upvalue alredy exists and release it if it does
-    if (this->upvalues[upvalue_index]) {
-        this->upvalues[upvalue_index]->release();
-        this->upvalues[upvalue_index] = nullptr;
-    }
-
-    // Create a new upvalue for this index
-    this->upvalues[upvalue_index] = new UpvalueObj();
-    this->upvalues[upvalue_index]->is_object =
-        this->function->upvalues[upvalue_index].is_object;
 }
 
 std::string ClosureObj::toString() const {

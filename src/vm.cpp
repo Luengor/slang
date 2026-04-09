@@ -29,11 +29,10 @@ InterpretResult VM::interpret(const std::string &source) {
     }
 
     // Wrap the function in a closure
-    std::unique_ptr<ClosureObj> closure = std::make_unique<ClosureObj>(function);
-    closure->function->release(); // The closure now owns the function, so release the initial reference
-
-    // doCall the closure to set up any half-baked closures
-    closure->doCall();
+    std::unique_ptr<ClosureObj> closure =
+        std::make_unique<ClosureObj>(function, 0);
+    closure->function->release(); // The closure now owns the function, so
+                                  // release the initial reference
 
     // Create the first call frame
     this->call_frames.push_back(
@@ -92,7 +91,6 @@ InterpretResult VM::run() {
         switch (op) {
             case OpCode::Return: {
                 if (this->call_frames.size() == 1) {
-                    frame.closure->doReturn();
                     return InterpretResult::Ok;
                 } else {
                     // Get the return value
@@ -106,7 +104,6 @@ InterpretResult VM::run() {
                     const uint32_t return_ip = this->call_frames.back().return_ip;
                     
                     // Return and release the running closure
-                    frame.closure->doReturn();
                     frame.closure->release();
 
                     // Pop the call frame
@@ -158,15 +155,14 @@ InterpretResult VM::run() {
                                        ->upvalues.size() == 0 &&
                                "Function objects with upvalues should be "
                                "wrapped in closures.");
-                        closure = new ClosureObj(static_cast<FunctionObj *>(callee));
+                        closure =
+                            new ClosureObj(static_cast<FunctionObj *>(callee),
+                                           frame.stack_base);
                     } else
                         assert(false && "Callee must be a function or closure");
 
                     // The closure is retained if it already existed, or newly
                     // created, so we don't need to retain it here
-
-                    // Call the closure to set up any half-baked closures
-                    closure->doCall();
 
                     // Put the frame starting in the callee register
                     this->call_frames.push_back(
@@ -209,7 +205,8 @@ InterpretResult VM::run() {
                 const uint32_t function_o = GET_Bx(instruction);
                 FunctionObj *func = static_cast<FunctionObj *>(
                     function->chunk.object_constants[function_o]);
-                ClosureObj *closure = new ClosureObj(func, frame.closure);
+                ClosureObj *closure =
+                    new ClosureObj(func, frame.stack_base, frame.closure);
                 registers[reg].object = closure;
                 break;
             }
@@ -260,6 +257,11 @@ InterpretResult VM::run() {
                 new_value.object->retain();
 
                 break;
+            }
+
+            case OpCode::LiftUpvalue: {
+                throw std::runtime_error("TODO");
+                    
             }
 
             case OpCode::Retain: {
