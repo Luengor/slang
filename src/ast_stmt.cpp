@@ -137,7 +137,7 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
         }
 
         // If its an object type, release it once
-        if (ctx.typeRegistry.isObject(entry.type)) {
+        else if (ctx.typeRegistry.isObject(entry.type)) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
                 0, this->token.line);
