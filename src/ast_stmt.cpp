@@ -135,7 +135,7 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
         }
 
         // If its an object type, release it once
-        else if (ctx.typeRegistry.isObject(entry.type)) {
+        if (ctx.typeRegistry.isObject(entry.type)) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
                 0, this->token.line);
@@ -509,7 +509,7 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
                 this->token.line);
         }
 
-        else if (entry.register_index != -1 && !entry.is_upvalue &&
+        if (entry.register_index != -1 && !entry.is_upvalue &&
             ctx.typeRegistry.isObject(entry.type) && entry.register_index != dont_free_reg) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
