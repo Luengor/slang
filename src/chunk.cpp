@@ -109,7 +109,7 @@ void Chunk::disassembleInstruction(int offset) {
 
         case OpCode::LiftUpvalue: {
                 uint32_t bx = GET_Bx(this->code[offset]);
-                std::println("{:16} {:<3d}", "OP_LIFTUPVALUE", bx);
+                std::println("{:16} U{:<3d}", "OP_LIFTUPVALUE", bx);
                 return;
             }
 

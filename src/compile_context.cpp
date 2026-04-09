@@ -111,7 +111,7 @@ void NameTable::printTable() const {
                      entry.name,
                      entry.type,
                      entry.depth,
-                     entry.is_captured ? "Yes" : "No",
+                     entry.is_captured ? std::format("{:>4}", entry.captured_by) : "No",
                      entry.is_upvalue ? "Yes" : "No",
                      entry.register_index);
     }
