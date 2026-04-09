@@ -124,6 +124,12 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
             // Add it to the linked list of captured upvalues
             this->upvalues.back()->next = current_frame.captured_upvalue;
             current_frame.captured_upvalue = this->upvalues.back();
+
+#ifdef DEBUG_PRINT
+            std::print("Created new upvalue capturing {} ({} + {})\n",
+                       target_register, current_frame.stack_base, upvalue_info.index);
+#endif
+
         } else {
             assert(current_frame.closure != nullptr &&
                    "Upvalue refers to a parent upvalue but no parent closure provided");

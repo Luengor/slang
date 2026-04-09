@@ -233,13 +233,15 @@ void Chunk::disassembleInstruction(int offset) {
             break;
 
         case OpCode::I2Str:
-            std::println("OP_I2STR");
+            return this->disassembleABx("OP_I2STR", this->code[offset], "RC");
             break;
+
         case OpCode::F2Str:
-            std::println("OP_F2STR");
+            return this->disassembleABx("OP_F2STR", this->code[offset], "RC");
             break;
+
         case OpCode::B2Str:
-            std::println("OP_B2STR");
+            return this->disassembleABx("OP_B2STR", this->code[offset], "RC");
             break;
 
         default:
