@@ -130,8 +130,10 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
         // If it is a captured variable (but not an upvalue) we need to
         // lift it
         if (entry.is_captured && !entry.is_upvalue) {
+            assert(entry.captured_by != -1 &&
+                   "Captured variable should have a valid upvalue index");
             ctx.function->chunk.writeABx(
-                OpCode::LiftUpvalue, 0, entry.register_index, this->token.line);
+                OpCode::LiftUpvalue, 0, entry.captured_by, this->token.line);
         }
 
         // If its an object type, release it once
@@ -250,8 +252,18 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
     ctx.nameTable.putInScope(this->entry_id);
     assert(entry.register_index == -1);
 
-    // If it's not captured, we can allocate a register for it now
+    // Allocate a register for it
     entry.register_index = ctx.allocateRegister();
+
+    // If it is captured, we also need to create an upvalue for it
+    if (entry.is_captured) {
+        ctx.function->upvalues.push_back({
+            .is_object = ctx.typeRegistry.isObject(entry.type),
+            .is_local = true,
+            .index = entry.register_index
+        });
+        entry.captured_by = ctx.function->upvalues.size() - 1;
+    }
 
     // If it has an initializer, compile it into the variable's register
     if (this->initializer) {
@@ -504,8 +516,9 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
 
         // If its a captured varialbe that isn't an upvalue, we need to lift it
         if (entry.is_captured && !entry.is_upvalue) {
+            assert(entry.captured_by != -1 && "Captured variable should have a valid upvalue index");
             ctx.function->chunk.writeABx(
-                OpCode::LiftUpvalue, 0, entry.register_index,
+                OpCode::LiftUpvalue, 0, entry.captured_by,
                 this->token.line);
         }
 

@@ -19,6 +19,7 @@ struct NameEntry {
 
     // Is this variable captured by an inner function?
     bool is_captured = false;
+    int captured_by = -1; // Upvalue index if captured, otherwise -1 
 
     // Is this variable an upvalue (captured from an outer scope)?
     bool is_upvalue = false;
