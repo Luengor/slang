@@ -19,6 +19,9 @@ struct CallFrame {
     // The base index in the register file for this call frame
     size_t stack_base;
 
+    // TODO: change this for a vector of upvalues
+    UpvalueObj *captured_upvalue = nullptr;
+
     CallFrame() = default;
     CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
 };

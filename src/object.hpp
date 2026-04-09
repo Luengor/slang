@@ -46,6 +46,8 @@ struct UpvalueObj : public Object {
     bool is_object = false;
     bool is_closed = false;
 
+    UpvalueObj *next = nullptr;
+
     UpvalueObj();
     ~UpvalueObj();
 
@@ -87,6 +89,8 @@ struct FunctionObj : public Object {
     std::string toString() const override;
 };
 
+struct CallFrame;
+
 struct ClosureObj : public Object {
     FunctionObj *function;
 
@@ -96,7 +100,8 @@ struct ClosureObj : public Object {
     std::string function_name_cache;
 #endif
 
-    ClosureObj(FunctionObj *function, int stack_base, ClosureObj *parent_closure = nullptr);
+    ClosureObj(FunctionObj *function, CallFrame &current_frame);
+               
     ~ClosureObj();
 
     std::string toString() const override;

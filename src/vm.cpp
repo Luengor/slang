@@ -29,8 +29,10 @@ InterpretResult VM::interpret(const std::string &source) {
     }
 
     // Wrap the function in a closure
+    CallFrame dummy_frame; // We need a dummy frame to create the closure, but
+                           // it won't be used
     std::unique_ptr<ClosureObj> closure =
-        std::make_unique<ClosureObj>(function, 0);
+        std::make_unique<ClosureObj>(function, dummy_frame);
     closure->function->release(); // The closure now owns the function, so
                                   // release the initial reference
 
@@ -157,7 +159,7 @@ InterpretResult VM::run() {
                                "wrapped in closures.");
                         closure =
                             new ClosureObj(static_cast<FunctionObj *>(callee),
-                                           frame.stack_base);
+                                           frame);
                     } else
                         assert(false && "Callee must be a function or closure");
 
@@ -206,7 +208,7 @@ InterpretResult VM::run() {
                 FunctionObj *func = static_cast<FunctionObj *>(
                     function->chunk.object_constants[function_o]);
                 ClosureObj *closure =
-                    new ClosureObj(func, frame.stack_base, frame.closure);
+                    new ClosureObj(func, frame);
                 registers[reg].object = closure;
                 break;
             }
@@ -260,16 +262,41 @@ InterpretResult VM::run() {
             }
 
             case OpCode::LiftUpvalue: {
-                // Get the upvalue
-                const uint32_t upvalue_index = GET_Bx(instruction);
-                auto &upval = frame.closure->upvalues[upvalue_index];
+                const int absolute_register = frame.stack_base + GET_Bx(instruction);
+                const auto &target_value = this->regs[absolute_register];
+
+                // Iterate through the linked list to find the upvalues that capture
+                // the given register
+                UpvalueObj *prev = nullptr;
+                auto upval = frame.captured_upvalue;
+                while (upval) {
+                    if (upval->data.register_index == absolute_register) {
+                        break;
+                    }
+
+                    prev = upval;
+                    upval = upval->next;
+                }
+
+                if (!upval) {
+                    throw std::runtime_error(
+                        "No upvalue found capturing register " +
+                        std::to_string(absolute_register));
+                }
 
                 // Close it
                 assert(!upval->is_closed && "Upvalue should not already be closed");
-                upval->data.value = this->regs[upval->data.register_index];
+                upval->data.value = target_value;
                 upval->is_closed = true;
 
-                // No retain or release needed here
+                // Retain the value for the upvalue
+                if (upval->is_object) {
+                    target_value.object->retain();
+                }
+
+                // Remove it from the linked list of captured upvalues
+                (prev ? prev->next : frame.captured_upvalue) = upval->next;
+
                 break;
             }
 

@@ -1,4 +1,5 @@
 #include "object.hpp"
+#include "vm.hpp"
 #include <cassert>
 #include <format>
 
@@ -89,7 +90,7 @@ std::string FunctionObj::toString() const {
     return this->name;
 }
 
-ClosureObj::ClosureObj(FunctionObj *function, int stack_base, ClosureObj *parent_closure) : Object() {
+ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object() {
     this->obj_type = Object::Type::Closure;
 
     // Get the function
@@ -99,20 +100,37 @@ ClosureObj::ClosureObj(FunctionObj *function, int stack_base, ClosureObj *parent
     // Prepare the upvalues
     for (auto &upvalue_info : this->function->upvalues) {
         if (upvalue_info.is_local) {
-            // We need to get the absolute register index of the local variable
-            // captured by this upvalue.
+            const int target_register =
+                current_frame.stack_base + upvalue_info.index;
+
+            // Check if there already is an upvalue capturing this local variable
+            auto upvalue = current_frame.captured_upvalue;
+            while (upvalue) {
+                if (upvalue->data.register_index == target_register) {
+                    upvalue->retain();
+                    this->upvalues.push_back(upvalue);
+                    return;
+                }
+
+                upvalue = upvalue->next;
+            }
+
+            // If not, create a new one
             this->upvalues.push_back(new UpvalueObj());
             this->upvalues.back()->is_object = upvalue_info.is_object;
-            this->upvalues.back()->data.register_index =
-                stack_base + upvalue_info.index;
+            this->upvalues.back()->data.register_index = target_register;
             this->upvalues.back()->is_closed = false;
+
+            // Add it to the linked list of captured upvalues
+            this->upvalues.back()->next = current_frame.captured_upvalue;
+            current_frame.captured_upvalue = this->upvalues.back();
         } else {
-            assert(parent_closure != nullptr &&
+            assert(current_frame.closure != nullptr &&
                    "Upvalue refers to a parent upvalue but no parent closure provided");
             // Capture the upvalue from the parent closure
             const auto index = upvalue_info.index;
             UpvalueObj *upvalue =
-                parent_closure->upvalues[static_cast<int>(index)];
+                current_frame.closure->upvalues[static_cast<int>(index)];
             upvalue->retain();
             this->upvalues.push_back(upvalue);
         }
