@@ -202,7 +202,7 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     // Compile upvalue or local variable
     const auto local_entry = std::get<EntryID>(varNode->resolution);
     const auto &entry = ctx.nameTable.getEntry(local_entry);
-    if (entry.is_upvalue || entry.is_captured) {
+    if (entry.is_upvalue) {
         this->compileUpvalue(ctx, reg);
     } else {
         this->compileLocal(ctx, local_entry, reg);

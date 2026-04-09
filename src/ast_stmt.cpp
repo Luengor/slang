@@ -522,7 +522,7 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
                 this->token.line);
         }
 
-        if (entry.register_index != -1 && !entry.is_upvalue &&
+        else if (entry.register_index != -1 && !entry.is_upvalue &&
             ctx.typeRegistry.isObject(entry.type) && entry.register_index != dont_free_reg) {
             ctx.function->chunk.writeABx(
                 OpCode::Release, entry.register_index,
