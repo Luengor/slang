@@ -256,7 +256,8 @@ InterpretResult VM::run() {
                     new_value; 
 
                 // If it is an object, retain it for the upvalue
-                new_value.object->retain();
+                if (upval->is_object)
+                    new_value.object->retain();
 
                 break;
             }
