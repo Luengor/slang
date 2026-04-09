@@ -260,8 +260,17 @@ InterpretResult VM::run() {
             }
 
             case OpCode::LiftUpvalue: {
-                throw std::runtime_error("TODO");
-                    
+                // Get the upvalue
+                const uint32_t upvalue_index = GET_Bx(instruction);
+                auto &upval = frame.closure->upvalues[upvalue_index];
+
+                // Close it
+                assert(!upval->is_closed && "Upvalue should not already be closed");
+                upval->data.value = this->regs[upval->data.register_index];
+                upval->is_closed = true;
+
+                // No retain or release needed here
+                break;
             }
 
             case OpCode::Retain: {
