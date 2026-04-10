@@ -16,6 +16,19 @@ CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base)
     this->stack_base = stack_base;
 }
 
+void CallFrame::cleanUpvalues() {
+    auto upval = this->captured_upvalue;
+    while (upval) {
+        // Release the upvalue and move to the next 
+        auto next_upval = upval->next;
+        upval->release();
+        upval = next_upval; 
+    }
+
+    // Just to be safe
+    this->captured_upvalue = nullptr;
+}
+
 InterpretResult VM::interpret(const std::string &source) {
     // Compile the source code into a closure
     Compiler compiler(source);
@@ -109,6 +122,7 @@ InterpretResult VM::run() {
                     frame.closure->release();
 
                     // Pop the call frame
+                    this->call_frames.back().cleanUpvalues();
                     this->call_frames.pop_back();
 
                     // Restore the instruction pointer

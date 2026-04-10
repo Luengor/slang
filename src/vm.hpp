@@ -9,6 +9,8 @@ enum class InterpretResult {
     RuntimeError,
 };
 
+using RegFile_t = std::array<Value, 256>;
+
 struct CallFrame {
     // The closure being called
     ClosureObj *closure;
@@ -24,11 +26,13 @@ struct CallFrame {
 
     CallFrame() = default;
     CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
+
+    void cleanUpvalues();
 };
 
 class VM {
     uint32_t ip;
-    std::array<Value, 256> regs;
+    RegFile_t regs;
     std::vector<CallFrame> call_frames;
 
     InterpretResult run();
