@@ -46,7 +46,10 @@ to manage the reference count of objects.
 #### Releasing
  - When assigning an object, the previous value is released.
  - After calling a function, the callee is released.
- - When an object goes out of scope, it is released.
+ - When an object goes out of scope, it is released. The exception to this is
+   when the scope ending is a function and the object is captured by a closure.
+   In this case, the object is not released, as it could cause to be deleted
+   before the upvalue lifting done on the return op.
  - An object that is the result of an expression statement is released.
  - Releasing the arguments of a function call is the responsibility of the
    callee, not the caller. They are treated as locals variables inside the
