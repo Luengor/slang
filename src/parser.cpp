@@ -255,14 +255,23 @@ ASTNodePtr Parser::forStmt() {
         statements.push_back(std::move(initializer));
     }
 
-    // Add the increment clause to the end of the body
-    if (increment) {
+    // Create a block for the body
+    if (body->type == ASTNodeType::BlockStmt) {
+        // The body is already a block. Add the increment clause if it exists
+        if (increment) {
+            auto block = static_cast<BlockStmt *>(body.get());
+            block->statements.push_back(
+                std::make_unique<ExprStmt>(increment->token, std::move(increment)));
+        }
+    } else {
+        // Create a new block
         std::vector<ASTNodePtr> body_statements;
         body_statements.push_back(std::move(body));
 
-        // The increment should be an expression statement to pop its result
-        body_statements.push_back(
-            std::make_unique<ExprStmt>(increment->token, std::move(increment)));
+        if (increment) {
+            body_statements.push_back(
+                std::make_unique<ExprStmt>(increment->token, std::move(increment)));
+        }
         body = std::make_unique<BlockStmt>(for_token, std::move(body_statements));
     }
 
