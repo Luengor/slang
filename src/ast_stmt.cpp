@@ -29,7 +29,7 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
     assert(reg == -1);
 
     // There is no result register for expression statements
-    reg(this->expression) = -1;
+    reg(this) = -1;
 
     // If there is no expression, nothing to compile
     if (!this->expression) {
