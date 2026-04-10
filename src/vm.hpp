@@ -27,7 +27,7 @@ struct CallFrame {
     CallFrame() = default;
     CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
 
-    void cleanUpvalues();
+    void cleanUpvalues(RegFile_t &regs);
 };
 
 class VM {

@@ -18,9 +18,20 @@ CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip,
     this->stack_base = stack_base;
 }
 
-void CallFrame::cleanUpvalues() {
+void CallFrame::cleanUpvalues(RegFile_t &regs) {
     auto upval = this->captured_upvalue;
     while (upval) {
+        // It should never be an object
+        assert(!upval->is_object &&
+               "Upvalue left in callframe should never be an object.");
+
+        // Capture it
+#ifdef DEBUG_PRINT
+        std::println("Lifted upvalue from R{}", upval->data.register_index);
+#endif
+        upval->data.value = regs[upval->data.register_index];
+        upval->is_closed = true;
+
         // Release the upvalue and move to the next
         auto next_upval = upval->next;
         upval->release();
@@ -111,6 +122,10 @@ InterpretResult VM::run() {
                     if (this->call_frames.size() == 1) {
                         return InterpretResult::Ok;
                     } else {
+                        // Clean any upvalues that need to be lifted from this
+                        // frame before moving registers around
+                        this->call_frames.back().cleanUpvalues(this->regs);
+
                         // Get the return value
                         const uint32_t return_rc = GET_Bx(instruction);
                         const Value return_value = RC(return_rc);
@@ -126,7 +141,6 @@ InterpretResult VM::run() {
                         frame.closure->release();
 
                         // Pop the call frame
-                        this->call_frames.back().cleanUpvalues();
                         this->call_frames.pop_back();
 
                         // Restore the instruction pointer

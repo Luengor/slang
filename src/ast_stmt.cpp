@@ -501,7 +501,8 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
 
         // If its a captured varialbe that isn't an upvalue, we need to lift it
-        if (entry.is_captured && !entry.is_upvalue) {
+        if (entry.is_captured && !entry.is_upvalue &&
+            ctx.typeRegistry.isObject(entry.type)) {
             ctx.function->chunk.writeABx(
                 OpCode::LiftUpvalue, 0, entry.register_index, this->token.line);
         }
