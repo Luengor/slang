@@ -7,14 +7,16 @@ program     -> declaration* EOF
 
 ### Type rules
 ```
-typeExpr      -> functionType | primitiveType
+typeExpr      -> functionType | primitiveType | aliasType
 functionType  -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" ( typeExpr | "none" )
 primitiveType -> "fixed" | "float" | "bool" | "str"
+aliasType     -> IDENTIFIER
 ```
 
 ### Declaration and statement rules
 ```
-declaration -> varDecl | statement
+declaration -> aliasDecl | varDecl | statement
+aliasDecl   -> "alias" IDENTIFIER "=" typeExpr ";"
 varDecl     -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
 statement   -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
@@ -57,4 +59,3 @@ From highest to lowest:
 8. Logic OR: `or`
 9. Ternary: `? :`
 7. Assignment: `=`
-
