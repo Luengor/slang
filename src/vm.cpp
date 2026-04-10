@@ -21,16 +21,15 @@ CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip,
 void CallFrame::cleanUpvalues(RegFile_t &regs) {
     auto upval = this->captured_upvalue;
     while (upval) {
-        // It should never be an object
-        assert(!upval->is_object &&
-               "Upvalue left in callframe should never be an object.");
-
         // Capture it
 #ifdef DEBUG_PRINT
         std::println("Lifted upvalue from R{}", upval->data.register_index);
 #endif
         upval->data.value = regs[upval->data.register_index];
         upval->is_closed = true;
+
+        // No need to retain here because the variable wasn't lifted before
+        // to avoid lossing it between the release and this point 
 
         // Release the upvalue and move to the next
         auto next_upval = upval->next;

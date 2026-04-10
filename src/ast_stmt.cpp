@@ -500,15 +500,11 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     for (auto entryID : all_names) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
 
-        // If its a captured varialbe that isn't an upvalue, we need to lift it
-        if (entry.is_captured && !entry.is_upvalue &&
-            ctx.typeRegistry.isObject(entry.type)) {
-            ctx.function->chunk.writeABx(
-                OpCode::LiftUpvalue, 0, entry.register_index, this->token.line);
-        }
-
+        // Captured object varibles aren't released to avoid lossing them
+        // between this point and the actual return instruction where they
+        // would be lifted.
         if (entry.register_index != -1 && !entry.is_upvalue &&
-            ctx.typeRegistry.isObject(entry.type) &&
+            !entry.is_captured && ctx.typeRegistry.isObject(entry.type) &&
             entry.register_index != dont_free_reg) {
             ctx.function->chunk.writeABx(OpCode::Release, entry.register_index,
                                          0, this->token.line);
