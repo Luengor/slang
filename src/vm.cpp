@@ -279,11 +279,9 @@ InterpretResult VM::run() {
                     upval = upval->next;
                 }
 
-                if (!upval) {
-                    throw std::runtime_error(
-                        "No upvalue found capturing register " +
-                        std::to_string(absolute_register));
-                }
+                // The upvalue hasn't been closed over
+                // There is nothing to do
+                if (!upval) break;
 
                 // Close it
                 assert(!upval->is_closed && "Upvalue should not already be closed");

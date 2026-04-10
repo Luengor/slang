@@ -96,6 +96,12 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
     // Get the function
     this->function = function;
     this->function->retain(); // retain the function to release it later
+                              //
+#ifndef NDEBUG
+#ifdef DEBUG_PRINT
+    this->function_name_cache = this->function->name;
+#endif
+#endif
 
     // Prepare the upvalues
     for (auto &upvalue_info : this->function->upvalues) {
@@ -107,9 +113,13 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
             auto upvalue = current_frame.captured_upvalue;
             while (upvalue) {
                 if (upvalue->data.register_index == target_register) {
+#ifdef DEBUG_PRINT
+                    std::print("{} Reusing existing upvalue capturing {} ({} + {})\n",
+                               this->toString(), target_register, current_frame.stack_base, upvalue_info.index);
+#endif
                     upvalue->retain();
                     this->upvalues.push_back(upvalue);
-                    return;
+                    goto inc;
                 }
 
                 upvalue = upvalue->next;
@@ -126,8 +136,8 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
             current_frame.captured_upvalue = this->upvalues.back();
 
 #ifdef DEBUG_PRINT
-            std::print("Created new upvalue capturing {} ({} + {})\n",
-                       target_register, current_frame.stack_base, upvalue_info.index);
+            std::print("{} Created new upvalue capturing {} ({} + {})\n",
+                       this->toString(), target_register, current_frame.stack_base, upvalue_info.index);
 #endif
 
         } else {
@@ -142,11 +152,11 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
         }
     }
 
+inc:
 #ifndef NDEBUG
     OBJECT_COUNT++;
 
 #ifdef DEBUG_PRINT
-    this->function_name_cache = this->function->name;
     std::print("{} created. Total objects: {}\n",
                this->toString(), OBJECT_COUNT);
 #endif
