@@ -283,18 +283,23 @@ InterpretResult VM::run() {
                 // There is nothing to do
                 if (!upval) break;
 
-                // Close it
-                assert(!upval->is_closed && "Upvalue should not already be closed");
-                upval->data.value = target_value;
-                upval->is_closed = true;
+                // If its reference count is only 1 (the reference on this list)
+                // don't do anything
+                if (upval->ref_count != 1) {
+                    // Close it
+                    assert(!upval->is_closed && "Upvalue should not already be closed");
+                    upval->data.value = target_value;
+                    upval->is_closed = true;
 
-                // Retain the value for the upvalue
-                if (upval->is_object) {
-                    target_value.object->retain();
+                    // Retain the value for the upvalue
+                    if (upval->is_object) {
+                        target_value.object->retain();
+                    }
                 }
 
-                // Remove it from the linked list of captured upvalues
+                // Remove it from the linked list of captured upvalues and release it
                 (prev ? prev->next : frame.captured_upvalue) = upval->next;
+                upval->release();
 
                 break;
             }

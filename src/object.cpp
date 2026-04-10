@@ -131,9 +131,10 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
             this->upvalues.back()->data.register_index = target_register;
             this->upvalues.back()->is_closed = false;
 
-            // Add it to the linked list of captured upvalues
+            // Add it to the linked list of captured upvalues and retain it
             this->upvalues.back()->next = current_frame.captured_upvalue;
             current_frame.captured_upvalue = this->upvalues.back();
+            current_frame.captured_upvalue->retain();
 
 #ifdef DEBUG_PRINT
             std::print("{} Created new upvalue capturing {} ({} + {})\n",
