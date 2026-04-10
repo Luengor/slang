@@ -7,7 +7,7 @@
 
 // CallExpr Implementation
 CallExpr::CallExpr(const Token &token, ASTNodePtr callee,
-                                 std::vector<ASTNodePtr> arguments)
+                   std::vector<ASTNodePtr> arguments)
     : ASTNode(ASTNodeType::CallExpr, token), callee(std::move(callee)),
       arguments(std::move(arguments)) {}
 
@@ -18,11 +18,9 @@ void CallExpr::resolveType(CompileContext &ctx) {
     this->callee->resolveType(ctx);
 
     // Ensure callee is a function
-    const auto type_data =
-        ctx.typeRegistry.getTypeData(this->type(callee));
+    const auto type_data = ctx.typeRegistry.getTypeData(this->type(callee));
     if (!std::holds_alternative<FunctionType>(type_data)) {
-        throw ParserError(this->token,
-                "Callee isn't a function");
+        throw ParserError(this->token, "Callee isn't a function");
     }
     const FunctionType &function_type = std::get<FunctionType>(type_data);
 
@@ -41,14 +39,13 @@ void CallExpr::resolveType(CompileContext &ctx) {
     for (unsigned i = 0; i < this->arguments.size(); i++) {
         this->arguments[i]->resolveType(ctx);
 
-        auto cast_result = CastExpr::tryCast(
-            std::move(this->arguments[i]),
-            function_type.param_types[i],
-            ctx);
+        auto cast_result = CastExpr::tryCast(std::move(this->arguments[i]),
+                                             function_type.param_types[i], ctx);
         if (!cast_result.has_value())
             throw ParserError(
                 this->arguments[i]->token,
-                std::format("Incompatible type for argument {} in call", i + 1));
+                std::format("Incompatible type for argument {} in call",
+                            i + 1));
         this->arguments[i] = std::move(cast_result.value());
     }
 
@@ -57,7 +54,7 @@ void CallExpr::resolveType(CompileContext &ctx) {
 
 void CallExpr::compile(CompileContext &ctx, int reg) {
     CompileGuard;
-    
+
     // Check if the callee is self
     bool self_call = false;
     if (this->callee->type == ASTNodeType::Variable) {
@@ -87,14 +84,13 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
         // Free callee register if necessary
         if (should_free(this->callee) && !self_call) {
             // Release the callee register
-            ctx.function->chunk.writeABx(
-                OpCode::Release, this->reg(callee), 0, this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Release, this->reg(callee), 0,
+                                         this->token.line);
             ctx.freeRegister(this->reg(callee));
         }
 
         // The result is already in the correct register, do nothing
         return;
-
     }
 
     // Get continous registers for the arguments
@@ -103,7 +99,8 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     for (size_t i = 0; i < this->arguments.size(); i++)
         arg_registers.push_back(ctx.allocateFromTop());
 
-    // If a register was provided, use that, if not, use the first argument register
+    // If a register was provided, use that, if not, use the first argument
+    // register
     reg(this) = reg != -1 ? reg : arg_registers[0];
 
     // Compile the arguments
@@ -135,8 +132,8 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
     // Free callee register if necessary
     if (should_free(this->callee) && !self_call) {
         // Release the callee register
-        ctx.function->chunk.writeABx(
-            OpCode::Release, this->reg(callee), 0, this->token.line);
+        ctx.function->chunk.writeABx(OpCode::Release, this->reg(callee), 0,
+                                     this->token.line);
         ctx.freeRegister(this->reg(callee));
     }
 
@@ -145,7 +142,8 @@ void CallExpr::compile(CompileContext &ctx, int reg) {
 }
 
 void CallExpr::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "CallExpr()\n";
     this->callee->print(indent + 1);
     for (auto &arg : this->arguments)
@@ -153,10 +151,9 @@ void CallExpr::print(int indent) {
 }
 
 // AssignExpr Implementation
-AssignExpr::AssignExpr(const Token &token, ASTNodePtr target,
-                         ASTNodePtr value)
-    : ASTNode(ASTNodeType::AssignExpr, token),
-      target(std::move(target)), value(std::move(value)) {}
+AssignExpr::AssignExpr(const Token &token, ASTNodePtr target, ASTNodePtr value)
+    : ASTNode(ASTNodeType::AssignExpr, token), target(std::move(target)),
+      value(std::move(value)) {}
 
 void AssignExpr::resolveType(CompileContext &ctx) {
     TypeGuard;
@@ -168,19 +165,15 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     // Self is not a valid assignment target
     VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
     if (varNode->name == "self") {
-        throw ParserError(this->token,
-                          "Cannot assign to 'self' variable.");
+        throw ParserError(this->token, "Cannot assign to 'self' variable.");
     }
 
     // Ensure the value can be assigned to the target
-    auto cast_result = CastExpr::tryCast(
-        std::move(this->value),
-        type(this->target),
-        ctx);
+    auto cast_result =
+        CastExpr::tryCast(std::move(this->value), type(this->target), ctx);
     if (!cast_result.has_value()) {
-        throw ParserError(
-            this->token,
-            "Incompatible types in assignment expression.");
+        throw ParserError(this->token,
+                          "Incompatible types in assignment expression.");
     }
     this->value = std::move(cast_result.value());
 
@@ -198,7 +191,7 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
         throw ParserError(this->token,
                           "Invalid assignment target during compilation.");
     }
-    
+
     // Compile upvalue or local variable
     const auto local_entry = std::get<EntryID>(varNode->resolution);
     const auto &entry = ctx.nameTable.getEntry(local_entry);
@@ -209,7 +202,8 @@ void AssignExpr::compile(CompileContext &ctx, int reg) {
     }
 }
 
-void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry, int reg) {
+void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry,
+                              int reg) {
     const int local_register =
         ctx.nameTable.getEntry(local_entry).register_index;
 
@@ -224,8 +218,7 @@ void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry, int reg)
     }
 
     // If we are writting into an object, release the previous one first
-    bool is_object =
-        ctx.typeRegistry.isObject(type(this->target));
+    bool is_object = ctx.typeRegistry.isObject(type(this->target));
 
     if (is_object)
         ctx.function->chunk.writeABx(OpCode::Release, local_register, 0,
@@ -247,8 +240,8 @@ void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry, int reg)
 }
 
 void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
-    const int upvalue_index =
-        std::get<EntryID>(static_cast<VariableNode *>(this->target.get())->resolution);
+    const int upvalue_index = std::get<EntryID>(
+        static_cast<VariableNode *>(this->target.get())->resolution);
 
     // If a register was provided, use that, if not, allocate a new one
     reg(this) = reg != -1 ? reg : ctx.allocateRegister();
@@ -263,9 +256,9 @@ void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
 }
 
 void AssignExpr::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "AssignExpr\n";
     this->target->print(indent + 1);
     this->value->print(indent + 1);
 }
-

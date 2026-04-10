@@ -14,14 +14,12 @@ int getObjectCount() { return OBJECT_COUNT; }
 
 #endif
 
-
-
 void Object::retain() {
     this->ref_count++;
 
 #ifdef DEBUG_PRINT
-    std::print("{} retained. New ref count: {}\n",
-               this->toString(), this->ref_count);
+    std::print("{} retained. New ref count: {}\n", this->toString(),
+               this->ref_count);
 #endif
 }
 
@@ -32,8 +30,8 @@ void Object::release() {
     }
 #ifdef DEBUG_PRINT
     else {
-        std::print("{} released. New ref count: {}\n",
-                   this->toString(), this->ref_count);
+        std::print("{} released. New ref count: {}\n", this->toString(),
+                   this->ref_count);
     }
 #endif
 }
@@ -68,8 +66,8 @@ UpvalueObj::~UpvalueObj() {
 #ifndef NDEBUG
     OBJECT_COUNT--;
 #ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 #endif
 }
@@ -86,11 +84,10 @@ FunctionObj::FunctionObj() : Object() {
 #endif
 }
 
-std::string FunctionObj::toString() const {
-    return this->name;
-}
+std::string FunctionObj::toString() const { return this->name; }
 
-ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object() {
+ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
+    : Object() {
     this->obj_type = Object::Type::Closure;
 
     // Get the function
@@ -109,13 +106,16 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
             const int target_register =
                 current_frame.stack_base + upvalue_info.index;
 
-            // Check if there already is an upvalue capturing this local variable
+            // Check if there already is an upvalue capturing this local
+            // variable
             auto upvalue = current_frame.captured_upvalue;
             while (upvalue) {
                 if (upvalue->data.register_index == target_register) {
 #ifdef DEBUG_PRINT
-                    std::print("{} Reusing existing upvalue capturing {} ({} + {})\n",
-                               this->toString(), target_register, current_frame.stack_base, upvalue_info.index);
+                    std::print(
+                        "{} Reusing existing upvalue capturing {} ({} + {})\n",
+                        this->toString(), target_register,
+                        current_frame.stack_base, upvalue_info.index);
 #endif
                     upvalue->retain();
                     this->upvalues.push_back(upvalue);
@@ -138,12 +138,14 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame) : Object
 
 #ifdef DEBUG_PRINT
             std::print("{} Created new upvalue capturing {} ({} + {})\n",
-                       this->toString(), target_register, current_frame.stack_base, upvalue_info.index);
+                       this->toString(), target_register,
+                       current_frame.stack_base, upvalue_info.index);
 #endif
 
         } else {
             assert(current_frame.closure != nullptr &&
-                   "Upvalue refers to a parent upvalue but no parent closure provided");
+                   "Upvalue refers to a parent upvalue but no parent closure "
+                   "provided");
             // Capture the upvalue from the parent closure
             const auto index = upvalue_info.index;
             UpvalueObj *upvalue =
@@ -158,8 +160,8 @@ inc:
     OBJECT_COUNT++;
 
 #ifdef DEBUG_PRINT
-    std::print("{} created. Total objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} created. Total objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 #endif
 }
@@ -180,8 +182,8 @@ ClosureObj::~ClosureObj() {
 #ifndef NDEBUG
     OBJECT_COUNT--;
 #ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 #endif
 }
@@ -190,12 +192,14 @@ std::string ClosureObj::toString() const {
 #ifdef DEBUG_PRINT
     return "<closure: " + this->function_name_cache + ">";
 #else
-    return "<closure: " + (this->function ? this->function->name : "released function") + ">";
+    return "<closure: " +
+           (this->function ? this->function->name : "released function") + ">";
 #endif
 }
 
-NativeFunctionObj::NativeFunctionObj(
-    TypeID type_id, NativeFunctionPtr function_ptr, const std::string &name)
+NativeFunctionObj::NativeFunctionObj(TypeID type_id,
+                                     NativeFunctionPtr function_ptr,
+                                     const std::string &name)
     : Object(), type_id(type_id), function_ptr(function_ptr), name(name) {
     this->obj_type = Object::Type::NativeFunction;
 
@@ -210,13 +214,12 @@ std::string NativeFunctionObj::toString() const {
 
 #ifndef NDEBUG
 
-
 StringObj::~StringObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 }
 
@@ -224,8 +227,8 @@ FunctionObj::~FunctionObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 }
 
@@ -233,11 +236,9 @@ NativeFunctionObj::~NativeFunctionObj() {
     OBJECT_COUNT--;
 
 #ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n",
-               this->toString(), OBJECT_COUNT);
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
 #endif
 }
 
 #endif
-
-

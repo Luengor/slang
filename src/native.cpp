@@ -6,7 +6,8 @@
 #include <cmath>
 #include <iostream>
 
-#define DUMMY_RETURN Value{.boolean = false}
+#define DUMMY_RETURN                                                           \
+    Value { .boolean = false }
 #define RETURN return DUMMY_RETURN
 
 // Native function definitions
@@ -59,4 +60,3 @@ NativeFunctionObj *NativeRegistry::getNativeFunction(const std::string &name) {
     }
     return nullptr;
 }
-

@@ -22,8 +22,7 @@ struct AssignExpr : public ASTNode {
     AssignExpr(const Token &token, ASTNodePtr target, ASTNodePtr value);
     AST_OVERRIDES;
 
-private:
+  private:
     void compileLocal(CompileContext &ctx, EntryID local_entry, int reg);
     void compileUpvalue(CompileContext &ctx, int reg);
 };
-

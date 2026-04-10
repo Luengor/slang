@@ -56,4 +56,3 @@ struct ReturnStmt : public ASTNode {
     ReturnStmt(const Token &token, ASTNodePtr return_expr);
     AST_OVERRIDES;
 };
-

@@ -16,7 +16,7 @@ struct Object;
 
 using FloatingType = double;
 using FixedType = long long;
-using PtrType = Object*;
+using PtrType = Object *;
 
 union Value {
     FloatingType floating;
@@ -28,5 +28,3 @@ union Value {
 using TypedValue = std::pair<ValueType, Value>;
 
 using ValueArray = std::vector<Value>;
-
-

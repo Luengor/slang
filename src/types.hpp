@@ -1,11 +1,11 @@
 #pragma once
 
+#include "chunk.hpp"
+#include "value.hpp"
 #include <cstdint>
 #include <optional>
 #include <variant>
 #include <vector>
-#include "chunk.hpp"
-#include "value.hpp"
 
 using TypeID = uint32_t;
 
@@ -45,12 +45,10 @@ class TypeRegistry {
   public:
     TypeID getPrimitive(PrimitiveKind kind);
     TypeID getFunction(const std::vector<TypeID> &param_types,
-                           TypeID return_type);
+                       TypeID return_type);
     TypeID getFromValue(const TypedValue &value);
 
-    inline TypeID noneType() {
-        return getPrimitive(PrimitiveKind::None);
-    }
+    inline TypeID noneType() { return getPrimitive(PrimitiveKind::None); }
     bool isNumeric(TypeID typeID);
     bool isPrimitive(TypeID typeID);
     bool isObject(TypeID typeID);

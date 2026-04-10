@@ -30,9 +30,10 @@ class NameTable {
     int current_depth = 0;
 
   public:
-    std::optional<EntryID> addName(const std::string &name, int line, TypeID type,
-                                   int depth = -1);
-    std::optional<EntryID> findEntryInScope(const std::string &name, bool only_upvalues = false);
+    std::optional<EntryID> addName(const std::string &name, int line,
+                                   TypeID type, int depth = -1);
+    std::optional<EntryID> findEntryInScope(const std::string &name,
+                                            bool only_upvalues = false);
 
     std::vector<EntryID> getNamesInScope(int depth = 0);
     const std::vector<NameEntry> &getEntries();
@@ -91,10 +92,9 @@ struct CompileContext {
     // Fixup registers
     void fixupRegisters();
 
-private:
+  private:
     std::vector<int> free_registers;
     int max_registers = 0;
 
     EntryID markUpvalue(EntryID parentEntryID);
 };
-

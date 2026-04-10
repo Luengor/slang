@@ -126,11 +126,10 @@ class Parser {
     // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block
     ASTNodePtr function();
 
-public:
+  public:
     Parser(const std::vector<Token> &tokens);
 
     // Parse the tokens and return the root of the AST
     // program -> declaration* EOF
     ASTNodePtr parse();
 };
-

@@ -1,8 +1,8 @@
 #include "compiler.hpp"
 #include "ast_core.hpp"
+#include "object.hpp"
 #include "parser.hpp"
 #include "scanner.hpp"
-#include "object.hpp"
 #include <memory>
 #include <stdexcept>
 
@@ -37,7 +37,6 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
         std::cout << "No AST generated.\n";
 #endif
 
-
 #ifdef DEBUG_PRINT
     // Print Chunk for debugging
     std::cout << "\nCompiled Chunk:\n";
@@ -46,4 +45,3 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
 
     return function;
 }
-

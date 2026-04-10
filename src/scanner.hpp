@@ -6,26 +6,54 @@
 struct Token {
     enum Type : unsigned {
         // Single-character tokens.
-        LeftParen, RightParen,
-        LeftBrace, RightBrace,
-        Minus, Plus, Slash, Star,
-        Greater, Less, Semicolon,
-        Equal, Comma, Question, Colon,
+        LeftParen,
+        RightParen,
+        LeftBrace,
+        RightBrace,
+        Minus,
+        Plus,
+        Slash,
+        Star,
+        Greater,
+        Less,
+        Semicolon,
+        Equal,
+        Comma,
+        Question,
+        Colon,
 
         // Two-character tokens.
-        EqualEqual, BangEqual,
-        GreaterEqual, LessEqual,
+        EqualEqual,
+        BangEqual,
+        GreaterEqual,
+        LessEqual,
         Arrow,
 
         // Literals.
-        Identifier, String, Number,
+        Identifier,
+        String,
+        Number,
 
         // Keywords.
-        And, Or, Not, True, False,
-        Fixed, Float, Bool, Str, None, Auto,
-        If, Else, While, For, Return,
-        
-        Error, Eof
+        And,
+        Or,
+        Not,
+        True,
+        False,
+        Fixed,
+        Float,
+        Bool,
+        Str,
+        None,
+        Auto,
+        If,
+        Else,
+        While,
+        For,
+        Return,
+
+        Error,
+        Eof
     } type;
 
     std::string lexeme;
@@ -47,7 +75,6 @@ class Scanner {
     Token makeNumber();
     Token makeIdentifier();
 
-public:
-    std::vector<Token> scan(const std::string& input);
+  public:
+    std::vector<Token> scan(const std::string &input);
 };
-

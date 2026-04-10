@@ -21,7 +21,7 @@ struct CallFrame {
     // The base index in the register file for this call frame
     size_t stack_base;
 
-    // TODO: change this for a vector of upvalues
+    // A linked list of upvalues captured on this frame
     UpvalueObj *captured_upvalue = nullptr;
 
     CallFrame() = default;
@@ -37,7 +37,6 @@ class VM {
 
     InterpretResult run();
 
-public:
+  public:
     InterpretResult interpret(const std::string &source);
 };
-

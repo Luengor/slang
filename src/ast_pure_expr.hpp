@@ -38,7 +38,7 @@ struct VariableNode : public ASTNode {
     VariableNode(const Token &token, const std::string &name);
     AST_OVERRIDES;
 
-private:
+  private:
     void compileLocal(CompileContext &ctx, int reg);
     void compileUpvalue(CompileContext &ctx, int reg);
 };
@@ -59,8 +59,7 @@ struct CastExpr : public ASTNode {
     tryCast(ASTNodePtr operand, TypeID target_type, CompileContext &ctx);
 
     static std::optional<std::pair<ASTNodePtr, ASTNodePtr>>
-    tryCommonCast(ASTNodePtr left, ASTNodePtr right,
-                  CompileContext &ctx);
+    tryCommonCast(ASTNodePtr left, ASTNodePtr right, CompileContext &ctx);
 
     CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type);
     AST_OVERRIDES;
@@ -94,11 +93,7 @@ struct LogicExpr : public ASTNode {
     LogicExpr(const Token &token, ASTNodePtr left, ASTNodePtr right);
     AST_OVERRIDES;
 
-private:
+  private:
     void compileAnd(CompileContext &ctx);
     void compileOr(CompileContext &ctx);
 };
-
-
-
-

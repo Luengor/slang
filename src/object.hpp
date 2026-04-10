@@ -62,7 +62,7 @@ struct UpvalueInfo {
     // upvalue in the parent closure.
     bool is_local = false;
 
-    // The index of the local variable or the parent upvalue index. 
+    // The index of the local variable or the parent upvalue index.
     int index = -1;
 };
 
@@ -101,13 +101,13 @@ struct ClosureObj : public Object {
 #endif
 
     ClosureObj(FunctionObj *function, CallFrame &current_frame);
-               
+
     ~ClosureObj();
 
     std::string toString() const override;
 };
 
-using NativeFunctionPtr = Value(*)(const Value *args, size_t arg_count);
+using NativeFunctionPtr = Value (*)(const Value *args, size_t arg_count);
 
 struct NativeFunctionObj : public Object {
     // The type ID of the function
@@ -128,4 +128,3 @@ struct NativeFunctionObj : public Object {
 
     std::string toString() const override;
 };
-

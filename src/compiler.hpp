@@ -12,4 +12,3 @@ class Compiler {
     Compiler(const std::string &source);
     std::unique_ptr<FunctionObj> compile();
 };
-

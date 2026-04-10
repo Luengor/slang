@@ -18,7 +18,7 @@ std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
 
     // Add itself as first object of the chunk
     function->chunk.addObjectConstant(function.get());
-    
+
     CompileContext ctx(typeRegistry, nativeRegistry);
     ctx.function = function.get();
 

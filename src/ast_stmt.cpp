@@ -9,8 +9,8 @@
 
 // ExprStmt Implementation
 ExprStmt::ExprStmt(const Token &token, ASTNodePtr expression)
-    : ASTNode(ASTNodeType::ExprStmt, token),
-      expression(std::move(expression)) {}
+    : ASTNode(ASTNodeType::ExprStmt, token), expression(std::move(expression)) {
+}
 
 void ExprStmt::resolveType(CompileContext &ctx) {
     TypeGuard;
@@ -45,21 +45,22 @@ void ExprStmt::compile(CompileContext &ctx, int reg) {
 
         // If it was an object type, release it
         if (ctx.typeRegistry.isObject(type(this->expression))) {
-            ctx.function->chunk.writeABx(OpCode::Release,
-                                         reg(this->expression), 0,
-                                         this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Release, reg(this->expression),
+                                         0, this->token.line);
         }
     }
 }
 
 void ExprStmt::print(int indent) {
     if (!this->expression) {
-        for (int i = 0; i < indent; i++) std::cout << "  ";
+        for (int i = 0; i < indent; i++)
+            std::cout << "  ";
         std::cout << "ExprStmt(Empty)\n";
         return;
     }
 
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "ExprStmt\n";
     this->expression->print(indent + 1);
 }
@@ -85,9 +86,8 @@ void BlockStmt::resolveType(CompileContext &ctx) {
             }
         } else {
             // Dead code after return
-            throw ParserError(
-                stmt->token,
-                "Unreachable code after return statement.");
+            throw ParserError(stmt->token,
+                              "Unreachable code after return statement.");
         }
     }
 
@@ -117,8 +117,8 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
     }
 
     // Get all local variables declared in this block
-    auto names_in_scope = ctx.nameTable.getNamesInScope(
-            ctx.nameTable.getCurrentDepth());
+    auto names_in_scope =
+        ctx.nameTable.getNamesInScope(ctx.nameTable.getCurrentDepth());
 
     // Pop local variables declared in this block
     for (auto entryID : names_in_scope) {
@@ -136,9 +136,8 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
 
         // If its an object type, release it once
         if (ctx.typeRegistry.isObject(entry.type)) {
-            ctx.function->chunk.writeABx(
-                OpCode::Release, entry.register_index,
-                0, this->token.line);
+            ctx.function->chunk.writeABx(OpCode::Release, entry.register_index,
+                                         0, this->token.line);
         }
     };
 
@@ -147,7 +146,8 @@ void BlockStmt::compile(CompileContext &ctx, int reg) {
 }
 
 void BlockStmt::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "BlockStmt\n";
     for (auto &stmt : this->statements) {
         stmt->print(indent + 1);
@@ -166,14 +166,12 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
 
     // Check if the variable name is 'self'
     if (this->token.lexeme == "self") {
-        throw ParserError(
-            this->token,
-            "Cannot declare variable with reserved name 'self'.");
+        throw ParserError(this->token,
+                          "Cannot declare variable with reserved name 'self'.");
     }
 
     // Check if its a native function
-    auto nativeFn = ctx.nativeRegistry.getNativeFunction(
-        this->token.lexeme);
+    auto nativeFn = ctx.nativeRegistry.getNativeFunction(this->token.lexeme);
     if (nativeFn != nullptr) {
         throw ParserError(
             this->token,
@@ -206,19 +204,17 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
         // If there is an initializer, ensure it matches the declared type
         if (this->initializer) {
             // Cast them if necessary
-            auto cast_result = CastExpr::tryCast(
-                std::move(this->initializer),
-                type(this),
-                ctx);
+            auto cast_result = CastExpr::tryCast(std::move(this->initializer),
+                                                 type(this), ctx);
             if (!cast_result.has_value()) {
                 throw ParserError(
-                    this->token,
-                    "Incompatible types in variable initializer.");
+                    this->token, "Incompatible types in variable initializer.");
             }
             this->initializer = std::move(cast_result.value());
         } else if (ctx.typeRegistry.isObject(type(this))) {
             // Functions require an initializer outside of function definitions
-            if (!this->is_in_function_definition && ctx.typeRegistry.isFunction(type(this))) {
+            if (!this->is_in_function_definition &&
+                ctx.typeRegistry.isFunction(type(this))) {
                 throw ParserError(
                     this->token,
                     "Function declarations require an initializer.");
@@ -227,9 +223,8 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
     }
 
     // Add a new local
-    auto entry_id = ctx.nameTable.addName(
-        this->token.lexeme, this->token.line,
-        type(this));
+    auto entry_id =
+        ctx.nameTable.addName(this->token.lexeme, this->token.line, type(this));
     if (!entry_id.has_value()) {
         throw ParserError(
             this->token,
@@ -274,9 +269,10 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
 }
 
 void VarDeclStmt::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
-    std::cout << "VarDeclStmt(" << this->token.lexeme << " : "
-              << type(this) << ")\n";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "VarDeclStmt(" << this->token.lexeme << " : " << type(this)
+              << ")\n";
     if (this->initializer) {
         this->initializer->print(indent + 1);
     }
@@ -285,10 +281,9 @@ void VarDeclStmt::print(int indent) {
 // IfStmt Implementation
 IfStmt::IfStmt(const Token &token, ASTNodePtr condition, ASTNodePtr then_branch,
                ASTNodePtr else_branch)
-    : ASTNode(ASTNodeType::IfStmt, token),
-      condition(std::move(condition)),
-      then_branch(std::move(then_branch)),
-      else_branch(std::move(else_branch)) {}
+    : ASTNode(ASTNodeType::IfStmt, token), condition(std::move(condition)),
+      then_branch(std::move(then_branch)), else_branch(std::move(else_branch)) {
+}
 
 void IfStmt::resolveType(CompileContext &ctx) {
     TypeGuard;
@@ -304,9 +299,10 @@ void IfStmt::resolveType(CompileContext &ctx) {
     type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
-    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    auto cast_result = CastExpr::tryCast(
-        std::move(this->condition), booleanType, ctx);
+    const auto booleanType =
+        ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    auto cast_result =
+        CastExpr::tryCast(std::move(this->condition), booleanType, ctx);
     if (!cast_result.has_value()) {
         throw ParserError(
             this->token,
@@ -333,7 +329,7 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
 
     // Compile then branch
     this->then_branch->compile(ctx);
-    
+
     // If there is an else branch, insert jump to after else
     unsigned else_jump = 0;
     if (this->else_branch)
@@ -360,7 +356,8 @@ void IfStmt::compile(CompileContext &ctx, int reg) {
 }
 
 void IfStmt::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "IfStmt\n";
     this->condition->print(indent + 1);
     this->then_branch->print(indent + 1);
@@ -371,8 +368,7 @@ void IfStmt::print(int indent) {
 
 // WhileStmt Implementation
 WhileStmt::WhileStmt(const Token &token, ASTNodePtr condition, ASTNodePtr body)
-    : ASTNode(ASTNodeType::WhileStmt, token),
-      condition(std::move(condition)),
+    : ASTNode(ASTNodeType::WhileStmt, token), condition(std::move(condition)),
       body(std::move(body)) {}
 
 void WhileStmt::resolveType(CompileContext &ctx) {
@@ -386,9 +382,10 @@ void WhileStmt::resolveType(CompileContext &ctx) {
     type(this) = ctx.typeRegistry.noneType();
 
     // Condition must be boolean
-    const auto booleanType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
-    auto cast_result = CastExpr::tryCast(
-        std::move(this->condition), booleanType, ctx);
+    const auto booleanType =
+        ctx.typeRegistry.getPrimitive(PrimitiveKind::Boolean);
+    auto cast_result =
+        CastExpr::tryCast(std::move(this->condition), booleanType, ctx);
     if (!cast_result.has_value()) {
         throw ParserError(
             this->token,
@@ -433,7 +430,8 @@ void WhileStmt::compile(CompileContext &ctx, int reg) {
 }
 
 void WhileStmt::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "WhileStmt\n";
     this->condition->print(indent + 1);
     this->body->print(indent + 1);
@@ -449,8 +447,7 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
 
     // Ensure this is happening in a function
     if (!ctx.next)
-        throw ParserError(this->token,
-            "Return statement outside function");
+        throw ParserError(this->token, "Return statement outside function");
 
     // The return type of the statement is none
     type(this) = ctx.typeRegistry.noneType();
@@ -463,10 +460,11 @@ void ReturnStmt::resolveType(CompileContext &ctx) {
         const auto function_type_data =
             ctx.typeRegistry.getTypeData(ctx.function->type_id);
         assert(std::holds_alternative<FunctionType>(function_type_data));
-        TypeID return_type = std::get<FunctionType>(function_type_data).return_type;
+        TypeID return_type =
+            std::get<FunctionType>(function_type_data).return_type;
 
-        auto cast_result = CastExpr::tryCast(
-            std::move(this->return_expr), return_type, ctx);
+        auto cast_result =
+            CastExpr::tryCast(std::move(this->return_expr), return_type, ctx);
         if (!cast_result.has_value()) {
             throw ParserError(
                 this->token,
@@ -505,27 +503,25 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
         // If its a captured varialbe that isn't an upvalue, we need to lift it
         if (entry.is_captured && !entry.is_upvalue) {
             ctx.function->chunk.writeABx(
-                OpCode::LiftUpvalue, 0, entry.register_index,
-                this->token.line);
+                OpCode::LiftUpvalue, 0, entry.register_index, this->token.line);
         }
 
         if (entry.register_index != -1 && !entry.is_upvalue &&
-            ctx.typeRegistry.isObject(entry.type) && entry.register_index != dont_free_reg) {
-            ctx.function->chunk.writeABx(
-                OpCode::Release, entry.register_index,
-                0, this->token.line);
+            ctx.typeRegistry.isObject(entry.type) &&
+            entry.register_index != dont_free_reg) {
+            ctx.function->chunk.writeABx(OpCode::Release, entry.register_index,
+                                         0, this->token.line);
         }
     };
-    
+
     // Finally, return
-    ctx.function->chunk.writeABx(
-        OpCode::Return, 0, reg, this->token.line);
+    ctx.function->chunk.writeABx(OpCode::Return, 0, reg, this->token.line);
 }
 
 void ReturnStmt::print(int indent) {
-    for (int i = 0; i < indent; i++) std::cout << "  ";
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
     std::cout << "ReturnStmt\n";
     if (this->return_expr)
         this->return_expr->print(indent + 1);
 }
-

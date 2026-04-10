@@ -5,8 +5,10 @@
 #include <variant>
 
 // overload boilerplate
-template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+template <class... Ts> struct overloaded : Ts... {
+    using Ts::operator()...;
+};
+template <class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 // Cast table
 using CastKey = std::pair<PrimitiveKind, PrimitiveKind>;
@@ -17,18 +19,14 @@ struct CastKeyHash {
     }
 };
 
-#define Cast(from, to, op) \
+#define Cast(from, to, op)                                                     \
     {{PrimitiveKind::from, PrimitiveKind::to}, OpCode::op}
 
 std::unordered_map<CastKey, OpCode, CastKeyHash> CAST_TABLE = {
-    Cast(Fixed, Floating, I2F),
-    Cast(Floating, Fixed, F2I),
-    Cast(Fixed, Boolean, I2B),
-    Cast(Boolean, Fixed, B2I),
-    Cast(Floating, Boolean, F2B),
-    Cast(Boolean, Floating, B2F),
-    Cast(Fixed, String, I2Str),
-    Cast(Floating, String, F2Str),
+    Cast(Fixed, Floating, I2F),   Cast(Floating, Fixed, F2I),
+    Cast(Fixed, Boolean, I2B),    Cast(Boolean, Fixed, B2I),
+    Cast(Floating, Boolean, F2B), Cast(Boolean, Floating, B2F),
+    Cast(Fixed, String, I2Str),   Cast(Floating, String, F2Str),
     Cast(Boolean, String, B2Str),
 };
 
@@ -78,23 +76,27 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.second.object->obj_type) {
         case Object::Type::String:
             return getPrimitive(PrimitiveKind::String);
-        case Object::Type::Upvalue: 
-            throw std::runtime_error("Upvalue objects cannot be directly typed in getFromValue.");
-        case Object::Type::Function: {
-            FunctionObj *fnObj =
-                static_cast<FunctionObj *>(value.second.object);
-            return fnObj->type_id;
-        }
-        case Object::Type::Closure: {
-            ClosureObj *closure =
-                static_cast<ClosureObj *>(value.second.object);
-            return closure->function->type_id;
-        }
-        case Object::Type::NativeFunction: {
-            NativeFunctionObj *nativeFn =
-                static_cast<NativeFunctionObj *>(value.second.object);
-            return nativeFn->type_id;
-        }
+        case Object::Type::Upvalue:
+            throw std::runtime_error(
+                "Upvalue objects cannot be directly typed in getFromValue.");
+        case Object::Type::Function:
+            {
+                FunctionObj *fnObj =
+                    static_cast<FunctionObj *>(value.second.object);
+                return fnObj->type_id;
+            }
+        case Object::Type::Closure:
+            {
+                ClosureObj *closure =
+                    static_cast<ClosureObj *>(value.second.object);
+                return closure->function->type_id;
+            }
+        case Object::Type::NativeFunction:
+            {
+                NativeFunctionObj *nativeFn =
+                    static_cast<NativeFunctionObj *>(value.second.object);
+                return nativeFn->type_id;
+            }
     }
 
     throw std::runtime_error("Unknown object type in getFromValue.");
@@ -125,28 +127,30 @@ bool TypeRegistry::isFunction(TypeID typeID) {
 }
 
 std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {
-    if (from == to) return std::nullopt; // No cast needed
+    if (from == to)
+        return std::nullopt; // No cast needed
 
     // Get data
     const auto &from_data = this->getTypeData(from);
     const auto &to_data = this->getTypeData(to);
 
     // Visit
-    auto op = std::visit(overloaded{
-        [&](PrimitiveType from, PrimitiveType to) -> std::optional<OpCode> {
-            // Both are primitive types, check cast table
-            CastKey key{from.kind, to.kind};
-            auto it = CAST_TABLE.find(key);
-            if (it != CAST_TABLE.end()) {
-                return it->second;
-            }
-            return std::nullopt; // No valid cast found
-        },
-        [&](auto &, auto &) -> std::optional<OpCode> {
-            // For now, any other types are not castable
-            return std::nullopt;
-        }
-    }, from_data, to_data);
+    auto op =
+        std::visit(overloaded{[&](PrimitiveType from,
+                                  PrimitiveType to) -> std::optional<OpCode> {
+                                  // Both are primitive types, check cast table
+                                  CastKey key{from.kind, to.kind};
+                                  auto it = CAST_TABLE.find(key);
+                                  if (it != CAST_TABLE.end()) {
+                                      return it->second;
+                                  }
+                                  return std::nullopt; // No valid cast found
+                              },
+                              [&](auto &, auto &) -> std::optional<OpCode> {
+                                  // For now, any other types are not castable
+                                  return std::nullopt;
+                              }},
+                   from_data, to_data);
 
     return op;
 }

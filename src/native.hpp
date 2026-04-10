@@ -7,12 +7,10 @@ class TypeRegistry;
 struct NativeFunctionObj;
 
 struct NativeRegistry {
-    std::unordered_map<std::string, NativeFunctionObj *>
-        native_functions;
+    std::unordered_map<std::string, NativeFunctionObj *> native_functions;
 
     NativeRegistry(TypeRegistry &typeRegistry);
     ~NativeRegistry();
 
     NativeFunctionObj *getNativeFunction(const std::string &name);
 };
-

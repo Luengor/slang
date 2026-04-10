@@ -5,8 +5,8 @@
 #include <print>
 
 #ifndef NDEBUG
-#include <cassert>
 #include "object.hpp"
+#include <cassert>
 #endif
 
 void runFile(const char *path) {

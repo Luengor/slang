@@ -1,7 +1,8 @@
 #include "error.hpp"
 #include <format>
 
-std::string ParserError::makeError(const Token &token, const std::string &message) {
+std::string ParserError::makeError(const Token &token,
+                                   const std::string &message) {
     std::string errorMsg;
     errorMsg += std::format("[line {}] Error", token.line);
 
