@@ -7,7 +7,6 @@
 #include <stdexcept>
 
 #ifdef DEBUG_PRINT
-#include <format>
 #include <iostream>
 #endif
 
@@ -17,17 +16,6 @@ std::unique_ptr<FunctionObj> Compiler::compile() {
     // Scan source
     Scanner scanner;
     std::vector<Token> tokens = scanner.scan(this->source);
-
-    // Print tokens for debugging
-#ifdef DEBUG_PRINT
-    std::cout << "Tokens:\n";
-    for (const Token &token : tokens) {
-        std::cout << std::format("[line {}] Type: {}, Lexeme: '{}'\n",
-                                 token.line,
-                                 static_cast<int>(token.type),
-                                 token.lexeme);
-    }
-#endif
 
     // Create AST
     Parser parser(tokens);
