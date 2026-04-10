@@ -1,0 +1,8 @@
+for (fixed i = 0; i < 3; i = i + 1) {
+    print(i);
+}
+
+# expect: 0
+# expect: 1
+# expect: 2
+
