@@ -46,6 +46,7 @@ struct Token {
         Str,
         None,
         Auto,
+        Alias,
         If,
         Else,
         While,

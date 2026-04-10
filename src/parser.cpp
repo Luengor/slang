@@ -67,6 +67,7 @@ void Parser::syncronize() {
             case Token::Type::Float:
             case Token::Type::Bool:
             case Token::Type::Auto:
+            case Token::Type::Alias:
             case Token::Type::If:
             case Token::Type::While:
             case Token::Type::For:
@@ -89,8 +90,18 @@ ASTNodePtr Parser::typeExpr() {
         return this->primitiveType();
     }
 
+    // Then try alias type
+    if (this->match({Token::Type::Identifier})) {
+        return this->aliasType();
+    }
+
     // Then try function type
     return this->functionType();
+}
+
+ASTNodePtr Parser::aliasType() {
+    Token name_token = this->previous();
+    return std::make_unique<AliasTypeNode>(name_token, name_token.lexeme);
 }
 
 ASTNodePtr Parser::functionType() {
@@ -129,6 +140,10 @@ ASTNodePtr Parser::primitiveType() {
 
 ASTNodePtr Parser::declaration() {
     try {
+        if (this->match({Token::Type::Alias})) {
+            return this->aliasDecl();
+        }
+
         // Try variable declaration and backtrack on failure
         const auto current_pos = this->current;
         try {
@@ -144,6 +159,16 @@ ASTNodePtr Parser::declaration() {
         this->syncronize();
         return nullptr;
     }
+}
+
+ASTNodePtr Parser::aliasDecl() {
+    Token alias_name =
+        this->consume(Token::Type::Identifier, "Expected alias name.");
+    this->consume(Token::Type::Equal, "Expected '=' after alias name.");
+    ASTNodePtr aliased_type = this->typeExpr();
+    this->consume(Token::Type::Semicolon, "Expected ';' after alias declaration.");
+
+    return std::make_unique<AliasDeclStmt>(alias_name, std::move(aliased_type));
 }
 
 ASTNodePtr Parser::varDecl() {
@@ -227,12 +252,11 @@ ASTNodePtr Parser::forStmt() {
     ASTNodePtr initializer = nullptr;
 
     if (!this->match({Token::Type::Semicolon})) {
-        if (this->match({Token::Type::Fixed, Token::Type::Float,
-                         Token::Type::Bool, Token::Type::Str,
-                         Token::Type::Auto})) {
-            this->current--; // backtrack
+        const auto current_pos = this->current;
+        try {
             initializer = this->varDecl();
-        } else {
+        } catch (const ParserError &) {
+            this->current = current_pos;
             initializer = this->exprStmt();
         }
     }

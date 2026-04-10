@@ -76,6 +76,14 @@ void BlockStmt::resolveType(CompileContext &ctx) {
 
     // Enter a new scope
     ctx.nameTable.enterScope();
+    ctx.typeAliasTable.enterScope();
+
+    // Predeclare aliases in this block so mutual recursion works.
+    for (auto &stmt : this->statements) {
+        if (stmt->type == ASTNodeType::AliasDeclStmt) {
+            static_cast<AliasDeclStmt *>(stmt.get())->declareAlias(ctx);
+        }
+    }
 
     // Resolve types for all statements
     for (auto &stmt : this->statements) {
@@ -92,6 +100,7 @@ void BlockStmt::resolveType(CompileContext &ctx) {
     }
 
     // Exit the scope
+    ctx.typeAliasTable.exitScope();
     ctx.nameTable.exitScope();
 
     // Block statements have no result type
@@ -276,6 +285,60 @@ void VarDeclStmt::print(int indent) {
     if (this->initializer) {
         this->initializer->print(indent + 1);
     }
+}
+
+// AliasDeclStmt Implementation
+AliasDeclStmt::AliasDeclStmt(const Token &name_token, ASTNodePtr aliased_type_expr)
+    : ASTNode(ASTNodeType::AliasDeclStmt, name_token),
+      aliased_type_expr(std::move(aliased_type_expr)) {}
+
+void AliasDeclStmt::declareAlias(CompileContext &ctx) {
+    if (this->is_declared) {
+        return;
+    }
+
+    this->alias_type_id = ctx.typeRegistry.createAliasPlaceholder();
+    auto alias_entry =
+        ctx.typeAliasTable.addAlias(this->token.lexeme, this->token.line,
+                                    this->alias_type_id, this);
+    if (!alias_entry.has_value()) {
+        throw ParserError(
+            this->token,
+            "Alias with the same name already declared in this scope.");
+    }
+
+    this->is_declared = true;
+}
+
+void AliasDeclStmt::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    this->declareAlias(ctx);
+
+    if (this->is_resolving) {
+        type(this) = this->alias_type_id;
+        return;
+    }
+
+    this->is_resolving = true;
+    this->aliased_type_expr->resolveType(ctx);
+    this->is_resolving = false;
+
+    ctx.typeRegistry.bindAlias(this->alias_type_id, type(this->aliased_type_expr));
+    type(this) = this->alias_type_id;
+}
+
+void AliasDeclStmt::compile(CompileContext &, int reg) {
+    CompileGuard;
+    assert(reg == -1);
+    reg(this) = -1;
+}
+
+void AliasDeclStmt::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "AliasDeclStmt(" << this->token.lexeme << ")\n";
+    this->aliased_type_expr->print(indent + 1);
 }
 
 // IfStmt Implementation

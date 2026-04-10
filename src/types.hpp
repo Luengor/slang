@@ -35,7 +35,15 @@ struct FunctionType {
     }
 };
 
-using TypeData = std::variant<PrimitiveType, FunctionType>;
+struct AliasType {
+    std::optional<TypeID> target_type;
+
+    bool operator==(const AliasType &other) const noexcept {
+        return this->target_type == other.target_type;
+    }
+};
+
+using TypeData = std::variant<PrimitiveType, FunctionType, AliasType>;
 
 class TypeRegistry {
     std::vector<TypeData> types;
@@ -46,6 +54,9 @@ class TypeRegistry {
     TypeID getPrimitive(PrimitiveKind kind);
     TypeID getFunction(const std::vector<TypeID> &param_types,
                        TypeID return_type);
+    TypeID createAliasPlaceholder();
+    void bindAlias(TypeID alias_type, TypeID target_type);
+    TypeID resolveAlias(TypeID typeID) const;
     TypeID getFromValue(const TypedValue &value);
 
     inline TypeID noneType() { return getPrimitive(PrimitiveKind::None); }
@@ -54,9 +65,7 @@ class TypeRegistry {
     bool isObject(TypeID typeID);
     bool isFunction(TypeID typeID);
 
-    inline TypeData getTypeData(TypeID typeID) const {
-        return this->types[typeID];
-    }
+    TypeData getTypeData(TypeID typeID) const;
 
     std::optional<OpCode> getCastOp(TypeID from, TypeID to);
     std::optional<PrimitiveKind> getCommonPrimitive(PrimitiveKind a,

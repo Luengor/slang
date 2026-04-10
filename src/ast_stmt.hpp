@@ -32,6 +32,18 @@ struct VarDeclStmt : public ASTNode {
     AST_OVERRIDES;
 };
 
+struct AliasDeclStmt : public ASTNode {
+    ASTNodePtr aliased_type_expr;
+    TypeID alias_type_id;
+    bool is_declared = false;
+    bool is_resolving = false;
+
+    AliasDeclStmt(const Token &name_token, ASTNodePtr aliased_type_expr);
+
+    void declareAlias(CompileContext &ctx);
+    AST_OVERRIDES;
+};
+
 struct IfStmt : public ASTNode {
     ASTNodePtr condition;
     ASTNodePtr then_branch;

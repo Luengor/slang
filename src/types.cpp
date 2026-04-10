@@ -54,6 +54,53 @@ TypeID TypeRegistry::getFunction(const std::vector<TypeID> &param_types,
     return getOrAdd(FunctionType{param_types, return_type});
 }
 
+TypeID TypeRegistry::createAliasPlaceholder() {
+    this->types.push_back(AliasType{std::nullopt});
+    return static_cast<TypeID>(this->types.size() - 1);
+}
+
+void TypeRegistry::bindAlias(TypeID alias_type, TypeID target_type) {
+    if (alias_type >= this->types.size()) {
+        throw std::runtime_error("Invalid alias type ID.");
+    }
+
+    auto *alias_data = std::get_if<AliasType>(&this->types[alias_type]);
+    if (!alias_data) {
+        throw std::runtime_error("Trying to bind a non-alias type.");
+    }
+
+    alias_data->target_type = target_type;
+}
+
+TypeID TypeRegistry::resolveAlias(TypeID typeID) const {
+    std::vector<bool> visited(this->types.size(), false);
+    TypeID current = typeID;
+
+    while (current < this->types.size()) {
+        if (visited[current]) {
+            return current;
+        }
+        visited[current] = true;
+
+        const auto *alias_data = std::get_if<AliasType>(&this->types[current]);
+        if (!alias_data || !alias_data->target_type.has_value()) {
+            return current;
+        }
+
+        current = alias_data->target_type.value();
+    }
+
+    throw std::runtime_error("Invalid type ID while resolving alias.");
+}
+
+TypeData TypeRegistry::getTypeData(TypeID typeID) const {
+    const TypeID canonical = this->resolveAlias(typeID);
+    if (canonical >= this->types.size()) {
+        throw std::runtime_error("Invalid type ID.");
+    }
+    return this->types[canonical];
+}
+
 TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.first) {
         case ValueType::Fixed:
@@ -103,8 +150,9 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
 }
 
 bool TypeRegistry::isNumeric(TypeID typeID) {
-    return typeID == this->getPrimitive(PrimitiveKind::Fixed) ||
-           typeID == this->getPrimitive(PrimitiveKind::Floating);
+    TypeID canonical = this->resolveAlias(typeID);
+    return canonical == this->getPrimitive(PrimitiveKind::Fixed) ||
+           canonical == this->getPrimitive(PrimitiveKind::Floating);
 }
 
 bool TypeRegistry::isPrimitive(TypeID typeID) {
@@ -127,6 +175,9 @@ bool TypeRegistry::isFunction(TypeID typeID) {
 }
 
 std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {
+    from = this->resolveAlias(from);
+    to = this->resolveAlias(to);
+
     if (from == to)
         return std::nullopt; // No cast needed
 

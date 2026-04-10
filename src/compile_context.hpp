@@ -7,6 +7,7 @@
 struct FunctionObj;
 struct NativeFunctionObj;
 struct NativeRegistry;
+struct AliasDeclStmt;
 
 using EntryID = size_t;
 
@@ -22,6 +23,16 @@ struct NameEntry {
 
     // Is this variable an upvalue (captured from an outer scope)?
     bool is_upvalue = false;
+};
+
+using AliasEntryID = size_t;
+
+struct TypeAliasEntry {
+    std::string name;
+    TypeID alias_type_id;
+    int depth;
+    int line_declared = -1;
+    AliasDeclStmt *decl = nullptr;
 };
 
 class NameTable {
@@ -55,6 +66,22 @@ class NameTable {
     void printTable() const;
 };
 
+class TypeAliasTable {
+    std::vector<TypeAliasEntry> entries;
+    std::vector<AliasEntryID> in_scope;
+    int current_depth = 0;
+
+  public:
+    std::optional<AliasEntryID>
+    addAlias(const std::string &name, int line, TypeID alias_type_id,
+             AliasDeclStmt *decl, int depth = -1);
+    std::optional<AliasEntryID> findAliasInScope(const std::string &name);
+    TypeAliasEntry &getEntry(AliasEntryID id);
+    void enterScope();
+    void exitScope();
+    int getCurrentDepth() const;
+};
+
 struct CompileContext {
     // The current function being compiled
     FunctionObj *function = nullptr;
@@ -67,6 +94,7 @@ struct CompileContext {
 
     // The name table
     NameTable nameTable;
+    TypeAliasTable typeAliasTable;
 
     // The parent compile context.
     // If this value is nullptr, this is the top-level context.

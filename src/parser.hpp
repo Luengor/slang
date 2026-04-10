@@ -49,8 +49,11 @@ class Parser {
 
     ASTNodePtr finishCall(ASTNodePtr expr);
 
-    // typeExpr -> functionType | primitiveType
+    // typeExpr -> functionType | primitiveType | aliasType
     ASTNodePtr typeExpr();
+
+    // aliasType -> IDENTIFIER
+    ASTNodePtr aliasType();
 
     // functionType -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" typeExpr
     ASTNodePtr functionType();
@@ -58,8 +61,11 @@ class Parser {
     // primitiveType -> "fixed" | "float" | "bool"
     ASTNodePtr primitiveType();
 
-    // declaration -> varDecl | funcDecl | statement
+    // declaration -> aliasDecl | varDecl | funcDecl | statement
     ASTNodePtr declaration();
+
+    // aliasDecl -> "alias" IDENTIFIER "=" typeExpr ";"
+    ASTNodePtr aliasDecl();
 
     // varDecl -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
     ASTNodePtr varDecl();

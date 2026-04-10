@@ -113,6 +113,54 @@ void NameTable::printTable() const {
     }
 }
 
+std::optional<AliasEntryID>
+TypeAliasTable::addAlias(const std::string &name, int line, TypeID alias_type_id,
+                         AliasDeclStmt *decl, int depth) {
+    depth = (depth == -1) ? this->current_depth : depth;
+
+    for (const auto &id : this->in_scope) {
+        if (this->entries[id].name == name && this->entries[id].depth == depth) {
+            return std::nullopt;
+        }
+    }
+
+    AliasEntryID id = this->entries.size();
+    this->entries.push_back(TypeAliasEntry{name, alias_type_id, depth, line,
+                                           decl});
+    this->in_scope.push_back(id);
+    return id;
+}
+
+std::optional<AliasEntryID>
+TypeAliasTable::findAliasInScope(const std::string &name) {
+    for (auto it = this->in_scope.rbegin(); it != this->in_scope.rend(); ++it) {
+        const TypeAliasEntry &entry = this->entries[*it];
+        if (entry.name == name) {
+            return *it;
+        }
+    }
+
+    return std::nullopt;
+}
+
+TypeAliasEntry &TypeAliasTable::getEntry(AliasEntryID id) {
+    return this->entries[id];
+}
+
+void TypeAliasTable::enterScope() { this->current_depth++; }
+
+void TypeAliasTable::exitScope() {
+    this->in_scope.erase(
+        std::remove_if(this->in_scope.begin(), this->in_scope.end(),
+                       [this](AliasEntryID id) {
+                           return this->entries[id].depth >= this->current_depth;
+                       }),
+        this->in_scope.end());
+    this->current_depth--;
+}
+
+int TypeAliasTable::getCurrentDepth() const { return this->current_depth; }
+
 CompileContext::CompileContext(TypeRegistry &typeRegistry,
                                NativeRegistry &nativeRegistry)
     : typeRegistry(typeRegistry), nativeRegistry(nativeRegistry) {}

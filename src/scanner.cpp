@@ -172,6 +172,8 @@ Token Scanner::makeIdentifier() {
                 token.type = Token::And;
             else if (token.lexeme == "auto")
                 token.type = Token::Auto;
+            else if (token.lexeme == "alias")
+                token.type = Token::Alias;
             break;
         case 'b':
             if (token.lexeme == "bool")

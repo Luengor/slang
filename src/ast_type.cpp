@@ -1,5 +1,6 @@
 #include "ast_type.hpp"
 #include "ast_macros.hpp"
+#include "ast_stmt.hpp"
 #include "error.hpp"
 #include <iostream>
 
@@ -43,6 +44,37 @@ void PrimitiveTypeNode::print(int indent) {
     for (int i = 0; i < indent; i++)
         std::cout << "  ";
     std::cout << "PrimitiveTypeNode(" << this->token.lexeme << ")\n";
+}
+
+AliasTypeNode::AliasTypeNode(const Token &token, const std::string &alias_name)
+    : ASTNode(ASTNodeType::AliasType, token), alias_name(alias_name) {}
+
+void AliasTypeNode::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    auto alias_entry = ctx.typeAliasTable.findAliasInScope(this->alias_name);
+    if (!alias_entry.has_value()) {
+        throw ParserError(this->token, "Undefined type alias: " + this->alias_name);
+    }
+
+    auto &entry = ctx.typeAliasTable.getEntry(alias_entry.value());
+
+    // Resolve referenced alias lazily to support mutual recursion.
+    if (entry.decl != nullptr) {
+        entry.decl->resolveType(ctx);
+    }
+
+    type(this) = entry.alias_type_id;
+}
+
+void AliasTypeNode::compile(CompileContext &, int) {
+    throw ParserError(this->token, "AliasTypeNode should not be compiled.");
+}
+
+void AliasTypeNode::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "AliasTypeNode(" << this->alias_name << ")\n";
 }
 
 FunctionTypeNode::FunctionTypeNode(const Token &token,
