@@ -21,7 +21,8 @@
 #define should_free(nm) (!is_var(nm) && reg(this) != reg(nm))
 
 #define SKIP_CONSTANT_GET_REG(var_name)                                        \
-    if (ctx.function->chunk.currentOffset() != 0) {                            \
+    if (ctx.function->chunk.currentOffset() != 0 &&                            \
+        !ctx.nameTable.isRegisterVariableOwned(var_name)) {                    \
         auto last_instr = ctx.function->chunk.last();                          \
         if (GET_op(last_instr) == OpCode::Constant) {                          \
             uint16_t constant_index = GET_Bx(last_instr);                      \

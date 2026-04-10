@@ -59,6 +59,16 @@ NameEntry &NameTable::getEntry(EntryID id) {
     return this->entries[id];
 }
 
+bool NameTable::isRegisterVariableOwned(int reg) {
+    for (const auto &id : this->in_scope) {
+        const auto &entry = this->entries[id];
+        if (entry.register_index == reg)
+            return true;
+    }
+
+    return false;
+}
+
 void NameTable::enterScope() { this->current_depth++; }
 
 void NameTable::exitScope(bool pop) {

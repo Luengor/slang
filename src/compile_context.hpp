@@ -39,6 +39,8 @@ class NameTable {
 
     NameEntry &getEntry(EntryID id);
 
+    bool isRegisterVariableOwned(int reg);
+
     void enterScope();
     void exitScope(bool pop = true);
     void clearScope();
