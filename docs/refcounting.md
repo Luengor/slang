@@ -22,6 +22,9 @@ objects.
    because an upvalue may or may not be captured by a closure (test
    closures.conditional_closure), and the compolier cannot know it at compile
    time.
+ - Upvalues in the list of a CallFrame are counted. This is needed because the
+   clausure that created could have been released before the end of the current
+   CallFrame, and thoose upvalues need to be kept alive.
 
 ## How it is kept track of
 Because (most of the time) the interpreter does not know the type of the values
