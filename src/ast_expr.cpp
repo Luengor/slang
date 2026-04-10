@@ -39,11 +39,12 @@ void CallExpr::resolveType(CompileContext &ctx) {
     for (unsigned i = 0; i < this->arguments.size(); i++) {
         this->arguments[i]->resolveType(ctx);
 
+        const auto arg_token = this->arguments[i]->token;
         auto cast_result = CastExpr::tryCast(std::move(this->arguments[i]),
                                              function_type.param_types[i], ctx);
         if (!cast_result.has_value())
             throw ParserError(
-                this->arguments[i]->token,
+                arg_token,
                 std::format("Incompatible type for argument {} in call",
                             i + 1));
         this->arguments[i] = std::move(cast_result.value());
