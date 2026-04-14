@@ -3,10 +3,14 @@
 #include "object.hpp"
 #include <cassert>
 
+#include <tracy/Tracy.hpp>
+
 ASTNode::ASTNode(ASTNodeType type, const Token &token)
     : type(type), token(token) {}
 
 std::unique_ptr<FunctionObj> compileAST(ASTNode *root) {
+    ZoneScopedN("compileAST");
+
     // Create compile context
     TypeRegistry typeRegistry;
 

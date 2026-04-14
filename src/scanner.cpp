@@ -1,6 +1,8 @@
 #include "scanner.hpp"
 #include <cctype>
 
+#include <tracy/Tracy.hpp>
+
 char Scanner::peek() {
     if (this->current >= this->source.length())
         return '\0';
@@ -227,6 +229,8 @@ Token Scanner::makeIdentifier() {
 }
 
 std::vector<Token> Scanner::scan(const std::string &input) {
+    ZoneScopedN("Scanner::scan");
+
     std::vector<Token> tokens;
     this->source = std::move(input);
 

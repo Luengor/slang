@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 project(slang)
+include(FetchContent)
 
 # things
 set(CMAKE_CXX_STANDARD 23)
@@ -9,6 +10,16 @@ option(DEBUG_PRINT "Enable debug printing" OFF)
 option(RELEASE "Define NDEBUG and enable optimizations" OFF)
 
 set(TARGET_NAME slang)
+
+# tracy
+FetchContent_Declare(
+    tracy
+    GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+    GIT_TAG v0.13.1 
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+)
+FetchContent_MakeAvailable(tracy)
 
 set(SOURCES
     src/ast_core.cpp
@@ -21,6 +32,7 @@ set(SOURCES
     src/compile_context.cpp
     src/error.cpp
     src/native.cpp
+    src/new_delete.cpp
     src/object.cpp
     src/parser.cpp
     src/scanner.cpp
@@ -30,6 +42,8 @@ set(SOURCES
 )
 
 add_executable(${TARGET_NAME} ${SOURCES} src/main.cpp)
+
+target_link_libraries(${TARGET_NAME} PUBLIC TracyClient)
 
 # Global stuff
 if (${DEBUG_PRINT})

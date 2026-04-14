@@ -6,6 +6,8 @@
 #include <memory>
 #include <stdexcept>
 
+#include <tracy/Tracy.hpp>
+
 #ifdef DEBUG_PRINT
 #include <iostream>
 #endif
@@ -13,6 +15,8 @@
 Compiler::Compiler(const std::string &source) : source(source) {}
 
 std::unique_ptr<FunctionObj> Compiler::compile() {
+    ZoneScopedN("Compiler::compile");
+
     // Scan source
     Scanner scanner;
     std::vector<Token> tokens = scanner.scan(this->source);

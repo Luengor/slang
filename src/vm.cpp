@@ -7,6 +7,8 @@
 #include <memory>
 #include <print>
 
+#include <tracy/Tracy.hpp>
+
 #define TODO                                                                   \
     throw std::runtime_error("TODO at " + std::string(__FILE__) + ":" +        \
                              std::to_string(__LINE__))
@@ -42,6 +44,8 @@ void CallFrame::cleanUpvalues(RegFile_t &regs) {
 }
 
 InterpretResult VM::interpret(const std::string &source) {
+    ZoneScopedN("VM::interpret");
+
     // Compile the source code into a closure
     Compiler compiler(source);
     FunctionObj *function;
@@ -73,6 +77,8 @@ InterpretResult VM::interpret(const std::string &source) {
 }
 
 InterpretResult VM::run() {
+    ZoneScopedN("VM::run");
+
 #define frame this->call_frames.back()
 #define function frame.closure->function
 #define registers (this->regs.data() + frame.stack_base)
@@ -81,6 +87,7 @@ InterpretResult VM::run() {
 
 #define BINARY_EXPR_2(op, from_field, to_field)                                \
     {                                                                          \
+        ZoneScopedN("VM::Op" #op #from_field #to_field);                       \
         const uint8_t target_r = GET_A(instruction);                           \
         const uint16_t left_rc = GET_B(instruction);                           \
         const uint16_t right_rc = GET_C(instruction);                          \
@@ -93,6 +100,7 @@ InterpretResult VM::run() {
 
 #define CAST_EXPR(from_field, to_field)                                        \
     {                                                                          \
+        ZoneScopedN("VM::Cast" #from_field #to_field);                         \
         const uint8_t target_r = GET_A(instruction);                           \
         const uint32_t from_rc = GET_Bx(instruction);                          \
         registers[target_r].to_field =                                         \
@@ -118,6 +126,8 @@ InterpretResult VM::run() {
         switch (op) {
             case OpCode::Return:
                 {
+                    ZoneScopedN("VM::Return");
+
                     if (this->call_frames.size() == 1) {
                         return InterpretResult::Ok;
                     } else {
@@ -151,6 +161,8 @@ InterpretResult VM::run() {
 
             case OpCode::Call:
                 {
+                    ZoneScopedN("VM::Call");
+
                     const uint16_t callee_ro = GET_B(instruction);
                     Object *callee =
                         callee_ro < 256
@@ -209,6 +221,8 @@ InterpretResult VM::run() {
 
             case OpCode::Constant:
                 {
+                    ZoneScopedN("VM::Constant");
+
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t constant = GET_Bx(instruction);
                     registers[reg] = function->chunk.constants[constant];
@@ -217,6 +231,8 @@ InterpretResult VM::run() {
 
             case OpCode::Object:
                 {
+                    ZoneScopedN("VM::Object");
+
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t object_index = GET_Bx(instruction);
                     Object *object =
@@ -236,6 +252,8 @@ InterpretResult VM::run() {
 
             case OpCode::Closure:
                 {
+                    ZoneScopedN("VM::Closure");
+
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t function_o = GET_Bx(instruction);
                     FunctionObj *func = static_cast<FunctionObj *>(
@@ -247,6 +265,8 @@ InterpretResult VM::run() {
 
             case OpCode::GetUpvalue:
                 {
+                    ZoneScopedN("VM::GetUpvalue");
+
                     const uint8_t to_r = GET_A(instruction);
                     const uint32_t upvalue_index = GET_Bx(instruction);
 
@@ -269,6 +289,8 @@ InterpretResult VM::run() {
 
             case OpCode::SetUpvalue:
                 {
+                    ZoneScopedN("VM::SetUpvalue");
+
                     const uint8_t upvalue_index = GET_A(instruction);
                     const uint32_t from_rc = GET_Bx(instruction);
 
@@ -300,6 +322,8 @@ InterpretResult VM::run() {
 
             case OpCode::LiftUpvalue:
                 {
+                    ZoneScopedN("VM::LiftUpvalue");
+
                     const int absolute_register =
                         frame.stack_base + GET_Bx(instruction);
                     const auto &target_value = this->regs[absolute_register];
@@ -347,6 +371,8 @@ InterpretResult VM::run() {
 
             case OpCode::Retain:
                 {
+                    ZoneScopedN("VM::Retain");
+
                     const auto reg = GET_A(instruction);
                     registers[reg].object->retain();
                     break;
@@ -354,6 +380,8 @@ InterpretResult VM::run() {
 
             case OpCode::Release:
                 {
+                    ZoneScopedN("VM::Release");
+
                     const auto reg = GET_A(instruction);
                     registers[reg].object->release();
                     break;
@@ -434,6 +462,8 @@ InterpretResult VM::run() {
 
             case OpCode::Copy:
                 {
+                    ZoneScopedN("VM::Copy");
+
                     const uint8_t to_r = GET_A(instruction);
                     const uint32_t from_r = GET_Bx(instruction);
                     registers[to_r] = registers[from_r];
@@ -442,6 +472,8 @@ InterpretResult VM::run() {
 
             case OpCode::Jmp:
                 {
+                    ZoneScopedN("VM::Jmp");
+
                     const int32_t offset = GET_sBx(instruction);
                     this->ip += offset;
                     break;
@@ -449,6 +481,8 @@ InterpretResult VM::run() {
 
             case OpCode::JmpIfFalse:
                 {
+                    ZoneScopedN("VM::JmpIfFalse");
+
                     const uint8_t reg = GET_A(instruction);
                     if (!registers[reg].boolean) {
                         const int32_t offset = GET_sBx(instruction);
@@ -459,6 +493,8 @@ InterpretResult VM::run() {
 
             case OpCode::JmpIfTrue:
                 {
+                    ZoneScopedN("VM::JmpIfTrue");
+
                     const uint8_t reg = GET_A(instruction);
                     if (registers[reg].boolean) {
                         const int32_t offset = GET_sBx(instruction);
@@ -510,6 +546,8 @@ InterpretResult VM::run() {
                     break;
                 }
         }
+
+        FrameMark;
     }
 
     return InterpretResult::Ok;

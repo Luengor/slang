@@ -10,6 +10,8 @@
 #include <memory>
 #include <vector>
 
+#include <tracy/Tracy.hpp>
+
 /// Parser helper methods
 
 void Parser::advance() {
@@ -592,6 +594,8 @@ ASTNodePtr Parser::function() {
 Parser::Parser(const std::vector<Token> &tokens) : current(0), tokens(tokens) {}
 
 ASTNodePtr Parser::parse() {
+    ZoneScopedN("Parser::parse");
+
     std::vector<ASTNodePtr> statements;
     bool failed = false;
 
