@@ -61,7 +61,7 @@ to manage the reference count of objects.
 Some instructions implicitly modify the reference count of objects:
  - `Call` retains the closure or function being called and releases it when the
    call is done.
- - `ArrayNew` retains object elements moved into the new array.
+ - `ArrayCreate` retains object elements moved into the new array.
  - `ArrayGet` retains object elements loaded from arrays into registers.
  - `ArraySet` releases overwritten object elements and retains new object
    elements.

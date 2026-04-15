@@ -22,7 +22,7 @@ Heavily inspired by Lua's instruction set :)
 Return          return RC[B]
 Self            R[A] <- self
 Call            R[C] <- RO[B](R[C], ..., R[C + A - 1])
-ArrayNew        R[A] <- array(R[B], ..., R[B + (C&0xff) - 1])
+ArrayCreate     R[A] <- array(R[B], ..., R[B + (C&0xff) - 1])
 ArrayGet        R[A] <- RC[B][RC[C]]
 ArraySet        R[A][RC[B]] <- RC[C]
 Jmp             PC <- PC + sBx 
@@ -63,5 +63,5 @@ Notes:
 * RO\[x] denotes `x < 256 ? R[x] : O[x - 256]`.
 * Call calls the function in R\[B] / O\[B - 256] with A arguments
   starting from R\[C\]. The result is stored in R\[C\].
-* ArrayNew uses the high bit of C (0x100) as an internal flag for object
+* ArrayCreate uses the high bit of C (0x100) as an internal flag for object
   element arrays and the low 8 bits as element count.
