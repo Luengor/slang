@@ -48,13 +48,14 @@ parameters  -> ( typeExpr IDENTIFIER ( "," typeExpr IDENTIFIER )* )?
 ## Operator precedence
 From highest to lowest:
 1. Parentheses `()`
-2. Unary operators: `-`, `not`
-3. Factor: `*`, `/`
-4. Term: `+`, `-`
-5. Comparison: `>`, `>=`, `<`, `<=`
-6. Equality: `==`, `!=`
-7. Logic AND: `and`
-8. Logic OR: `or`
-9. Ternary: `? :`
-7. Assignment: `=`
+2. Call
+3. Unary operators: `-`, `not`
+4. Factor: `*`, `/`
+5. Term: `+`, `-`
+6. Comparison: `>`, `>=`, `<`, `<=`
+7. Equality: `==`, `!=`
+8. Logic AND: `and`
+9. Logic OR: `or`
+10. Ternary: `? :`
+11. Assignment: `=`
 

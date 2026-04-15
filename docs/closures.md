@@ -9,7 +9,7 @@ functions, closures and upvalues.
 
 ### Function
 Function objects are the static part of a closure. All data in them is immutable
-and known at compile time. Appart from the name, type info and bytecode, they also
+and known at compile time. Apart from the name, type info and bytecode, they also
 contain a list of upvalue descriptors.
 
 These descriptors (UpvalueInfo) are used to determine how to create the UpValues
@@ -25,7 +25,8 @@ UpValues are the runtime representation of captured variables. They are always
 created by the `Closure` instruction, which creates a closure and fills its
 upvalues according to the upvalue descriptors of the function object.
 
-UpValues have a series of quirks that its important to keep in mind:
+UpValues have a series of quirks that should be kept in mind when dealing with
+them:
  - An Upvalue always refers to a variable in the register file or to the value
    they contain. That value can be either an object or a primitive, but it
    **never** is another UpValue. More generally, almost everywhere where an
@@ -39,7 +40,7 @@ UpValues have a series of quirks that its important to keep in mind:
    shared between them.
 
 Upvalues contain the following fields:
- - Wether the upvalue is open or closed. Open upvalues point to a register in
+ - Whether the upvalue is open or closed. Open upvalues point to a register in
    the stack, while closed upvalues "hold" the value of the variable in them. 
  - Whether the upvalue is an object and needs to be retained and released.
  - The data of the upvalue, which can be either a register index or a value,
@@ -84,7 +85,7 @@ depending on whether they are referenced by another object or not.
 On type resolution, when all other methods of name resolution fail, the
 compiler checks if a parent context exists and tries to perform the same lookup
 on it recursively. If a variable is found, it is marked as captured on that and
-following contexts until the current one. Intermidiate contexts and the current
+following contexts until the current one. Intermediate contexts and the current
 one mark the variable as an upvalue.
 
 To clarify, a variable is marked is marked as captured if an inner context
@@ -94,7 +95,7 @@ captures it, and it is marked as an upvalue if the current context captures it.
 Outer context:
   auto a  -> captured, not an upvalue
 
-  Intermidiate context:
+  Intermediate context:
     (a) -> captured, upvalue
 
     Inner context:
@@ -111,12 +112,12 @@ they behave just like normal variables. Variables marked as upvalues usually
 follow a different compilation path.
 
 Instead of normal register assignment, they use the
-`CompileContext::getUpvaluIndex`. This method checks if there is already an
+`CompileContext::getUpvalueIndex`. This method checks if there is already an
 upvalue for the variable. If not, it recursively checks on the same variable on
 the parent context. Is should always end up finding the starting variable,
 which should be marked as captured but not an upvalue. It will have a normal
 register assigned to it. From there, the method creates a new upvalue pointing
-to that register, and intermidiate contexts create new upvalues pointing to the
+to that register, and intermediate contexts create new upvalues pointing to the
 previous one until it reaches the top context.
 
 Keep in mind that this upvalue chaining is only a compilation detail. At
@@ -130,7 +131,7 @@ Outer context:
   auto b  -> captured, not an upvalue, assigned to register 1
   auto c  -> captured, not an upvalue, assigned to register 2
 
-  Intermidiate context:
+  Intermediate context:
     b  -> not captured, upvalue, assigned to upvalue 0 which points to register 1
     (c) -> captured, upvalue, assigned to upvalue 1 which points to register 2
 

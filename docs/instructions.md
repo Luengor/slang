@@ -50,7 +50,7 @@ Cast            R[A] <- RC[B]
 ```
 
 Notes:
-* Instructions with IFO suffix operate on integers, floats or booleans
+* Instructions with IFB suffix operate on integers, floats or booleans
   respectively.
 * R\[x] denotes register x.
 * PC denotes the program counter.

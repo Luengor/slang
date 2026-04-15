@@ -20,11 +20,11 @@ objects.
    closed, the value is moved to the heap. Because of that, a retain for the
    upvalue and a release for the register are emitted. This cannot be omitted
    because an upvalue may or may not be captured by a closure (test
-   closures.conditional_closure), and the compolier cannot know it at compile
+   closures.conditional_closure), and the compiler cannot know it at compile
    time.
  - Upvalues in the list of a CallFrame are counted. This is needed because the
-   clausure that created could have been released before the end of the current
-   CallFrame, and thoose upvalues need to be kept alive.
+   closure that created could have been released before the end of the current
+   CallFrame, and those upvalues need to be kept alive.
 
 ## How it is kept track of
 Because (most of the time) the interpreter does not know the type of the values
@@ -54,8 +54,6 @@ to manage the reference count of objects.
  - Releasing the arguments of a function call is the responsibility of the
    callee, not the caller. They are treated as locals variables inside the
    callee.
- - When an upvalue is written to, the old value is released from the registers
-   if its not needed there anymore.
 
 ### Implicit reference counting
 Some instructions implicitly modify the reference count of objects:
