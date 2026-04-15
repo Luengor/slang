@@ -58,6 +58,9 @@ enum class OpCode : uint8_t {
     B2F,
 
     Call,
+    ArrayCreate,
+    ArrayGet,
+    ArraySet,
 
     I2Str,
     F2Str,

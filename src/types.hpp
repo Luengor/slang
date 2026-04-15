@@ -35,7 +35,15 @@ struct FunctionType {
     }
 };
 
-using TypeData = std::variant<PrimitiveType, FunctionType>;
+struct ArrayType {
+    TypeID element_type;
+
+    bool operator==(const ArrayType &other) const noexcept {
+        return this->element_type == other.element_type;
+    }
+};
+
+using TypeData = std::variant<PrimitiveType, FunctionType, ArrayType>;
 
 class TypeRegistry {
     std::vector<TypeData> types;
@@ -46,6 +54,7 @@ class TypeRegistry {
     TypeID getPrimitive(PrimitiveKind kind);
     TypeID getFunction(const std::vector<TypeID> &param_types,
                        TypeID return_type);
+    TypeID getArray(TypeID element_type);
     TypeID getFromValue(const TypedValue &value);
 
     inline TypeID noneType() { return getPrimitive(PrimitiveKind::None); }
@@ -53,6 +62,8 @@ class TypeRegistry {
     bool isPrimitive(TypeID typeID);
     bool isObject(TypeID typeID);
     bool isFunction(TypeID typeID);
+    bool isArray(TypeID typeID);
+    TypeID getArrayElementType(TypeID typeID);
 
     inline TypeData getTypeData(TypeID typeID) const {
         return this->types[typeID];

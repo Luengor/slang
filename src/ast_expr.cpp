@@ -163,10 +163,12 @@ void AssignExpr::resolveType(CompileContext &ctx) {
     this->target->resolveType(ctx);
     this->value->resolveType(ctx);
 
-    // Self is not a valid assignment target
-    VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
-    if (varNode->name == "self") {
-        throw ParserError(this->token, "Cannot assign to 'self' variable.");
+    if (this->target->type == ASTNodeType::Variable) {
+        // Self is not a valid assignment target
+        VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
+        if (varNode->name == "self") {
+            throw ParserError(this->token, "Cannot assign to 'self' variable.");
+        }
     }
 
     // Ensure the value can be assigned to the target
@@ -184,23 +186,34 @@ void AssignExpr::resolveType(CompileContext &ctx) {
 
 void AssignExpr::compile(CompileContext &ctx, int reg) {
     CompileGuard;
-    // Get the variable node from the target
-    VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
 
-    // Ensure it's a valid assignment target
-    if (!std::holds_alternative<EntryID>(varNode->resolution)) {
-        throw ParserError(this->token,
-                          "Invalid assignment target during compilation.");
+    if (this->target->type == ASTNodeType::Variable) {
+        // Get the variable node from the target
+        VariableNode *varNode = dynamic_cast<VariableNode *>(this->target.get());
+
+        // Ensure it's a valid assignment target
+        if (!std::holds_alternative<EntryID>(varNode->resolution)) {
+            throw ParserError(this->token,
+                              "Invalid assignment target during compilation.");
+        }
+
+        // Compile upvalue or local variable
+        const auto local_entry = std::get<EntryID>(varNode->resolution);
+        const auto &entry = ctx.nameTable.getEntry(local_entry);
+        if (entry.is_upvalue) {
+            this->compileUpvalue(ctx, reg);
+        } else {
+            this->compileLocal(ctx, local_entry, reg);
+        }
+        return;
     }
 
-    // Compile upvalue or local variable
-    const auto local_entry = std::get<EntryID>(varNode->resolution);
-    const auto &entry = ctx.nameTable.getEntry(local_entry);
-    if (entry.is_upvalue) {
-        this->compileUpvalue(ctx, reg);
-    } else {
-        this->compileLocal(ctx, local_entry, reg);
+    if (this->target->type == ASTNodeType::IndexExpr) {
+        this->compileIndex(ctx, reg);
+        return;
     }
+
+    throw ParserError(this->token, "Invalid assignment target.");
 }
 
 void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry,
@@ -254,6 +267,61 @@ void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
     // Store the upvalue
     ctx.function->chunk.writeABx(OpCode::SetUpvalue, upvalue_index, reg(this),
                                  this->token.line);
+}
+
+void AssignExpr::compileIndex(CompileContext &ctx, int reg) {
+    auto *index_expr = static_cast<IndexExpr *>(this->target.get());
+
+    index_expr->array->compile(ctx);
+    index_expr->index->compile(ctx);
+
+    if (reg != -1) {
+        reg(this) = reg;
+        is_var(this) = false;
+        this->value->compile(ctx, reg(this));
+    } else {
+        this->value->compile(ctx);
+
+        if (!is_var(this->value)) {
+            reg(this) = reg(this->value);
+            is_var(this) = false;
+        } else {
+            reg(this) = ctx.allocateRegister();
+            is_var(this) = false;
+            ctx.function->chunk.writeABx(OpCode::Copy, reg(this), reg(this->value),
+                                         this->token.line);
+            if (ctx.typeRegistry.isObject(type(this->value))) {
+                ctx.function->chunk.writeABx(OpCode::Retain, reg(this), 0,
+                                             this->token.line);
+            }
+        }
+    }
+
+    int index_rc = reg(index_expr->index);
+    SKIP_CONSTANT_GET_REG(index_rc);
+
+    ctx.function->chunk.writeABC(OpCode::ArraySet, reg(index_expr->array),
+                                 index_rc, reg(this), this->token.line);
+
+    if (should_free(index_expr->array)) {
+        if (ctx.typeRegistry.isObject(type(index_expr->array))) {
+            ctx.function->chunk.writeABx(OpCode::Release, reg(index_expr->array),
+                                         0, this->token.line);
+        }
+        ctx.freeRegister(reg(index_expr->array));
+    }
+
+    if (should_free(index_expr->index)) {
+        ctx.freeRegister(reg(index_expr->index));
+    }
+
+    if (should_free(this->value)) {
+        if (ctx.typeRegistry.isObject(type(this->value))) {
+            ctx.function->chunk.writeABx(OpCode::Release, reg(this->value), 0,
+                                         this->token.line);
+        }
+        ctx.freeRegister(reg(this->value));
+    }
 }
 
 void AssignExpr::print(int indent) {

@@ -97,3 +97,18 @@ struct LogicExpr : public ASTNode {
     void compileAnd(CompileContext &ctx);
     void compileOr(CompileContext &ctx);
 };
+
+struct ArrayLiteralExpr : public ASTNode {
+    std::vector<ASTNodePtr> elements;
+
+    ArrayLiteralExpr(const Token &token, std::vector<ASTNodePtr> elements);
+    AST_OVERRIDES;
+};
+
+struct IndexExpr : public ASTNode {
+    ASTNodePtr array;
+    ASTNodePtr index;
+
+    IndexExpr(const Token &token, ASTNodePtr array, ASTNodePtr index);
+    AST_OVERRIDES;
+};

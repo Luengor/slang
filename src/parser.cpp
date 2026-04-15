@@ -84,13 +84,24 @@ void Parser::syncronize() {
 
 ASTNodePtr Parser::typeExpr() {
     // Try primitive type first
+    ASTNodePtr node;
     if (this->match({Token::Type::Fixed, Token::Type::Float, Token::Type::Bool,
                      Token::Type::Str})) {
-        return this->primitiveType();
+        node = this->primitiveType();
+    } else {
+        // Then try function type
+        node = this->functionType();
     }
 
-    // Then try function type
-    return this->functionType();
+    // Parse array suffixes
+    while (this->match({Token::Type::LeftBracket})) {
+        Token bracket = this->previous();
+        this->consume(Token::Type::RightBracket,
+                      "Expected ']' after array type suffix.");
+        node = std::make_unique<ArrayTypeNode>(bracket, std::move(node));
+    }
+
+    return node;
 }
 
 ASTNodePtr Parser::functionType() {
@@ -335,8 +346,9 @@ ASTNodePtr Parser::assignment() {
         Token equals = this->previous();
         ASTNodePtr value = this->assignment();
 
-        // Perform assignment only if the left side is a VariableNode
-        if (expr->type != ASTNodeType::Variable) {
+        // Perform assignment only if the left side is a VariableNode or IndexExpr
+        if (expr->type != ASTNodeType::Variable &&
+            expr->type != ASTNodeType::IndexExpr) {
             throw ParserError(equals, "Invalid assignment target.");
         }
 
@@ -486,6 +498,8 @@ ASTNodePtr Parser::call() {
     while (true) {
         if (this->match({Token::LeftParen}))
             expr = this->finishCall(std::move(expr));
+        else if (this->match({Token::LeftBracket}))
+            expr = this->finishIndex(std::move(expr));
         else
             break;
     };
@@ -507,6 +521,15 @@ ASTNodePtr Parser::finishCall(ASTNodePtr expr) {
 
     return std::make_unique<CallExpr>(token, std::move(expr),
                                       std::move(arguments));
+}
+
+ASTNodePtr Parser::finishIndex(ASTNodePtr expr) {
+    ASTNodePtr index_expr = this->expression();
+    Token bracket =
+        this->consume(Token::Type::RightBracket, "Expected ']' after index.");
+
+    return std::make_unique<IndexExpr>(bracket, std::move(expr),
+                                       std::move(index_expr));
 }
 
 ASTNodePtr Parser::primary() {
@@ -610,3 +633,18 @@ ASTNodePtr Parser::parse() {
 
     return std::make_unique<BlockStmt>(Token{}, std::move(statements));
 }
+    if (this->match({Token::Type::LeftBracket})) {
+        Token open_bracket = this->previous();
+        std::vector<ASTNodePtr> elements;
+
+        if (!this->check(Token::Type::RightBracket)) {
+            do {
+                elements.push_back(this->expression());
+            } while (this->match({Token::Type::Comma}));
+        }
+
+        this->consume(Token::Type::RightBracket,
+                      "Expected ']' after array literal.");
+        return std::make_unique<ArrayLiteralExpr>(open_bracket,
+                                                  std::move(elements));
+    }

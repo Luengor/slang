@@ -6,6 +6,8 @@
 
 #include "ast_core.hpp"
 
+struct IndexExpr;
+
 struct CallExpr : public ASTNode {
     ASTNodePtr callee;
     std::vector<ASTNodePtr> arguments;
@@ -25,4 +27,5 @@ struct AssignExpr : public ASTNode {
   private:
     void compileLocal(CompileContext &ctx, EntryID local_entry, int reg);
     void compileUpvalue(CompileContext &ctx, int reg);
+    void compileIndex(CompileContext &ctx, int reg);
 };

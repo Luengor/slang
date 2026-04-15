@@ -207,6 +207,90 @@ InterpretResult VM::run() {
                     break;
                 }
 
+            case OpCode::ArrayCreate:
+                {
+                    const uint8_t to_r = GET_A(instruction);
+                    const uint16_t start_r = GET_B(instruction);
+                    const uint16_t count_and_flags = GET_C(instruction);
+                    const uint16_t count = count_and_flags & 0xff;
+                    const bool elements_are_objects = (count_and_flags & 0x100) != 0;
+
+                    std::vector<Value> elements;
+                    elements.reserve(count);
+                    for (uint16_t i = 0; i < count; ++i) {
+                        Value value = registers[start_r + i];
+                        if (elements_are_objects && value.object) {
+                            value.object->retain();
+                        }
+                        elements.push_back(value);
+                    }
+
+                    registers[to_r].object =
+                        new ArrayObj(0, elements_are_objects, std::move(elements));
+                    break;
+                }
+
+            case OpCode::ArrayGet:
+                {
+                    const uint8_t to_r = GET_A(instruction);
+                    const uint16_t array_rc = GET_B(instruction);
+                    const uint16_t index_rc = GET_C(instruction);
+
+                    Object *array_object =
+                        array_rc < 256 ? registers[array_rc].object
+                                       : function->chunk.object_constants[array_rc - 256];
+                    if (array_object->obj_type != Object::Type::Array) {
+                        std::print("Runtime error: trying to index a non-array value.\n");
+                        return InterpretResult::RuntimeError;
+                    }
+
+                    ArrayObj *array = static_cast<ArrayObj *>(array_object);
+                    const int64_t index = RC(index_rc).fixed;
+                    if (index < 0 ||
+                        index >= static_cast<int64_t>(array->elements.size())) {
+                        std::print("Runtime error: array index out of bounds.\n");
+                        return InterpretResult::RuntimeError;
+                    }
+
+                    registers[to_r] = array->elements[index];
+                    if (array->elements_are_objects && registers[to_r].object) {
+                        registers[to_r].object->retain();
+                    }
+                    break;
+                }
+
+            case OpCode::ArraySet:
+                {
+                    const uint8_t array_r = GET_A(instruction);
+                    const uint16_t index_rc = GET_B(instruction);
+                    const uint16_t value_rc = GET_C(instruction);
+
+                    Object *array_object = registers[array_r].object;
+                    if (array_object->obj_type != Object::Type::Array) {
+                        std::print(
+                            "Runtime error: trying to assign through a non-array value.\n");
+                        return InterpretResult::RuntimeError;
+                    }
+
+                    ArrayObj *array = static_cast<ArrayObj *>(array_object);
+                    const int64_t index = RC(index_rc).fixed;
+                    if (index < 0 ||
+                        index >= static_cast<int64_t>(array->elements.size())) {
+                        std::print("Runtime error: array index out of bounds.\n");
+                        return InterpretResult::RuntimeError;
+                    }
+
+                    if (array->elements_are_objects && array->elements[index].object) {
+                        array->elements[index].object->release();
+                    }
+
+                    array->elements[index] = RC(value_rc);
+                    if (array->elements_are_objects && array->elements[index].object) {
+                        array->elements[index].object->retain();
+                    }
+                    break;
+                }
+
             case OpCode::Constant:
                 {
                     const uint8_t reg = GET_A(instruction);

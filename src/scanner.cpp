@@ -69,6 +69,10 @@ Token Scanner::scanToken() {
             return this->makeToken(Token::LeftBrace);
         case '}':
             return this->makeToken(Token::RightBrace);
+        case '[':
+            return this->makeToken(Token::LeftBracket);
+        case ']':
+            return this->makeToken(Token::RightBracket);
         case '-':
             if (this->peek() == '>') {
                 this->current++;

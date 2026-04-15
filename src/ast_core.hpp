@@ -22,6 +22,9 @@ enum class ASTNodeType {
     WhileStmt,
     PrimitiveType,
     FunctionType,
+    ArrayType,
+    ArrayLiteralExpr,
+    IndexExpr,
     CallExpr,
     ReturnStmt,
 };

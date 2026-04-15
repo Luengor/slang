@@ -83,3 +83,25 @@ void FunctionTypeNode::print(int indent) {
     }
     this->return_type->print(indent + 1);
 }
+
+ArrayTypeNode::ArrayTypeNode(const Token &token, ASTNodePtr element_type)
+    : ASTNode(ASTNodeType::ArrayType, token),
+      element_type(std::move(element_type)) {}
+
+void ArrayTypeNode::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    this->element_type->resolveType(ctx);
+    type(this) = ctx.typeRegistry.getArray(type(this->element_type));
+}
+
+void ArrayTypeNode::compile(CompileContext &, int) {
+    throw ParserError(this->token, "ArrayTypeNode should not be compiled.");
+}
+
+void ArrayTypeNode::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "ArrayTypeNode\n";
+    this->element_type->print(indent + 1);
+}

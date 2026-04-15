@@ -10,6 +10,8 @@ struct Token {
         RightParen,
         LeftBrace,
         RightBrace,
+        LeftBracket,
+        RightBracket,
         Minus,
         Plus,
         Slash,

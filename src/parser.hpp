@@ -48,8 +48,9 @@ class Parser {
     void syncronize();
 
     ASTNodePtr finishCall(ASTNodePtr expr);
+    ASTNodePtr finishIndex(ASTNodePtr expr);
 
-    // typeExpr -> functionType | primitiveType
+    // typeExpr -> ( functionType | primitiveType ) ( "[" "]" )*
     ASTNodePtr typeExpr();
 
     // functionType -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" typeExpr
@@ -89,7 +90,8 @@ class Parser {
     // expression -> assignment
     ASTNodePtr expression();
 
-    // assignment  -> IDENTIFIER "=" assignment | ternary
+    // assignment  -> ( IDENTIFIER | call "[" expression "]" ) "=" assignment |
+    // ternary
     ASTNodePtr assignment();
 
     // ternary -> logicOr ( "?" expression ":" ternary )?
@@ -116,11 +118,13 @@ class Parser {
     // unary -> ( "-" | "not" ) unary | call
     ASTNodePtr unary();
 
-    // call -> primary ( "(" arguments? ")" )*
+    // call -> primary ( "(" arguments? ")" | "[" expression "]" )*
     ASTNodePtr call();
 
     // primary -> NUMBER | STRING | "true" | "false" | "(" expression ")" |
-    //            IDENTIFIER | function
+    //            IDENTIFIER | function | arrayLiteral
+
+    // arrayLiteral -> "[" ( expression ( "," expression )* )? "]"
     ASTNodePtr primary();
 
     // function -> "(" parameters ")" "->" ( typeExpr | "none" ) block

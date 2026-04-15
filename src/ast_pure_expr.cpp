@@ -165,6 +165,15 @@ void LiteralNode::print_object() {
                 break;
             }
 
+        case Object::Type::Array:
+            {
+                ArrayObj *arrayObj =
+                    static_cast<ArrayObj *>(this->value.second.object);
+                std::println("Literal(<Array size={}>)",
+                             arrayObj->elements.size());
+                break;
+            }
+
         case Object::Type::Function:
             {
                 std::println("Literal(<Function Object>)");
@@ -1123,4 +1132,164 @@ void LogicExpr::print(int indent) {
     std::cout << "LogicExpr(" << this->token.lexeme << ")\n";
     this->left->print(indent + 1);
     this->right->print(indent + 1);
+}
+
+ArrayLiteralExpr::ArrayLiteralExpr(const Token &token,
+                                   std::vector<ASTNodePtr> elements)
+    : ASTNode(ASTNodeType::ArrayLiteralExpr, token),
+      elements(std::move(elements)) {}
+
+void ArrayLiteralExpr::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    if (this->elements.empty()) {
+        throw ParserError(this->token,
+                          "Empty array literals are not supported.");
+    }
+
+    for (auto &element : this->elements) {
+        element->resolveType(ctx);
+    }
+
+    TypeID element_type = type(this->elements[0]);
+    for (size_t i = 1; i < this->elements.size(); ++i) {
+        if (type(this->elements[i]) == element_type)
+            continue;
+
+        auto cast_to_current =
+            CastExpr::tryCast(std::move(this->elements[i]), element_type, ctx);
+        if (cast_to_current.has_value()) {
+            this->elements[i] = std::move(cast_to_current.value());
+            continue;
+        }
+
+        auto cast_current_to_new =
+            ctx.typeRegistry.getCastOp(element_type, type(this->elements[i]));
+        if (!cast_current_to_new.has_value()) {
+            throw ParserError(this->token,
+                              "Incompatible element types in array literal.");
+        }
+
+        const TypeID new_element_type = type(this->elements[i]);
+        for (size_t j = 0; j < i; ++j) {
+            auto casted =
+                CastExpr::tryCast(std::move(this->elements[j]), new_element_type,
+                                  ctx);
+            if (!casted.has_value()) {
+                throw ParserError(
+                    this->token,
+                    "Incompatible element types in array literal.");
+            }
+            this->elements[j] = std::move(casted.value());
+        }
+        element_type = new_element_type;
+    }
+
+    type(this) = ctx.typeRegistry.getArray(element_type);
+}
+
+void ArrayLiteralExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
+    const TypeID element_type = ctx.typeRegistry.getArrayElementType(type(this));
+    const bool element_is_object = ctx.typeRegistry.isObject(element_type);
+
+    std::vector<int> element_registers;
+    element_registers.reserve(this->elements.size());
+    for (size_t i = 0; i < this->elements.size(); ++i)
+        element_registers.push_back(ctx.allocateFromTop());
+
+    reg(this) = reg == -1 ? ctx.allocateRegister() : reg;
+
+    for (size_t i = 0; i < this->elements.size(); ++i) {
+        this->elements[i]->compile(ctx, element_registers[i]);
+    }
+
+    ctx.function->chunk.writeABC(
+        OpCode::ArrayCreate, reg(this), element_registers[0],
+        static_cast<uint16_t>(this->elements.size() + (element_is_object ? 256 : 0)),
+        this->token.line);
+
+    for (int i = static_cast<int>(this->elements.size()) - 1; i >= 0; --i) {
+        if (ctx.typeRegistry.isObject(type(this->elements[i]))) {
+            ctx.function->chunk.writeABx(OpCode::Release, element_registers[i], 0,
+                                         this->token.line);
+        }
+        ctx.freeRegister(element_registers[i]);
+    }
+
+    ctx.fixupRegisters();
+}
+
+void ArrayLiteralExpr::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "ArrayLiteralExpr\n";
+    for (auto &element : this->elements)
+        element->print(indent + 1);
+}
+
+IndexExpr::IndexExpr(const Token &token, ASTNodePtr array, ASTNodePtr index)
+    : ASTNode(ASTNodeType::IndexExpr, token), array(std::move(array)),
+      index(std::move(index)) {}
+
+void IndexExpr::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    this->array->resolveType(ctx);
+    this->index->resolveType(ctx);
+
+    if (!ctx.typeRegistry.isArray(type(this->array))) {
+        throw ParserError(this->token, "Index target is not an array.");
+    }
+
+    const auto fixedType = ctx.typeRegistry.getPrimitive(PrimitiveKind::Fixed);
+    auto casted_index = CastExpr::tryCast(std::move(this->index), fixedType, ctx);
+    if (!casted_index.has_value()) {
+        throw ParserError(this->token, "Array index must be a fixed value.");
+    }
+    this->index = std::move(casted_index.value());
+
+    type(this) = ctx.typeRegistry.getArrayElementType(type(this->array));
+}
+
+void IndexExpr::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+
+    this->array->compile(ctx);
+    this->index->compile(ctx);
+
+    if (reg != -1) {
+        reg(this) = reg;
+    } else if (!is_var(this->array) && ctx.typeRegistry.isObject(type(this->array))) {
+        reg(this) = ctx.allocateRegister();
+    } else {
+        reg(this) = reg_var_alloc(this->array);
+    }
+
+    int index_rc = reg(this->index);
+    SKIP_CONSTANT_GET_REG(index_rc);
+
+    ctx.function->chunk.writeABC(OpCode::ArrayGet, reg(this), reg(this->array),
+                                 index_rc, this->token.line);
+
+    if (should_free(this->array)) {
+        if (ctx.typeRegistry.isObject(type(this->array))) {
+            ctx.function->chunk.writeABx(OpCode::Release, reg(this->array), 0,
+                                         this->token.line);
+        }
+        ctx.freeRegister(reg(this->array));
+    }
+
+    if (should_free(this->index)) {
+        ctx.freeRegister(reg(this->index));
+    }
+}
+
+void IndexExpr::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "IndexExpr\n";
+    this->array->print(indent + 1);
+    this->index->print(indent + 1);
 }

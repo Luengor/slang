@@ -15,3 +15,10 @@ struct FunctionTypeNode : public ASTNode {
                      ASTNodePtr return_type);
     AST_OVERRIDES;
 };
+
+struct ArrayTypeNode : public ASTNode {
+    ASTNodePtr element_type;
+
+    ArrayTypeNode(const Token &token, ASTNodePtr element_type);
+    AST_OVERRIDES;
+};

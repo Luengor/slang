@@ -240,6 +240,15 @@ void Chunk::disassembleInstruction(int offset) {
             return this->disassembleCall("OP_CALL", this->code[offset]);
             break;
 
+        case OpCode::ArrayCreate:
+            return this->disassembleABC("OP_ARRAY_NEW", this->code[offset]);
+
+        case OpCode::ArrayGet:
+            return this->disassembleABC("OP_ARRAY_GET", this->code[offset]);
+
+        case OpCode::ArraySet:
+            return this->disassembleABC("OP_ARRAY_SET", this->code[offset]);
+
         case OpCode::I2Str:
             return this->disassembleABx("OP_I2STR", this->code[offset], "RC");
             break;

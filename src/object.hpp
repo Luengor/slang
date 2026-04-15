@@ -9,6 +9,7 @@ struct Object {
     enum Type {
         String,
         Upvalue,
+        Array,
         Function,
         Closure,
         NativeFunction,
@@ -64,6 +65,18 @@ struct UpvalueInfo {
 
     // The index of the local variable or the parent upvalue index.
     int index = -1;
+};
+
+struct ArrayObj : public Object {
+    TypeID element_type;
+    bool elements_are_objects;
+    std::vector<Value> elements;
+
+    ArrayObj(TypeID element_type, bool elements_are_objects,
+             std::vector<Value> elements);
+    ~ArrayObj() override;
+
+    std::string toString() const override;
 };
 
 struct FunctionObj : public Object {

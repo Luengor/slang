@@ -54,6 +54,10 @@ TypeID TypeRegistry::getFunction(const std::vector<TypeID> &param_types,
     return getOrAdd(FunctionType{param_types, return_type});
 }
 
+TypeID TypeRegistry::getArray(TypeID element_type) {
+    return getOrAdd(ArrayType{element_type});
+}
+
 TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     switch (value.first) {
         case ValueType::Fixed:
@@ -79,6 +83,11 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
         case Object::Type::Upvalue:
             throw std::runtime_error(
                 "Upvalue objects cannot be directly typed in getFromValue.");
+        case Object::Type::Array:
+            {
+                ArrayObj *arrObj = static_cast<ArrayObj *>(value.second.object);
+                return getArray(arrObj->element_type);
+            }
         case Object::Type::Function:
             {
                 FunctionObj *fnObj =
@@ -118,12 +127,25 @@ bool TypeRegistry::isObject(TypeID typeID) {
         const PrimitiveType primType = std::get<PrimitiveType>(typeData);
         return primType.kind == PrimitiveKind::String;
     }
-    return true; // If not primitive, is a function
+    return true; // Function and array types are objects
 }
 
 bool TypeRegistry::isFunction(TypeID typeID) {
     const auto &typeData = this->getTypeData(typeID);
     return std::holds_alternative<FunctionType>(typeData);
+}
+
+bool TypeRegistry::isArray(TypeID typeID) {
+    const auto &typeData = this->getTypeData(typeID);
+    return std::holds_alternative<ArrayType>(typeData);
+}
+
+TypeID TypeRegistry::getArrayElementType(TypeID typeID) {
+    const auto &typeData = this->getTypeData(typeID);
+    if (!std::holds_alternative<ArrayType>(typeData)) {
+        throw std::runtime_error("Type is not an array type.");
+    }
+    return std::get<ArrayType>(typeData).element_type;
 }
 
 std::optional<OpCode> TypeRegistry::getCastOp(TypeID from, TypeID to) {

@@ -76,6 +76,38 @@ std::string UpvalueObj::toString() const {
     return std::format("<upvalue-{}>", this->is_object ? "obj" : "val");
 }
 
+ArrayObj::ArrayObj(TypeID element_type, bool elements_are_objects,
+                   std::vector<Value> elements)
+    : Object(), element_type(element_type),
+      elements_are_objects(elements_are_objects), elements(std::move(elements)) {
+    this->obj_type = Object::Type::Array;
+
+#ifndef NDEBUG
+    OBJECT_COUNT++;
+#endif
+}
+
+ArrayObj::~ArrayObj() {
+    if (this->elements_are_objects) {
+        for (auto &element : this->elements) {
+            if (element.object)
+                element.object->release();
+        }
+    }
+
+#ifndef NDEBUG
+    OBJECT_COUNT--;
+#ifdef DEBUG_PRINT
+    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
+               OBJECT_COUNT);
+#endif
+#endif
+}
+
+std::string ArrayObj::toString() const {
+    return std::format("<array:{}>", this->elements.size());
+}
+
 FunctionObj::FunctionObj() : Object() {
     this->obj_type = Object::Type::Function;
 
