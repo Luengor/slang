@@ -4,7 +4,7 @@ avoid a complex garbage collector and to allow for deterministic destruction of
 objects.
 
 ## What is counted 
- - All objects are reference counted. This includes strings, upvalues,
+ - All objects are reference counted. This includes strings, arrays, upvalues,
    functions and closures but not plain Values.
  - Every object in an active register is counted. There is no way to do this
    automatically, so the compiler must emit `Retain` and `Release` instructions
@@ -61,6 +61,10 @@ to manage the reference count of objects.
 Some instructions implicitly modify the reference count of objects:
  - `Call` retains the closure or function being called and releases it when the
    call is done.
+ - `ArrayNew` retains object elements moved into the new array.
+ - `ArrayGet` retains object elements loaded from arrays into registers.
+ - `ArraySet` releases overwritten object elements and retains new object
+   elements.
  - Closures retain the function and upvalues they capture, and release them
    when they are released themselves. The upvalues created by a half-baked
    closure are also released when that closure is returned from. 
@@ -68,4 +72,3 @@ Some instructions implicitly modify the reference count of objects:
  - Upvalues **do** know whether they contain an object or not. `GetUpval`
    retains the object, and `SetUpval` releases the old value if there is one
    and retains the new value.
-

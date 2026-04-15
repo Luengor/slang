@@ -7,7 +7,7 @@ program     -> declaration* EOF
 
 ### Type rules
 ```
-typeExpr      -> functionType | primitiveType
+typeExpr      -> ( functionType | primitiveType ) ( "[" "]" )*
 functionType  -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" ( typeExpr | "none" )
 primitiveType -> "fixed" | "float" | "bool" | "str"
 ```
@@ -29,7 +29,7 @@ exprStmt    -> expression ";"
 ### Expression rules
 ```
 expression  -> assignment
-assignment  -> IDENTIFIER "=" assignment | ternary 
+assignment  -> ( IDENTIFIER | call "[" expression "]" ) "=" assignment | ternary 
 ternary     -> logicOr ( "?" expression ":" ternary )?
 logicOr     -> logicAnd ( "or" logicAnd )*
 logicAnd    -> equality ( "and" equality )*
@@ -38,12 +38,13 @@ comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" ) factor )*
 factor      -> unary ( ( "*" | "/" ) unary )*
 unary       -> ( "-" | "not" ) unary | call 
-call        -> primary ( "(" arguments? ")" )*
+call        -> primary ( "(" arguments? ")" | "[" expression "]" )*
 arguments   -> expression ( "," expression )*
 primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER |
-               function
+               function | arrayLiteral
 function    -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
 parameters  -> ( typeExpr IDENTIFIER ( "," typeExpr IDENTIFIER )* )? 
+arrayLiteral -> "[" ( expression ( "," expression )* )? "]"
 ```
 ## Operator precedence
 From highest to lowest:
@@ -57,4 +58,3 @@ From highest to lowest:
 8. Logic OR: `or`
 9. Ternary: `? :`
 7. Assignment: `=`
-
