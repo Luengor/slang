@@ -3,6 +3,7 @@
 #include "ast_pure_expr.hpp"
 #include "error.hpp"
 #include "object.hpp"
+#include <format>
 #include <iostream>
 
 // CallExpr Implementation
