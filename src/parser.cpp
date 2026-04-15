@@ -539,6 +539,22 @@ ASTNodePtr Parser::primary() {
         return std::make_unique<LiteralNode>(this->previous());
     }
 
+    if (this->match({Token::Type::LeftBracket})) {
+        Token open_bracket = this->previous();
+        std::vector<ASTNodePtr> elements;
+
+        if (!this->check(Token::Type::RightBracket)) {
+            do {
+                elements.push_back(this->expression());
+            } while (this->match({Token::Type::Comma}));
+        }
+
+        this->consume(Token::Type::RightBracket,
+                      "Expected ']' after array literal.");
+        return std::make_unique<ArrayLiteralExpr>(open_bracket,
+                                                  std::move(elements));
+    }
+
     // Make a variable node for identifiers
     if (this->match({Token::Type::Identifier})) {
         return std::make_unique<VariableNode>(this->previous(),
@@ -633,18 +649,3 @@ ASTNodePtr Parser::parse() {
 
     return std::make_unique<BlockStmt>(Token{}, std::move(statements));
 }
-    if (this->match({Token::Type::LeftBracket})) {
-        Token open_bracket = this->previous();
-        std::vector<ASTNodePtr> elements;
-
-        if (!this->check(Token::Type::RightBracket)) {
-            do {
-                elements.push_back(this->expression());
-            } while (this->match({Token::Type::Comma}));
-        }
-
-        this->consume(Token::Type::RightBracket,
-                      "Expected ']' after array literal.");
-        return std::make_unique<ArrayLiteralExpr>(open_bracket,
-                                                  std::move(elements));
-    }

@@ -57,4 +57,4 @@ From highest to lowest:
 7. Logic AND: `and`
 8. Logic OR: `or`
 9. Ternary: `? :`
-7. Assignment: `=`
+10. Assignment: `=`
