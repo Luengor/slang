@@ -500,9 +500,11 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     for (auto entryID : all_names) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
 
-        // Captured object varibles aren't released to avoid lossing them
-        // between this point and the actual return instruction where they
-        // would be lifted.
+        // Captured object variables are intentionally not released here.
+        // Releasing before LiftUpvalue risks the ref count hitting zero and
+        // freeing the object before cleanUpvalues() copies the pointer to the
+        // heap. Instead, ownership of the existing +1 ref count transfers to
+        // the UpvalueObj at lift time — no Retain needed there either.
         if (entry.register_index != -1 && !entry.is_upvalue &&
             !entry.is_captured && ctx.typeRegistry.isObject(entry.type) &&
             entry.register_index != dont_free_reg) {

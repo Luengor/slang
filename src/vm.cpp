@@ -30,8 +30,9 @@ void CallFrame::cleanUpvalues(RegFile_t &regs) {
         upval->data.value = regs[upval->data.register_index];
         upval->is_closed = true;
 
-        // No need to retain here because the variable wasn't lifted before
-        // to avoid lossing it between the release and this point 
+        // No Retain needed: the compiler skipped the pre-return Release for
+        // captured variables, so the existing +1 ref count transfers here.
+        // Retaining would double-count ownership.
 
         // Release the upvalue and move to the next
         auto next_upval = upval->next;
