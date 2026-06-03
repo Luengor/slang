@@ -168,7 +168,7 @@ int CompileContext::getUpvalueIndex(EntryID entry_id) {
 
     // Add it to this function's upvalues with the parent index
     auto upvalue_index = this->function->upvalues.size();
-    const UpvalueInfo info{.is_object = this->typeRegistry.isObject(entry.type),
+    const UpValueInfo info{.is_object = this->typeRegistry.isObject(entry.type),
 
                            // If the parent entry is an upvalue, then this
                            // upvalue does not refer to a local

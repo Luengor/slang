@@ -36,7 +36,6 @@ void CallFrame::cleanUpvalues(RegFile_t &regs) {
 
         // Release the upvalue and move to the next
         auto next_upval = upval->next;
-        upval->release();
         upval = next_upval;
     }
 
@@ -331,7 +330,7 @@ InterpretResult VM::run() {
 
                     // Iterate through the linked list to find the upvalues that
                     // capture the given register
-                    UpvalueObj *prev = nullptr;
+                    UpValuePtr prev = nullptr;
                     auto upval = frame.captured_upvalue;
                     while (upval) {
                         if (upval->data.register_index == absolute_register) {
@@ -349,7 +348,7 @@ InterpretResult VM::run() {
 
                     // If its reference count is only 1 (the reference on this
                     // list) don't do anything
-                    if (upval->ref_count != 1) {
+                    if (upval.use_count() != 1) {
                         // Close it
                         assert(!upval->is_closed &&
                                "Upvalue should not already be closed");
@@ -365,7 +364,6 @@ InterpretResult VM::run() {
                     // Remove it from the linked list of captured upvalues and
                     // release it
                     (prev ? prev->next : frame.captured_upvalue) = upval->next;
-                    upval->release();
 
                     break;
                 }

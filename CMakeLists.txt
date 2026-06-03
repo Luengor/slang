@@ -37,6 +37,7 @@ set(SOURCES
     src/parser.cpp
     src/scanner.cpp
     src/types.cpp
+    src/upvalue.cpp
     src/value.cpp
     src/vm.cpp
 )

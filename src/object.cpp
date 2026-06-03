@@ -48,34 +48,6 @@ std::string StringObj::toString() const {
     return std::format("\"{}\"", this->value);
 }
 
-UpvalueObj::UpvalueObj() : Object() {
-    this->obj_type = Object::Type::Upvalue;
-
-#ifndef NDEBUG
-    OBJECT_COUNT++;
-#endif
-}
-
-UpvalueObj::~UpvalueObj() {
-    if (this->is_object && this->is_closed) {
-        Object *obj = static_cast<Object *>(this->data.value.object);
-        if (obj)
-            obj->release();
-    }
-
-#ifndef NDEBUG
-    OBJECT_COUNT--;
-#ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
-#endif
-}
-
-std::string UpvalueObj::toString() const {
-    return std::format("<upvalue-{}>", this->is_object ? "obj" : "val");
-}
-
 FunctionObj::FunctionObj() : Object() {
     this->obj_type = Object::Type::Function;
 
@@ -117,7 +89,6 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
                         this->toString(), target_register,
                         current_frame.stack_base, upvalue_info.index);
 #endif
-                    upvalue->retain();
                     this->upvalues.push_back(upvalue);
                     goto inc;
                 }
@@ -126,7 +97,7 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
             }
 
             // If not, create a new one
-            this->upvalues.push_back(new UpvalueObj());
+            this->upvalues.push_back(std::make_shared<UpValue>());
             this->upvalues.back()->is_object = upvalue_info.is_object;
             this->upvalues.back()->data.register_index = target_register;
             this->upvalues.back()->is_closed = false;
@@ -134,7 +105,6 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
             // Add it to the linked list of captured upvalues and retain it
             this->upvalues.back()->next = current_frame.captured_upvalue;
             current_frame.captured_upvalue = this->upvalues.back();
-            current_frame.captured_upvalue->retain();
 
 #ifdef DEBUG_PRINT
             std::print("{} Created new upvalue capturing {} ({} + {})\n",
@@ -148,9 +118,8 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
                    "provided");
             // Capture the upvalue from the parent closure
             const auto index = upvalue_info.index;
-            UpvalueObj *upvalue =
+            UpValuePtr upvalue =
                 current_frame.closure->upvalues[static_cast<int>(index)];
-            upvalue->retain();
             this->upvalues.push_back(upvalue);
         }
     }
@@ -173,10 +142,6 @@ ClosureObj::~ClosureObj() {
         this->function = nullptr;
     }
 
-    for (UpvalueObj *upvalue : this->upvalues) {
-        if (upvalue)
-            upvalue->release();
-    }
     this->upvalues.clear();
 
 #ifndef NDEBUG

@@ -3,12 +3,13 @@
 #include "chunk.hpp"
 #include "types.hpp"
 #include "value.hpp"
+#include "upvalue.hpp"
+
 #include <string>
 
 struct Object {
     enum Type {
         String,
-        Upvalue,
         Function,
         Closure,
         NativeFunction,
@@ -37,35 +38,6 @@ struct StringObj : public Object {
     std::string toString() const override;
 };
 
-struct UpvalueObj : public Object {
-    union {
-        Value value;
-        int register_index;
-    } data;
-
-    bool is_object = false;
-    bool is_closed = false;
-
-    UpvalueObj *next = nullptr;
-
-    UpvalueObj();
-    ~UpvalueObj();
-
-    std::string toString() const override;
-};
-
-struct UpvalueInfo {
-    // Whether the upvalue is an object and needs to be retained and released
-    bool is_object = false;
-
-    // Whether the upvalue refers to a local variable in the stack or another
-    // upvalue in the parent closure.
-    bool is_local = false;
-
-    // The index of the local variable or the parent upvalue index.
-    int index = -1;
-};
-
 struct FunctionObj : public Object {
     // A "name" for the function
     std::string name;
@@ -79,7 +51,7 @@ struct FunctionObj : public Object {
 
     // The upvalues captured by this function from its parent.
     // Values of -1 means that the upvalue is created by this function
-    std::vector<UpvalueInfo> upvalues;
+    std::vector<UpValueInfo> upvalues;
 
     FunctionObj();
 #ifndef NDEBUG
@@ -94,7 +66,7 @@ struct CallFrame;
 struct ClosureObj : public Object {
     FunctionObj *function;
 
-    std::vector<UpvalueObj *> upvalues;
+    std::vector<UpValuePtr> upvalues;
 
 #ifdef DEBUG_PRINT
     std::string function_name_cache;

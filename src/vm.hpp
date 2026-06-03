@@ -1,5 +1,6 @@
 #pragma once
 
+#include "upvalue.hpp"
 #include "object.hpp"
 #include <array>
 
@@ -22,7 +23,7 @@ struct CallFrame {
     size_t stack_base;
 
     // A linked list of upvalues captured on this frame
-    UpvalueObj *captured_upvalue = nullptr;
+    UpValuePtr captured_upvalue = nullptr;
 
     CallFrame() = default;
     CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
