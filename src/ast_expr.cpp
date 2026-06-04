@@ -241,8 +241,9 @@ void AssignExpr::compileLocal(CompileContext &ctx, EntryID local_entry,
 }
 
 void AssignExpr::compileUpvalue(CompileContext &ctx, int reg) {
-    const int upvalue_index = std::get<EntryID>(
+    const auto entry_id = std::get<EntryID>(
         static_cast<VariableNode *>(this->target.get())->resolution);
+    const int upvalue_index = ctx.getUpvalueIndex(entry_id);
 
     // If a register was provided, use that, if not, allocate a new one
     reg(this) = reg != -1 ? reg : ctx.allocateRegister();
