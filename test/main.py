@@ -1,8 +1,13 @@
 #!/bin/env python3
+import argparse
 import os
 from dataclasses import dataclass
 from enum import Enum
 import subprocess
+
+parser = argparse.ArgumentParser(description="Run slang tests")
+parser.add_argument("--timeout", type=float, default=3.0, help="Timeout limit per test in seconds")
+args = parser.parse_args()
 
 SLANG_EXTENSIONS = [".slang", ".sl"]
 COMPERROR = "COMPERROR"
@@ -27,6 +32,7 @@ class TestStatus(Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     CRASH = "CRASH"
+    TIMEOUT = "TIMEOUT"
 
 @dataclass
 class TestResult:
@@ -71,7 +77,7 @@ class TestCase:
 
     def test(self) -> TestResult:
         try:
-            result = subprocess.run([executable, self.input_file], capture_output=True, text=True, timeout=5)
+            result = subprocess.run([executable, self.input_file], capture_output=True, text=True, timeout=args.timeout)
             full_output = result.stdout.strip() + ("\n" + result.stderr.strip() if result.stderr else "")
             return_code = result.returncode
 
@@ -84,6 +90,8 @@ class TestCase:
                 error_message = result.stderr.strip() if result.stderr else "No error message."
                 error_code_result = os.strerror(return_code)
                 return TestResult(status=TestStatus.CRASH, details=f"Process exited with code {return_code} ({error_code_result}). Stderr: {error_message}")
+        except subprocess.TimeoutExpired as e:
+            return TestResult(status=TestStatus.TIMEOUT, details=f"Command timed out after {args.timeout} seconds")
         except Exception as e:
             return TestResult(status=TestStatus.CRASH, details=str(e))
 
@@ -107,7 +115,8 @@ print("Running tests...")
 counts = {
     TestStatus.PASS: [],
     TestStatus.FAIL: [],
-    TestStatus.CRASH: []
+    TestStatus.CRASH: [],
+    TestStatus.TIMEOUT: []
 }
 last_group = ""
 for test_case in test_cases:
@@ -123,10 +132,10 @@ for test_case in test_cases:
         print("\033[92m.\033[0m", end="")
     elif result.status == TestStatus.FAIL:
         print("\033[93mF\033[0m", end="")
-        # print(f"  Details: {result.details}")
+    elif result.status == TestStatus.TIMEOUT:
+        print("\033[95mT\033[0m", end="")
     else:
         print("\033[91mC\033[0m", end="")
-        # print(f"  Details: {result.details}")
 
     counts[result.status].append(test_case)
 
@@ -136,6 +145,13 @@ print('\n')
 if counts[TestStatus.FAIL]:
     print("Failures:")
     for test_case in counts[TestStatus.FAIL]:
+        result = test_case.test()
+        print(f"- {test_case.full_name()}: {result.details}")
+    print()
+
+if counts[TestStatus.TIMEOUT]:
+    print("Timeouts:")
+    for test_case in counts[TestStatus.TIMEOUT]:
         result = test_case.test()
         print(f"- {test_case.full_name()}: {result.details}")
     print()
@@ -150,6 +166,6 @@ if counts[TestStatus.CRASH]:
 # Summary
 print("Test Summary:")
 total = sum(len(v) for v in counts.values())
-print(f"Total: {total:>2d}")
+print(f"{"Total":>7s}: {total:>2d}")
 for status, count in counts.items():
-    print(f"{status.value:>5s}: {len(count):>2d} ({(len(count)/total*100) if total > 0 else 0:>5.2f}%)")
+    print(f"{status.value:>7s}: {len(count):>2d} ({(len(count)/total*100) if total > 0 else 0:>5.2f}%)")
