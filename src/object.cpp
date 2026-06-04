@@ -81,6 +81,7 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
             // Check if there already is an upvalue capturing this local
             // variable
             auto upvalue = current_frame.captured_upvalue;
+            bool found_existing = false;
             while (upvalue) {
                 if (upvalue->data.register_index == target_register) {
 #ifdef DEBUG_PRINT
@@ -90,11 +91,15 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
                         current_frame.stack_base, upvalue_info.index);
 #endif
                     this->upvalues.push_back(upvalue);
-                    goto inc;
+                    found_existing = true;
+                    break;
                 }
 
                 upvalue = upvalue->next;
             }
+
+            if (found_existing)
+                continue;
 
             // If not, create a new one
             this->upvalues.push_back(std::make_shared<UpValue>());
@@ -124,7 +129,6 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
         }
     }
 
-inc:
 #ifndef NDEBUG
     OBJECT_COUNT++;
 
