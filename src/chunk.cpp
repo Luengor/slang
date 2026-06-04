@@ -91,7 +91,14 @@ void Chunk::disassembleInstruction(int offset) {
             return this->disassembleABx("OP_CONSTANT", this->code[offset], "C");
 
         case OpCode::Object:
-            return this->disassembleABx("OP_OBJECT", this->code[offset], "O");
+            {
+                uint8_t A = GET_A(this->code[offset]);
+                uint32_t bx = GET_Bx(this->code[offset]);
+                auto object_name = this->object_constants[bx]->toString();
+                std::println("{:<16} R{:<3d} O{:<4d} {}", "OP_OBJECT", A,
+                             bx, object_name);
+                return;
+            }
 
         case OpCode::Self:
             return this->disassembleABx("OP_SELF", this->code[offset]);
