@@ -2,15 +2,53 @@
 #include "vm.hpp"
 #include <cassert>
 #include <format>
+#include <vector>
+
+#ifndef NDEBUG
+#define ADD_OBJECT add_object(this)
+#define REMOVE_OBJECT remove_object(this)
+#else
+#define ADD_OBJECT
+#define REMOVE_OBJECT
+#endif
 
 #ifndef NDEBUG
 #ifdef DEBUG_PRINT
 #include <print>
 #endif
 
-static int OBJECT_COUNT = 0;
+std::vector<Object *> all_objects;
 
-int getObjectCount() { return OBJECT_COUNT; }
+void add_object(Object *obj) {
+    all_objects.push_back(obj);
+
+#ifdef DEBUG_PRINT
+    std::print("{} created. Total objects: {}\n", obj->toString(),
+               getObjectCount());
+#endif
+}
+
+void remove_object(Object *obj) {
+    auto it = std::find(all_objects.begin(), all_objects.end(), obj);
+    assert(
+        it != all_objects.end() &&
+        "Removing an object that is not in the object list. Double delete or "
+        "memory corruption likely.");
+    all_objects.erase(it);
+#ifdef DEBUG_PRINT
+    std::print("{} destroyed. Remaining objects: {}\n", obj->toString(),
+               getObjectCount());
+#endif
+}
+
+int getObjectCount() { return all_objects.size(); }
+
+void printAllObjects() {
+    std::print("All objects ({} total):\n", getObjectCount());
+    for (const auto &obj : all_objects) {
+        std::print("- {} {}\n", obj->toString(), obj->ref_count);
+    }
+}
 
 #endif
 
@@ -39,9 +77,7 @@ void Object::release() {
 StringObj::StringObj(const std::string &value) : Object(), value(value) {
     this->obj_type = Object::Type::String;
 
-#ifndef NDEBUG
-    OBJECT_COUNT++;
-#endif
+    ADD_OBJECT;
 }
 
 std::string StringObj::toString() const {
@@ -51,9 +87,7 @@ std::string StringObj::toString() const {
 FunctionObj::FunctionObj() : Object() {
     this->obj_type = Object::Type::Function;
 
-#ifndef NDEBUG
-    OBJECT_COUNT++;
-#endif
+    ADD_OBJECT;
 }
 
 std::string FunctionObj::toString() const { return this->name; }
@@ -129,14 +163,7 @@ ClosureObj::ClosureObj(FunctionObj *function, CallFrame &current_frame)
         }
     }
 
-#ifndef NDEBUG
-    OBJECT_COUNT++;
-
-#ifdef DEBUG_PRINT
-    std::print("{} created. Total objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
-#endif
+    ADD_OBJECT;
 }
 
 ClosureObj::~ClosureObj() {
@@ -148,13 +175,7 @@ ClosureObj::~ClosureObj() {
 
     this->upvalues.clear();
 
-#ifndef NDEBUG
-    OBJECT_COUNT--;
-#ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
-#endif
+    REMOVE_OBJECT;
 }
 
 std::string ClosureObj::toString() const {
@@ -172,9 +193,7 @@ NativeFunctionObj::NativeFunctionObj(TypeID type_id,
     : Object(), type_id(type_id), function_ptr(function_ptr), name(name) {
     this->obj_type = Object::Type::NativeFunction;
 
-#ifndef NDEBUG
-    OBJECT_COUNT++;
-#endif
+    ADD_OBJECT;
 }
 
 std::string NativeFunctionObj::toString() const {
@@ -184,30 +203,15 @@ std::string NativeFunctionObj::toString() const {
 #ifndef NDEBUG
 
 StringObj::~StringObj() {
-    OBJECT_COUNT--;
-
-#ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
+    REMOVE_OBJECT;
 }
 
 FunctionObj::~FunctionObj() {
-    OBJECT_COUNT--;
-
-#ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
+    REMOVE_OBJECT;
 }
 
 NativeFunctionObj::~NativeFunctionObj() {
-    OBJECT_COUNT--;
-
-#ifdef DEBUG_PRINT
-    std::print("{} destroyed. Remaining objects: {}\n", this->toString(),
-               OBJECT_COUNT);
-#endif
+    REMOVE_OBJECT;
 }
 
 #endif

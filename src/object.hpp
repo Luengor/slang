@@ -25,6 +25,7 @@ struct Object {
 
 #ifndef NDEBUG
 int getObjectCount();
+void printAllObjects();
 #endif
 
 struct StringObj : public Object {

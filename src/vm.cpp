@@ -118,6 +118,10 @@ InterpretResult VM::run() {
         // // Print current stack size
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base,
         // this->stack.size()); Print the current instruction
+        // Print all objects
+        printAllObjects();
+        
+        // Print the current instruction
         function->chunk.disassembleInstruction(this->ip);
 #endif
 
@@ -327,6 +331,12 @@ InterpretResult VM::run() {
                     const int absolute_register =
                         frame.stack_base + GET_Bx(instruction);
                     const auto &target_value = this->regs[absolute_register];
+
+#ifdef DEBUG_PRINT
+                    std::print("Lifting upvalue capturing R{} ({} + {})\n",
+                               absolute_register, frame.stack_base,
+                               GET_Bx(instruction));
+#endif
 
                     // Iterate through the linked list to find the upvalues that
                     // capture the given register
