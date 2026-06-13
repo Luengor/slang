@@ -44,10 +44,12 @@ void remove_object(Object *obj) {
 int getObjectCount() { return all_objects.size(); }
 
 void printAllObjects() {
+#ifdef DEBUG_PRINT
     std::print("All objects ({} total):\n", getObjectCount());
     for (const auto &obj : all_objects) {
         std::print("- {} {}\n", obj->toString(), obj->ref_count);
     }
+#endif
 }
 
 #endif
