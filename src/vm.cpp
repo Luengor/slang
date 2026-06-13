@@ -119,7 +119,31 @@ InterpretResult VM::run() {
         // std::print("Stack: {} / {}\n", this->stack.size() - frame.stack_base,
         // this->stack.size()); Print the current instruction
         // Print all objects
+        std::println();
         printAllObjects();
+
+        // Print all upvalues in the current frame
+        // and their string repr if they are objects
+        for (unsigned i = 0; i < frame.closure->upvalues.size(); ++i) {
+            const auto &upval = frame.closure->upvalues[i];
+            std::print("Upvalue {}: ", i);
+
+            if (upval->is_closed) {
+                std::print("closed ");
+            } else {
+                std::print("open (register {}) ", upval->data.register_index);
+            }
+
+            if (upval->is_object) {
+                const auto object = upval->is_closed
+                                        ? upval->data.value.object
+                                        : this->regs[upval->data.register_index]
+                                              .object;
+                std::println("{}", object->toString());
+            } else {
+                std::println("non-object");
+            }
+        }
         
         // Print the current instruction
         function->chunk.disassembleInstruction(this->ip);
