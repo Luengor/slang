@@ -380,9 +380,9 @@ InterpretResult VM::run() {
                     if (!upval)
                         break;
 
-                    // If its reference count is only 1 (the reference on this
-                    // list) don't do anything
-                    if (upval.use_count() != 1) {
+                    // If its reference count is only 2 (the reference on this
+                    // list and the copy we have on upval) don't do anything
+                    if (upval.use_count() != 2) {
                         // Close it
                         assert(!upval->is_closed &&
                                "Upvalue should not already be closed");
