@@ -500,6 +500,16 @@ void ReturnStmt::compile(CompileContext &ctx, int reg) {
     for (auto entryID : all_names) {
         const auto &entry = ctx.nameTable.getEntry(entryID);
 
+        // If the return value is a captured object variable, cleanUpvalues will
+        // transfer this register's +1 to the upvalue without retaining. Retain
+        // here so the caller receives its own independent ref.
+        if (dont_free_reg != -1 && entry.register_index == dont_free_reg &&
+            entry.is_captured && !entry.is_upvalue &&
+            ctx.typeRegistry.isObject(entry.type)) {
+            ctx.function->chunk.writeABx(OpCode::Retain, dont_free_reg, 0,
+                                         this->token.line);
+        }
+
         // Captured object variables are intentionally not released here.
         // Releasing before LiftUpvalue risks the ref count hitting zero and
         // freeing the object before cleanUpvalues() copies the pointer to the

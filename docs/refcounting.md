@@ -42,6 +42,13 @@ to manage the reference count of objects.
    of the variable being assigned to, a `Copy` instruction followed by a
    `Retain` is emitted to put the new value in the proposed register and retain
    it.
+ - When a captured object variable is the return value of a function, a `Retain`
+   is emitted on the return register before the `Return` instruction. Normally,
+   the pre-return `Release` for captured variables is suppressed and their +1
+   reference count transfers to the upvalue via `cleanUpvalues`. When that same
+   variable is also returned, both the upvalue and the caller would claim the
+   same +1 without this extra `Retain`, leading to a use-after-free once the
+   caller releases the value.
 
 #### Releasing
  - When assigning an object, the previous value is released.
@@ -49,7 +56,9 @@ to manage the reference count of objects.
  - When an object goes out of scope, it is released. The exception to this is
    when the scope ending is a function and the object is captured by a closure.
    In this case, the object is not released, as it could cause to be deleted
-   before the upvalue lifting done on the return op.
+   before the upvalue lifting done on the return op. If the captured variable
+   is also the return value, a `Retain` is emitted instead (see Retaining
+   above).
  - An object that is the result of an expression statement is released.
  - Releasing the arguments of a function call is the responsibility of the
    callee, not the caller. They are treated as locals variables inside the

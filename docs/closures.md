@@ -123,6 +123,14 @@ count transfers directly to the upvalue. After closing all of them,
 references. Upvalues with no remaining owners are destroyed immediately at that
 point.
 
+**Exception — captured variable as return value:** if the return expression is
+itself a captured local object variable, `cleanUpvalues` will consume that
+register's +1 for the upvalue, leaving the caller with no reference of its own.
+To prevent this, the compiler emits a `Retain` on the return register before
+emitting the `Return` instruction (`ReturnStmt::compile`, `ast_stmt.cpp`). This
+gives the caller its own independent +1 so that the caller and the upvalue each
+hold one reference to the object.
+
 
 ## Compiler implementation
 On type resolution, when all other methods of name resolution fail, the

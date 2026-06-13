@@ -11,8 +11,7 @@ auto create_closure = () -> str {
 # Call and discard return value
 create_closure();
 
-# Call the closure
+# Call the closure — x was captured and returned; upvalue must still be valid
 global_f();
 
 # expect: captured_string
-
