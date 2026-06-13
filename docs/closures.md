@@ -70,15 +70,58 @@ already an open upvalue for that register. If there is, it shares it instead of
 creating a new one.
 
 ### VM
-At runtime, the VM maintains a linked list of open upvalues on each call-frame.
-When a closure creates a new upvalue, it is added to this list. When "lifting"
-an upvalue, the VM looks for it in the list of open upvalues and if it finds it,
-it removes it from the list and closes it. If it doesn't find it, it means the
-upvalue wasn't captured by any closure and it can be safely ignored.
+Each call frame holds two distinct upvalue lists that serve opposite roles:
 
-This lifting isn't necessary when returning from functions, since before
-returning from a function, all open upvalues are either lifted or closed,
-depending on whether they are referenced by another object or not.
+- **`closure->upvalues`** — the upvalues *this* closure reads and writes.
+  Created once when the `Closure` instruction runs; lives as long as the
+  `ClosureObj`. These are the upvalues the compiler refers to by index via
+  `GetUpval`/`SetUpval`.
+
+- **`frame.captured_upvalue`** — a linked list of open upvalues that point
+  *into this frame's registers*, created by inner closures defined inside this
+  frame. Its purpose is to know which registers were captured, so they can be
+  closed when their scope ends.
+
+#### Upvalue creation (`Closure` instruction)
+
+When the `Closure` instruction runs, a new `ClosureObj` is created. For each
+upvalue descriptor in the function object:
+
+- **Local capture** (`is_local = true`): the closure walks the *current frame's*
+  `captured_upvalue` list looking for an existing open upvalue for that register.
+  If found, it is shared (not duplicated). If not, a new `UpValue` is created,
+  set to open (pointing to that register), and **prepended** to
+  `frame.captured_upvalue`.
+- **Transitive capture** (`is_local = false`): the upvalue is copied directly
+  from the parent closure's `upvalues` list. No new `UpValue` is created; both
+  closures share the same `shared_ptr`.
+
+#### Lifting (`LiftUpvalue` instruction)
+
+Emitted by the compiler whenever a captured local variable goes out of scope
+(but the frame is still alive). Steps:
+
+1. Walk `frame.captured_upvalue` to find the `UpValue` for the given register.
+2. If not found: the variable was never captured by any closure. Nothing to do.
+3. If `use_count == 1`: the linked list is the only owner — no closure holds a
+   reference to this upvalue. Skip closing; just unlink and drop it.
+4. Otherwise: at least one closure still holds it. Copy the register value into
+   `upval->data.value`, set `is_closed = true`, and retain it if it is an
+   object. From this point on, `GetUpval`/`SetUpval` read from the heap value
+   instead of the register.
+5. Unlink the upvalue from `frame.captured_upvalue` in either case.
+
+#### Cleanup on return (`cleanUpvalues`)
+
+When a frame returns, any upvalues still in `frame.captured_upvalue` are closed
+unconditionally (no `use_count` check). The registers are about to become
+invalid, so any surviving upvalue must have its value copied to the heap.
+Unlike `LiftUpvalue`, no `retain` is emitted here — the compiler already skips
+the pre-return `Release` for captured variables, so their existing reference
+count transfers directly to the upvalue. After closing all of them,
+`frame.captured_upvalue` is set to `nullptr`, releasing the list's `shared_ptr`
+references. Upvalues with no remaining owners are destroyed immediately at that
+point.
 
 
 ## Compiler implementation
