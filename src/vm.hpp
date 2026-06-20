@@ -2,7 +2,7 @@
 
 #include "upvalue.hpp"
 #include "object.hpp"
-#include <array>
+#include <vector>
 
 enum class InterpretResult {
     Ok,
@@ -10,7 +10,7 @@ enum class InterpretResult {
     RuntimeError,
 };
 
-using RegFile_t = std::array<Value, 256>;
+using RegFile_t = std::vector<Value>;
 
 struct CallFrame {
     // The closure being called

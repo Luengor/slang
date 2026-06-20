@@ -64,6 +64,7 @@ InterpretResult VM::interpret(const std::string &source) {
         std::make_unique<ClosureObj>(function, dummy_frame);
     closure->function->release(); // The closure now owns the function, so
                                   // release the initial reference
+    this->regs.resize(512); // Allocate registers for the VM
 
     // Create the first call frame
     this->call_frames.push_back(CallFrame(closure.get(), 0, 0));
@@ -203,6 +204,8 @@ InterpretResult VM::run() {
 
                     // Get the start of the arguments
                     const uint16_t arg_start_r = GET_C(instruction);
+                    const uint16_t new_top =
+                        frame.stack_base + arg_start_r + 256;
 
                     if (callee->obj_type == Object::Type::NativeFunction) {
                         NativeFunctionObj *native_function =
@@ -236,6 +239,11 @@ InterpretResult VM::run() {
 
                         // The closure is retained if it already existed, or
                         // newly created, so we don't need to retain it here
+
+                        // Resize the register file if necessary
+                        if (new_top > this->regs.size()) {
+                            this->regs.resize(new_top);
+                        }
 
                         // Put the frame starting in the callee register
                         this->call_frames.push_back(CallFrame(
