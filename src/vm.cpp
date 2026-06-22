@@ -13,9 +13,14 @@
     throw std::runtime_error("TODO at " + std::string(__FILE__) + ":" +        \
                              std::to_string(__LINE__))
 
-CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip,
-                     size_t stack_base) {
-    this->closure = closure;
+CallFrame::CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base)
+    : closure(closure), function(closure->function) {
+    this->return_ip = return_ip;
+    this->stack_base = stack_base;
+}
+
+CallFrame::CallFrame(FunctionObj *function, uint32_t return_ip,
+                     size_t stack_base) : closure(nullptr), function(function) {
     this->return_ip = return_ip;
     this->stack_base = stack_base;
 }
@@ -57,23 +62,21 @@ InterpretResult VM::interpret(const std::string &source) {
         return InterpretResult::CompileError;
     }
 
-    // Wrap the function in a closure
-    CallFrame dummy_frame; // We need a dummy frame to create the closure, but
-                           // it won't be used
-    std::unique_ptr<ClosureObj> closure =
-        std::make_unique<ClosureObj>(function, dummy_frame);
-    closure->function->release(); // The closure now owns the function, so
-                                  // release the initial reference
-    this->regs.resize(512); // Allocate registers for the VM
-
     // Create the first call frame
-    this->call_frames.push_back(CallFrame(closure.get(), 0, 0));
+    this->call_frames.push_back(CallFrame(function, 0, 0));
+
+    // Allocate registers for the VM
+    this->regs.resize(512); 
 
     // Run the code
     this->ip = 0;
     const auto result = this->run();
-    assert(closure->ref_count == 1 &&
+    assert(function->ref_count == 1 &&
            "<main> ref count should be 1 after execution.");
+
+    // Free main
+    function->release();
+
     return result;
 }
 
@@ -81,10 +84,10 @@ InterpretResult VM::run() {
     ZoneScopedN("VM::run");
 
 #define frame this->call_frames.back()
-#define function frame.closure->function
+#define curr_function frame.function
 #define registers (this->regs.data() + frame.stack_base)
 
-#define RC(x) (x < 256 ? registers[x] : function->chunk.constants[x - 256])
+#define RC(x) (x < 256 ? registers[x] : curr_function->chunk.constants[x - 256])
 
 #define BINARY_EXPR_2(op, from_field, to_field)                                \
     {                                                                          \
@@ -123,34 +126,36 @@ InterpretResult VM::run() {
         std::println();
         printAllObjects();
 
-        // Print all upvalues in the current frame
-        // and their string repr if they are objects
-        for (unsigned i = 0; i < frame.closure->upvalues.size(); ++i) {
-            const auto &upval = frame.closure->upvalues[i];
-            std::print("Upvalue {}: ", i);
+        if (frame.closure) {
+            // Print all upvalues in the current frame
+            // and their string repr if they are objects
+            for (unsigned i = 0; i < frame.closure->upvalues.size(); ++i) {
+                const auto &upval = frame.closure->upvalues[i];
+                std::print("Upvalue {}: ", i);
 
-            if (upval->is_closed) {
-                std::print("closed ");
-            } else {
-                std::print("open (register {}) ", upval->data.register_index);
-            }
+                if (upval->is_closed) {
+                    std::print("closed ");
+                } else {
+                    std::print("open (register {}) ", upval->data.register_index);
+                }
 
-            if (upval->is_object) {
-                const auto object = upval->is_closed
-                                        ? upval->data.value.object
-                                        : this->regs[upval->data.register_index]
-                                              .object;
-                std::println("{}", object->toString());
-            } else {
-                std::println("non-object");
+                if (upval->is_object) {
+                    const auto object = upval->is_closed
+                                            ? upval->data.value.object
+                                            : this->regs[upval->data.register_index]
+                                                  .object;
+                    std::println("{}", object->toString());
+                } else {
+                    std::println("non-object");
+                }
             }
         }
-        
+
         // Print the current instruction
-        function->chunk.disassembleInstruction(this->ip);
+        curr_function->chunk.disassembleInstruction(this->ip);
 #endif
 
-        const uint32_t instruction = function->chunk.code[this->ip++];
+        const uint32_t instruction = curr_function->chunk.code[this->ip++];
         const OpCode op = GET_op(instruction);
         switch (op) {
             case OpCode::Return:
@@ -175,8 +180,12 @@ InterpretResult VM::run() {
                         const uint32_t return_ip =
                             this->call_frames.back().return_ip;
 
-                        // Return and release the running closure
-                        frame.closure->release();
+                        // If we are in a closure, release it
+                        // If not, release the running function
+                        if (frame.closure)
+                            frame.closure->release();
+                        else
+                            curr_function->release();
 
                         // Pop the call frame
                         this->call_frames.pop_back();
@@ -196,10 +205,12 @@ InterpretResult VM::run() {
                     Object *callee =
                         callee_ro < 256
                             ? registers[callee_ro].object
-                            : function->chunk.object_constants[callee_ro - 256];
+                            : curr_function->chunk.object_constants[callee_ro - 256];
 
                     // Handle self calls
-                    callee = callee == function ? frame.closure : callee;
+                    if (callee == curr_function && frame.closure) {
+                        callee = frame.closure;
+                    }
                     assert(callee);
 
                     // Get the start of the arguments
@@ -220,25 +231,9 @@ InterpretResult VM::run() {
 
                         // Push the result onto the first argument register
                         registers[arg_start_r] = result;
-                    } else {
-                        ClosureObj *closure;
-
-                        if (callee->obj_type == Object::Type::Closure) {
-                            closure = static_cast<ClosureObj *>(callee);
-                            closure->retain();
-                        } else if (callee->obj_type == Object::Type::Function) {
-                            assert(static_cast<FunctionObj *>(callee)
-                                           ->upvalues.size() == 0 &&
-                                   "Function objects with upvalues should be "
-                                   "wrapped in closures.");
-                            closure = new ClosureObj(
-                                static_cast<FunctionObj *>(callee), frame);
-                        } else
-                            assert(false &&
-                                   "Callee must be a function or closure");
-
-                        // The closure is retained if it already existed, or
-                        // newly created, so we don't need to retain it here
+                    } else if (callee->obj_type == Object::Type::Closure) {
+                        ClosureObj *closure = static_cast<ClosureObj *>(callee);
+                        closure->retain();
 
                         // Resize the register file if necessary
                         if (new_top > this->regs.size()) {
@@ -251,6 +246,26 @@ InterpretResult VM::run() {
 
                         // Set the instruction pointer to the function's start
                         this->ip = 0;
+                    } else if (callee->obj_type == Object::Type::Function) {
+                        // Retain the function for the call frame
+                        FunctionObj *function = static_cast<FunctionObj *>(callee);
+                        function->retain();
+
+                        // Resize the register file if necessary
+                        if (new_top > this->regs.size()) {
+                            this->regs.resize(new_top);
+                        }
+
+                        // Put the frame starting in the callee register
+                        this->call_frames.push_back(CallFrame(
+                            function, this->ip, frame.stack_base + arg_start_r));
+
+                        // Set the instruction pointer to the function's start
+                        this->ip = 0;
+                    } else {
+                        assert(false &&
+                               "Callee must be a function, closure, or native "
+                               "function");
                     }
                     break;
                 }
@@ -261,7 +276,7 @@ InterpretResult VM::run() {
 
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t constant = GET_Bx(instruction);
-                    registers[reg] = function->chunk.constants[constant];
+                    registers[reg] = curr_function->chunk.constants[constant];
                     break;
                 }
 
@@ -272,7 +287,7 @@ InterpretResult VM::run() {
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t object_index = GET_Bx(instruction);
                     Object *object =
-                        function->chunk.object_constants[object_index];
+                        curr_function->chunk.object_constants[object_index];
                     object->retain(); // A new reference for the register
                     registers[reg].object = object;
                     break;
@@ -281,8 +296,13 @@ InterpretResult VM::run() {
             case OpCode::Self:
                 {
                     const uint8_t reg = GET_A(instruction);
-                    registers[reg].object = frame.closure;
-                    function->retain(); // A new reference for the register
+                    if (frame.closure) {
+                        registers[reg].object = frame.closure;
+                        curr_function->retain(); // A new reference for the register
+                    } else {
+                        registers[reg].object = curr_function;
+                        curr_function->retain(); // A new reference for the register
+                    }
                     break;
                 }
 
@@ -293,7 +313,7 @@ InterpretResult VM::run() {
                     const uint8_t reg = GET_A(instruction);
                     const uint32_t function_o = GET_Bx(instruction);
                     FunctionObj *func = static_cast<FunctionObj *>(
-                        function->chunk.object_constants[function_o]);
+                        curr_function->chunk.object_constants[function_o]);
                     ClosureObj *closure = new ClosureObj(func, frame);
                     registers[reg].object = closure;
                     break;
@@ -301,6 +321,7 @@ InterpretResult VM::run() {
 
             case OpCode::GetUpvalue:
                 {
+                    assert(frame.closure && "GetUpvalue must be called from a closure");
                     ZoneScopedN("VM::GetUpvalue");
 
                     const uint8_t to_r = GET_A(instruction);
@@ -325,6 +346,7 @@ InterpretResult VM::run() {
 
             case OpCode::SetUpvalue:
                 {
+                    assert(frame.closure && "SetUpvalue must be called from a closure");
                     ZoneScopedN("VM::SetUpvalue");
 
                     const uint8_t upvalue_index = GET_A(instruction);

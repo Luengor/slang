@@ -16,6 +16,9 @@ struct CallFrame {
     // The closure being called
     ClosureObj *closure;
 
+    // The function being called
+    FunctionObj *function;
+
     // The instruction to return to after this function call
     uint32_t return_ip;
 
@@ -26,6 +29,7 @@ struct CallFrame {
     UpValuePtr captured_upvalue = nullptr;
 
     CallFrame() = default;
+    CallFrame(FunctionObj *function, uint32_t return_ip, size_t stack_base);
     CallFrame(ClosureObj *closure, uint32_t return_ip, size_t stack_base);
 
     void cleanUpvalues(RegFile_t &regs);
