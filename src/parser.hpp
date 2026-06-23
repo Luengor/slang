@@ -64,6 +64,9 @@ class Parser {
     // varDecl -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
     ASTNodePtr varDecl();
 
+    // typeDecl -> "type" IDENTIFIER "=" typeExpr ";"
+    ASTNodePtr typeDecl();
+
     // statement -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block
     ASTNodePtr statement();
 

@@ -7,15 +7,16 @@ program     -> declaration* EOF
 
 ### Type rules
 ```
-typeExpr      -> functionType | primitiveType
+typeExpr      -> functionType | primitiveType | IDENTIFIER
 functionType  -> "(" ( typeExpr ( "," typeExpr )* )? ")" "->" ( typeExpr | "none" )
 primitiveType -> "fixed" | "float" | "bool" | "str"
 ```
 
 ### Declaration and statement rules
 ```
-declaration -> varDecl | statement
+declaration -> varDecl | typeDecl | statement
 varDecl     -> ( typeExpr | "auto" ) IDENTIFIER ( "=" expression )? ";"
+typeDecl    -> "type" IDENTIFIER "=" typeExpr ";"
 statement   -> exprStmt | ifStmt | whileStmt | forStmt | returnStmt | block | ";"
 ifStmt      -> "if" "(" expression ")" statement ( "else" statement )?
 whileStmt   -> "while" "(" expression ")" statement

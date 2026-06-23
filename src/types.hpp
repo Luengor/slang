@@ -4,6 +4,7 @@
 #include "value.hpp"
 #include <cstdint>
 #include <optional>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -39,6 +40,7 @@ using TypeData = std::variant<PrimitiveType, FunctionType>;
 
 class TypeRegistry {
     std::vector<TypeData> types;
+    std::unordered_map<std::string, TypeID> type_names;
 
     TypeID getOrAdd(const TypeData &typeData);
 
@@ -47,6 +49,12 @@ class TypeRegistry {
     TypeID getFunction(const std::vector<TypeID> &param_types,
                        TypeID return_type);
     TypeID getFromValue(const TypedValue &value);
+
+    TypeID reserveTypeID(const std::string &name);
+    void setTypeAlias(const std::string &name, TypeID typeID);
+    void fillTypeID(TypeID typeID, const TypeData &typeData);
+    std::optional<TypeID> getTypeFromName(const std::string &name);
+    bool typeRecurses(TypeID typeID);
 
     inline TypeID noneType() { return getPrimitive(PrimitiveKind::None); }
     bool isNumeric(TypeID typeID);

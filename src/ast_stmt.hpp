@@ -21,6 +21,13 @@ struct BlockStmt : public ASTNode {
     AST_OVERRIDES;
 };
 
+struct TypeDeclStmt : public ASTNode {
+    ASTNodePtr type_expr;
+
+    TypeDeclStmt(const Token &name_token, ASTNodePtr type_expr);
+    AST_OVERRIDES;
+};
+
 struct VarDeclStmt : public ASTNode {
     ASTNodePtr type_expr;
     ASTNodePtr initializer;

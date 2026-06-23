@@ -2,6 +2,7 @@
 #include "object.hpp"
 #include <stdexcept>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 
 // overload boilerplate
@@ -97,6 +98,91 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
     }
 
     throw std::runtime_error("Unknown object type in getFromValue.");
+}
+
+TypeID TypeRegistry::reserveTypeID(const std::string &name) {
+    // Ensure it doesn't already exist
+    if (this->type_names.find(name) != this->type_names.end()) {
+        throw std::runtime_error("Type name already exists: " + name);
+    }
+
+    // Create a new placeholder type and return its ID
+    TypeID new_id = static_cast<TypeID>(this->types.size());
+    this->types.push_back(PrimitiveType{PrimitiveKind::None});
+    this->type_names[name] = new_id;
+    return new_id;
+}
+
+void TypeRegistry::setTypeAlias(const std::string &name, TypeID typeID) {
+    // Ensure the typeID is valid
+    if (typeID >= this->types.size()) {
+        throw std::runtime_error("Invalid TypeID: " + std::to_string(typeID));
+    }
+
+    // Ensure the name is reserved
+    auto it = this->type_names.find(name);
+    if (it == this->type_names.end()) {
+        throw std::runtime_error("Type name not reserved: " + name);
+    }
+    
+    // Set the alias
+    this->type_names[name] = typeID;
+}
+
+void TypeRegistry::fillTypeID(TypeID typeID, const TypeData &typeData) {
+    // Ensure the typeID is valid
+    if (typeID >= this->types.size()) {
+        throw std::runtime_error("Invalid TypeID: " + std::to_string(typeID));
+    }
+
+    // Fill the type data
+    this->types[typeID] = typeData;
+}
+
+std::optional<TypeID> TypeRegistry::getTypeFromName(const std::string &name) {
+    auto it = this->type_names.find(name);
+    if (it != this->type_names.end()) {
+        return it->second;
+    }
+    return std::nullopt; // Type name not found
+}
+
+bool TypeRegistry::typeRecurses(TypeID typeID) {
+    // Keep a set of the visited type IDs to detect recursion
+    std::unordered_set<TypeID> visited;
+    std::vector<TypeID> stack{typeID};
+
+    while (!stack.empty()) {
+        // Pop the last type ID from the stack
+        TypeID current = stack.back();
+        stack.pop_back();
+
+        // If the type is a primitive, it cannot recurse
+        if (this->isPrimitive(current)) {
+            continue;
+        }
+
+        // If we already visited this type, we have recursion
+        if (visited.find(current) != visited.end()) {
+            return true;
+        }
+
+        // Mark this type as visited
+        visited.insert(current);
+
+        // If it's a function type, push its parameter and return types onto the
+        // stack
+        const auto &typeData = this->getTypeData(current);
+        if (std::holds_alternative<FunctionType>(typeData)) {
+            const FunctionType &funcType = std::get<FunctionType>(typeData);
+            for (const TypeID &paramType : funcType.param_types) {
+                stack.push_back(paramType);
+            }
+            stack.push_back(funcType.return_type);
+        }
+    }
+
+    return false; // No recursion detected
 }
 
 bool TypeRegistry::isNumeric(TypeID typeID) {

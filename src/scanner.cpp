@@ -218,6 +218,8 @@ Token Scanner::makeIdentifier() {
         case 't':
             if (token.lexeme == "true")
                 token.type = Token::True;
+            else if (token.lexeme == "type")
+                token.type = Token::Type_token;
             break;
         case 'w':
             if (token.lexeme == "while")

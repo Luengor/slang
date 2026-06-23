@@ -1,4 +1,5 @@
 #include "ast_stmt.hpp"
+#include "ast_core.hpp"
 #include "ast_macros.hpp"
 #include "ast_pure_expr.hpp"
 #include "error.hpp"
@@ -151,6 +152,64 @@ void BlockStmt::print(int indent) {
     std::cout << "BlockStmt\n";
     for (auto &stmt : this->statements) {
         stmt->print(indent + 1);
+    }
+}
+
+// TypeDeclStmt Implementation
+TypeDeclStmt::TypeDeclStmt(const Token &name_token, ASTNodePtr type_expr)
+    : ASTNode(ASTNodeType::TypeDeclStmt, name_token) {
+    this->type_expr = std::move(type_expr);
+}
+
+void TypeDeclStmt::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    // As type declarations are global, they are only allowed in the top
+    // scope to avoid confusion. If we are not in the top scope, throw an error.
+    const auto current_depth = ctx.nameTable.getCurrentDepth();
+    if (current_depth > 1) {
+        throw ParserError(this->token,
+                          "Type declarations are only allowed in the top scope.");
+    }
+
+    // Check if the type already exists in the registry
+    if (ctx.typeRegistry.getTypeFromName(this->token.lexeme)) {
+        throw ParserError(this->token,
+                          "Type with the same name already declared.");
+    }
+
+    // Reserve the type name in the registry to allow for recursive types
+    const auto type_id = ctx.typeRegistry.reserveTypeID(this->token.lexeme);
+
+    // Resolve the type expression
+    this->type_expr->resolveType(ctx);
+
+    // Update the reserved type ID with the new data 
+    const auto type_data = ctx.typeRegistry.getTypeData(type(this->type_expr));
+    ctx.typeRegistry.fillTypeID(type_id, type_data);
+
+    // Check if the type recurses
+    // If not, alias the name to the type_expr's type and null the other to
+    // avoid duplicate types
+    // This way the only duplciate will be None's (its a bit hacky but it works)
+    if (!ctx.typeRegistry.typeRecurses(type_id) && type(this->type_expr) < type_id) {
+        ctx.typeRegistry.setTypeAlias(this->token.lexeme, type(this->type_expr));
+        ctx.typeRegistry.fillTypeID(type_id, PrimitiveType{PrimitiveKind::None});
+    }
+}
+
+void TypeDeclStmt::compile(CompileContext &ctx, int reg) {
+    CompileGuard;
+    assert(reg == -1);
+    reg(this) = -1;
+}
+
+void TypeDeclStmt::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "TypeDeclStmt(" << this->token.lexeme << ")\n";
+    if (this->type_expr) {
+        this->type_expr->print(indent + 1);
     }
 }
 

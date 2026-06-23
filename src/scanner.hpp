@@ -43,6 +43,7 @@ struct Token {
         Fixed,
         Float,
         Bool,
+        Type_token,
         Str,
         None,
         Auto,

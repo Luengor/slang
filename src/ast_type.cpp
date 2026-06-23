@@ -45,6 +45,31 @@ void PrimitiveTypeNode::print(int indent) {
     std::cout << "PrimitiveTypeNode(" << this->token.lexeme << ")\n";
 }
 
+NamedTypeNode::NamedTypeNode(const Token &token)
+    : ASTNode(ASTNodeType::NamedType, token) {}
+
+void NamedTypeNode::resolveType(CompileContext &ctx) {
+    TypeGuard;
+
+    const auto type_id_opt =
+        ctx.typeRegistry.getTypeFromName(this->token.lexeme);
+    if (!type_id_opt.has_value()) {
+        throw ParserError(this->token,
+                          "Type '" + this->token.lexeme + "' is not defined.");
+    }
+    type(this) = type_id_opt.value();
+}
+
+void NamedTypeNode::compile(CompileContext &, int) {
+    throw ParserError(this->token, "NamedTypeNode should not be compiled.");
+}
+
+void NamedTypeNode::print(int indent) {
+    for (int i = 0; i < indent; i++)
+        std::cout << "  ";
+    std::cout << "NamedTypeNode(" << this->token.lexeme << ")\n";
+}
+
 FunctionTypeNode::FunctionTypeNode(const Token &token,
                                    std::vector<ASTNodePtr> param_types,
                                    ASTNodePtr return_type)

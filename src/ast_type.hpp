@@ -7,6 +7,11 @@ struct PrimitiveTypeNode : public ASTNode {
     AST_OVERRIDES;
 };
 
+struct NamedTypeNode : public ASTNode {
+    NamedTypeNode(const Token &token);
+    AST_OVERRIDES;
+};
+
 struct FunctionTypeNode : public ASTNode {
     std::vector<ASTNodePtr> param_types;
     ASTNodePtr return_type;

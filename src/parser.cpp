@@ -91,6 +91,11 @@ ASTNodePtr Parser::typeExpr() {
         return this->primitiveType();
     }
 
+    // Try identifier type
+    if (this->match({Token::Type::Identifier})) {
+        return std::make_unique<NamedTypeNode>(this->previous());
+    }
+
     // Then try function type
     return this->functionType();
 }
@@ -134,6 +139,10 @@ ASTNodePtr Parser::declaration() {
         // Try variable declaration and backtrack on failure
         const auto current_pos = this->current;
         try {
+            // Type declaration
+            if (this->match({Token::Type::Type_token}))
+                return this->typeDecl();
+            
             return this->varDecl();
         } catch (const ParserError &) {
             this->current = current_pos; // Backtrack
@@ -146,6 +155,17 @@ ASTNodePtr Parser::declaration() {
         this->syncronize();
         return nullptr;
     }
+}
+
+ASTNodePtr Parser::typeDecl() {
+    Token name =
+        this->consume(Token::Type::Identifier, "Expected type name.");
+    this->consume(Token::Type::Equal, "Expected '=' after type name.");
+    ASTNodePtr type_expr = this->typeExpr();
+    this->consume(Token::Type::Semicolon,
+                  "Expected ';' after type declaration.");
+
+    return std::make_unique<TypeDeclStmt>(name, std::move(type_expr));
 }
 
 ASTNodePtr Parser::varDecl() {
@@ -229,12 +249,15 @@ ASTNodePtr Parser::forStmt() {
     ASTNodePtr initializer = nullptr;
 
     if (!this->match({Token::Type::Semicolon})) {
-        if (this->match({Token::Type::Fixed, Token::Type::Float,
-                         Token::Type::Bool, Token::Type::Str,
-                         Token::Type::Auto})) {
-            this->current--; // backtrack
+        const auto current_pos = this->current;
+
+        // Try variable declaration first
+        try {
             initializer = this->varDecl();
-        } else {
+        } catch (const ParserError &) {
+            this->current = current_pos; // Backtrack
+                                         
+            // If variable declaration failed, try expression statement
             initializer = this->exprStmt();
         }
     }
