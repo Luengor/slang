@@ -1,4 +1,5 @@
 #include "ast_pure_expr.hpp"
+#include "ast_core.hpp"
 #include "ast_macros.hpp"
 #include "ast_stmt.hpp"
 #include "error.hpp"
@@ -569,6 +570,10 @@ CastExpr::CastExpr(const Token &token, ASTNodePtr operand, TypeID target_type)
     : ASTNode(ASTNodeType::CastExpr, token), operand(std::move(operand)),
       target_type(target_type) {}
 
+CastExpr::CastExpr(const Token &token, ASTNodePtr operand, ASTNodePtr type_expr)
+    : ASTNode(ASTNodeType::CastExpr, token), operand(std::move(operand)),
+      type_expr(std::move(type_expr)) {}
+
 std::optional<ASTNodePtr>
 CastExpr::tryCast(ASTNodePtr operand, TypeID target_type, CompileContext &ctx) {
     assert(operand->type_resolved && "Operand type must be resolved");
@@ -624,6 +629,14 @@ CastExpr::tryCommonCast(ASTNodePtr left, ASTNodePtr right,
 
 void CastExpr::resolveType(CompileContext &ctx) {
     TypeGuard;
+
+    // If we have a type_expr, resolve it first
+    if (this->type_expr) {
+        this->type_expr->resolveType(ctx);
+
+        // Our target_type is the type of the type_expr
+        this->target_type = this->type(type_expr);
+    }
 
     // "Dodge" the guard for target type
     type(this) = this->target_type;

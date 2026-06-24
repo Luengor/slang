@@ -37,7 +37,8 @@ logicAnd    -> equality ( "and" equality )*
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
 comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
 term        -> factor ( ( "+" | "-" ) factor )*
-factor      -> unary ( ( "*" | "/" ) unary )*
+factor      -> cast ( ( "*" | "/" ) cast )*
+cast        -> (cast | unary ) ( "as" typeExpr )?
 unary       -> ( "-" | "not" ) unary | call 
 call        -> primary ( "(" arguments? ")" )*
 arguments   -> expression ( "," expression )*
@@ -51,12 +52,13 @@ From highest to lowest:
 1. Parentheses `()`
 2. Call
 3. Unary operators: `-`, `not`
-4. Factor: `*`, `/`
-5. Term: `+`, `-`
-6. Comparison: `>`, `>=`, `<`, `<=`
-7. Equality: `==`, `!=`
-8. Logic AND: `and`
-9. Logic OR: `or`
-10. Ternary: `? :`
-11. Assignment: `=`
+4. Cast: `as`
+5. Factor: `*`, `/`
+6. Term: `+`, `-`
+7. Comparison: `>`, `>=`, `<`, `<=`
+8. Equality: `==`, `!=`
+9. Logic AND: `and`
+10. Logic OR: `or`
+11. Ternary: `? :`
+12. Assignment: `=`
 

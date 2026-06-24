@@ -172,6 +172,8 @@ Token Scanner::makeIdentifier() {
         case 'a':
             if (token.lexeme == "and")
                 token.type = Token::And;
+            else if (token.lexeme == "as")
+                token.type = Token::As;
             else if (token.lexeme == "auto")
                 token.type = Token::Auto;
             break;

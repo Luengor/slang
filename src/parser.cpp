@@ -478,16 +478,32 @@ ASTNodePtr Parser::term() {
 
 ASTNodePtr Parser::factor() {
     // Get the left operand
-    ASTNodePtr expr = this->unary();
+    ASTNodePtr expr = this->cast();
 
     // While the current token is a '*' or '/', parse the right operand
     while (this->match({Token::Type::Star, Token::Type::Slash})) {
         Token operatorToken = this->previous();
-        ASTNodePtr right = this->unary();
+        ASTNodePtr right = this->cast();
 
         // Create a binary expression node
         expr = std::make_unique<BinaryExpr>(operatorToken, std::move(expr),
                                             std::move(right));
+    }
+
+    return expr;
+}
+
+ASTNodePtr Parser::cast() {
+    // Get the left operand
+    ASTNodePtr expr = this->unary();
+
+    // Check if the next token is 'as' for a cast expression
+    while (this->match({Token::Type::As})) {
+        Token asToken = this->previous();
+        ASTNodePtr typeExpr = this->typeExpr();
+
+        expr = std::make_unique<CastExpr>(asToken, std::move(expr),
+                                          std::move(typeExpr));
     }
 
     return expr;

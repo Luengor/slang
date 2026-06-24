@@ -35,6 +35,7 @@ struct Token {
         Number,
 
         // Keywords.
+        As,
         And,
         Or,
         Not,

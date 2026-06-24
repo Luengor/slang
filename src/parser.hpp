@@ -92,10 +92,10 @@ class Parser {
     // expression -> assignment
     ASTNodePtr expression();
 
-    // assignment  -> IDENTIFIER "=" assignment | ternary
+    // assignment  -> ternary ( "=" assignment )?
     ASTNodePtr assignment();
 
-    // ternary -> logicOr ( "?" expression ":" ternary )?
+    // ternary -> logicOr ( "?" expression ":" expression )?
     ASTNodePtr ternary();
 
     // logicOr -> logicAnd ( "or" logicAnd )*
@@ -113,8 +113,11 @@ class Parser {
     // term -> factor ( ( "+" | "-" | "or" ) factor )*
     ASTNodePtr term();
 
-    // factor -> unary ( ( "*" | "/" | "and" ) unary )*
+    // factor -> cast ( ( "*" | "/" | "and" ) cast )*
     ASTNodePtr factor();
+
+    // cast -> unary ( "as" typeExpr )?
+    ASTNodePtr cast();
 
     // unary -> ( "-" | "not" ) unary | call
     ASTNodePtr unary();
