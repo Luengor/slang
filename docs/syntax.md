@@ -30,8 +30,8 @@ exprStmt    -> expression ";"
 ### Expression rules
 ```
 expression  -> assignment
-assignment  -> IDENTIFIER "=" assignment | ternary 
-ternary     -> logicOr ( "?" expression ":" ternary )?
+assignment  -> ternary ( "=" assignment )?
+ternary     -> logicOr ( "?" expression ":" expresion )?
 logicOr     -> logicAnd ( "or" logicAnd )*
 logicAnd    -> equality ( "and" equality )*
 equality    -> comparison ( ( "==" | "!=" ) comparison )*
