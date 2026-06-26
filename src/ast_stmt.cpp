@@ -306,6 +306,7 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
         // If no initializer and it's an string, initialize to empty string
         const auto string_type =
             ctx.typeRegistry.getPrimitive(PrimitiveKind::String);
+
         if (type(this) == string_type) {
             // Create an empty string literal
             StringObj *empty_string_obj = new StringObj("");
@@ -314,6 +315,15 @@ void VarDeclStmt::compile(CompileContext &ctx, int reg) {
             const auto const_index =
                 ctx.function->chunk.addObjectConstant(empty_string_obj);
             ctx.function->chunk.writeABx(OpCode::Object, entry.register_index,
+                                         const_index, this->token.line);
+            return;
+        }
+
+        // If its a function, initialize with 0/none/nullptr
+        if (ctx.typeRegistry.isFunction(type(this))) {
+            const auto const_index = 
+                ctx.function->chunk.addConstant({0});
+            ctx.function->chunk.writeABx(OpCode::Constant, entry.register_index,
                                          const_index, this->token.line);
         }
     }
