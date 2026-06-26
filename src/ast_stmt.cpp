@@ -255,6 +255,12 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                 "Auto variable declaration requires an initializer.");
         }
 
+        if (type(this->initializer) == ctx.typeRegistry.noneType()) {
+            throw ParserError(
+                this->token,
+                "Auto variable declaration cannot infer type from 'none'.");
+        }
+
         type(this) = type(initializer);
     } else {
         // Otherwise, use the declared type
