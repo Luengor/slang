@@ -207,6 +207,12 @@ InterpretResult VM::run() {
                             ? registers[callee_ro].object
                             : curr_function->chunk.object_constants[callee_ro - 256];
 
+                    // If the callee is null, return a runtime error
+                    if (!callee) {
+                        std::print("Error: Attempted to call a null object.\n");
+                        return InterpretResult::RuntimeError;
+                    }
+
                     // Handle self calls
                     if (callee == curr_function && frame.closure) {
                         callee = frame.closure;
@@ -358,10 +364,15 @@ InterpretResult VM::run() {
                     // If we are going to overwrite an object upvalue, release
                     // it first
                     if (upval->is_object) {
-                        (upval->is_closed
-                             ? static_cast<Object *>(upval->data.value.object)
-                             : this->regs[upval->data.register_index].object)
-                            ->release();
+                        const auto object =
+                            upval->is_closed
+                                ? static_cast<Object *>(
+                                      upval->data.value.object)
+                                : this->regs[upval->data.register_index].object;
+
+                        // Maybe this isn't needed?
+                        if (object)
+                            object->release();
                     }
 
                     // Set the upvalue to the value from the register or
@@ -446,7 +457,10 @@ InterpretResult VM::run() {
                     ZoneScopedN("VM::Release");
 
                     const auto reg = GET_A(instruction);
-                    registers[reg].object->release();
+                    const auto object = registers[reg].object;
+                    if (object) {
+                        object->release();
+                    }
                     break;
                 }
 

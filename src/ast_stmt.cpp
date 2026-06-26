@@ -270,15 +270,7 @@ void VarDeclStmt::resolveType(CompileContext &ctx) {
                     this->token, "Incompatible types in variable initializer.");
             }
             this->initializer = std::move(cast_result.value());
-        } else if (ctx.typeRegistry.isObject(type(this))) {
-            // Functions require an initializer outside of function definitions
-            if (!this->is_in_function_definition &&
-                ctx.typeRegistry.isFunction(type(this))) {
-                throw ParserError(
-                    this->token,
-                    "Function declarations require an initializer.");
-            }
-        }
+        } 
     }
 
     // Add a new local

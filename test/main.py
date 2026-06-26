@@ -12,6 +12,8 @@ args = parser.parse_args()
 SLANG_EXTENSIONS = [".slang", ".sl"]
 COMPERROR = "COMPERROR"
 COMPERROR_CODE = 65
+RUNERROR = "RUNERROR"
+RUNERROR_CODE = 70
 
 # Make the project in the root test_directory
 root_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,7 +84,7 @@ class TestCase:
             return_code = result.returncode
 
             if return_code >= 0:
-                if full_output == self.expected_output or (self.expected_output == COMPERROR and return_code == COMPERROR_CODE):
+                if full_output == self.expected_output or (self.expected_output == COMPERROR and return_code == COMPERROR_CODE) or (self.expected_output == RUNERROR and return_code == RUNERROR_CODE):
                     return TestResult(status=TestStatus.PASS)
                 else:
                     return TestResult(status=TestStatus.FAIL, details=f"Expected: {self.expected_output.replace('\n', ', ')}\nGot: {full_output}")
