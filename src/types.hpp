@@ -57,10 +57,10 @@ class TypeRegistry {
     bool typeRecurses(TypeID typeID);
 
     inline TypeID noneType() { return getPrimitive(PrimitiveKind::None); }
-    bool isNumeric(TypeID typeID);
-    bool isPrimitive(TypeID typeID);
-    bool isObject(TypeID typeID);
-    bool isFunction(TypeID typeID);
+    bool isNumeric(TypeID typeID) const;
+    bool isPrimitive(TypeID typeID) const;
+    bool isObject(TypeID typeID) const;
+    bool isFunction(TypeID typeID) const;
 
     inline TypeData getTypeData(TypeID typeID) const {
         return this->types[typeID];

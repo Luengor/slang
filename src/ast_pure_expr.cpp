@@ -66,6 +66,13 @@ LiteralNode::LiteralNode(const Token &token)
                 break;
             }
 
+        case Token::Type::None:
+            {
+                Value val{.object = nullptr};
+                this->value = std::make_pair(ValueType::None, val);
+                break;
+            }
+
         default:
             throw ParserError(token, "Unsupported literal type.");
     }
@@ -86,10 +93,6 @@ void LiteralNode::resolveType(CompileContext &ctx) {
 
     // Get result type of the literal
     type(this) = ctx.typeRegistry.getFromValue(this->value);
-    if (type(this) == ctx.typeRegistry.noneType()) {
-        throw ParserError(this->token,
-                          "Unknown literal type during type resolution.");
-    }
 }
 
 void LiteralNode::compile(CompileContext &ctx, int reg) {
@@ -134,6 +137,10 @@ void LiteralNode::print(int indent) {
 
         case ValueType::Object:
             print_object();
+            break;
+
+        case ValueType::None:
+            std::println("Literal(None)");
             break;
 
         default:
@@ -579,6 +586,13 @@ CastExpr::tryCast(ASTNodePtr operand, TypeID target_type, CompileContext &ctx) {
     assert(operand->type_resolved && "Operand type must be resolved");
     if (type(operand) == target_type) {
         // No cast needed
+        return std::make_optional<ASTNodePtr>(std::move(operand));
+    }
+
+    // If the target type is a function and the operand is none, no cast is
+    // needed
+    if (type(operand) == ctx.typeRegistry.noneType() &&
+        ctx.typeRegistry.isFunction(target_type)) {
         return std::make_optional<ASTNodePtr>(std::move(operand));
     }
 

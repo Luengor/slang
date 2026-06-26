@@ -551,9 +551,9 @@ ASTNodePtr Parser::finishCall(ASTNodePtr expr) {
 }
 
 ASTNodePtr Parser::primary() {
-    // Make a literal node for number, string, true, false
+    // Make a literal node for number, string, true, false, none
     if (this->match({Token::Type::Number, Token::Type::String,
-                     Token::Type::True, Token::Type::False})) {
+                     Token::Type::True, Token::Type::False, Token::Type::None})) {
         return std::make_unique<LiteralNode>(this->previous());
     }
 

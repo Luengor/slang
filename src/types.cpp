@@ -71,7 +71,7 @@ TypeID TypeRegistry::getFromValue(const TypedValue &value) {
 
     // Handle objects
     if (value.second.object == nullptr) {
-        throw std::runtime_error("Null object in getFromValue.");
+        return getPrimitive(PrimitiveKind::None);
     }
 
     switch (value.second.object->obj_type) {
@@ -185,17 +185,22 @@ bool TypeRegistry::typeRecurses(TypeID typeID) {
     return false; // No recursion detected
 }
 
-bool TypeRegistry::isNumeric(TypeID typeID) {
-    return typeID == this->getPrimitive(PrimitiveKind::Fixed) ||
-           typeID == this->getPrimitive(PrimitiveKind::Floating);
+bool TypeRegistry::isNumeric(TypeID typeID) const {
+    const auto &typeData = this->getTypeData(typeID);
+    if (!std::holds_alternative<PrimitiveType>(typeData)) {
+        return false;
+    }
+    const PrimitiveType primType = std::get<PrimitiveType>(typeData);
+    return primType.kind == PrimitiveKind::Fixed ||
+           primType.kind == PrimitiveKind::Floating;
 }
 
-bool TypeRegistry::isPrimitive(TypeID typeID) {
+bool TypeRegistry::isPrimitive(TypeID typeID) const {
     const auto &typeData = this->getTypeData(typeID);
     return std::holds_alternative<PrimitiveType>(typeData);
 }
 
-bool TypeRegistry::isObject(TypeID typeID) {
+bool TypeRegistry::isObject(TypeID typeID) const {
     const auto &typeData = this->getTypeData(typeID);
     if (std::holds_alternative<PrimitiveType>(typeData)) {
         const PrimitiveType primType = std::get<PrimitiveType>(typeData);
@@ -204,7 +209,7 @@ bool TypeRegistry::isObject(TypeID typeID) {
     return true; // If not primitive, is a function
 }
 
-bool TypeRegistry::isFunction(TypeID typeID) {
+bool TypeRegistry::isFunction(TypeID typeID) const {
     const auto &typeData = this->getTypeData(typeID);
     return std::holds_alternative<FunctionType>(typeData);
 }

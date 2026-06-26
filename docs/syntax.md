@@ -43,7 +43,7 @@ unary       -> ( "-" | "not" ) unary | call
 call        -> primary ( "(" arguments? ")" )*
 arguments   -> expression ( "," expression )*
 primary     -> NUMBER | STRING | "true" | "false" | "(" expression ")" | IDENTIFIER |
-               function
+               function | "none"
 function    -> "(" parameters ")" "->" ( typeExpr | "none" ) block 
 parameters  -> ( typeExpr IDENTIFIER ( "," typeExpr IDENTIFIER )* )? 
 ```
